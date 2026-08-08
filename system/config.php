@@ -77,8 +77,25 @@ load_env_file(dirname(__DIR__) . DIRECTORY_SEPARATOR . '.env');
 
 /* ---------------------------------------------------------------------
  *  2) OTURUM
+ * ---------------------------------------------------------------------
+ *  Çerez ayarlarını oturum başlamadan ÖNCE sıkılaştırıyoruz:
+ *    httponly → JavaScript çerezi okuyamaz (XSS ile oturum çalınamaz)
+ *    samesite → başka siteden gelen isteklere çerez gönderilmez (CSRF)
+ *    secure   → sadece HTTPS üzerinden gönderilir (HTTPS varsa)
  * ------------------------------------------------------------------ */
 if (session_status() === PHP_SESSION_NONE) {
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['SERVER_PORT'] ?? '') === '443')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path'     => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+        'secure'   => $isHttps,
+    ]);
+
     session_start();
 }
 
@@ -222,4 +239,24 @@ try {
     ) . '</pre>';
 
     exit;
+}
+
+/* ---------------------------------------------------------------------
+ *  8) ALTYAPIYI YÜKLE
+ * ---------------------------------------------------------------------
+ *  Bu üç dosya sadece fonksiyon tanımı içerir, yan etkisi yoktur.
+ *  Sırası önemli değildir ama okunabilirlik için mantıksal sırada.
+ * ------------------------------------------------------------------ */
+require_once __DIR__ . '/function.php';   // e(), json_*, csrf, doğrulama
+require_once __DIR__ . '/settings.php';   // setting(), settings_save()
+require_once __DIR__ . '/auth.php';       // auth_login(), require_role()
+
+/* Ayarları veritabanından tek sorguyla oku ve önbelleğe al.
+ * Bundan sonra setting('site_adi') çağrıları veritabanına gitmez. */
+settings_load($db);
+
+/* Zaman dilimini ayarlardan uygula (tarih fonksiyonları bunu kullanır). */
+$timezone = (string) setting('sistem_zaman_dilimi', 'Europe/Istanbul');
+if (in_array($timezone, timezone_identifiers_list(), true)) {
+    date_default_timezone_set($timezone);
 }

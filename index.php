@@ -1,91 +1,132 @@
 <?php
 /**
  * =====================================================================
- *  BAŞLANGIÇ SAYFASI – Çılgın Yazılım PHP Başlangıç Şablonu
- *  cilginyazilim.com
+ *  ANA SAYFA (herkese açık)
+ *  cilginyazilim.com – Çılgın Yazılım PHP Başlangıç Şablonu
  * ---------------------------------------------------------------------
  *  Bu sayfa iki iş yapar:
- *    1. Kurulumun doğru olduğunu test eder ("Bağlantıyı Test Et")
- *    2. Tasarım kalıbındaki hazır bileşenleri gösterir
+ *    1. Kurulumun doğru çalıştığını gösterir (ayarlar okunuyor mu?)
+ *    2. Tasarım kalıbındaki hazır bileşenleri örnekler
  *
- *  ► Yeni projeye başlarken: Aşağıdaki "BİLEŞEN GALERİSİ" bölümünü
- *    silip yerine kendi içeriğinizi yazın. İskelet (başlık, kart,
- *    modal, toast, CSRF) olduğu gibi kalsın.
+ *  ► Yeni projeye başlarken: "BİLEŞEN GALERİSİ" bölümünü silip
+ *    yerine kendi içeriğinizi yazın. İskelet (başlık, ayarlar,
+ *    oturum durumu, toast) olduğu gibi kalsın.
  * =====================================================================
  */
 
 declare(strict_types=1);
 
-// __DIR__ : Bu dosyanın bulunduğu klasörün TAM yolu. Göreli yol yerine
-// bunu kullanmak, dosya nereden çağrılırsa çağrılsın doğru çalışır.
+// config.php; function.php, settings.php ve auth.php'yi de yükler
+// ve ayarları veritabanından okuyup önbelleğe alır.
 require __DIR__ . '/system/config.php';
-require __DIR__ . '/system/function.php';
 
-// CSRF anahtarı: sahte istekleri engeller. Hem <meta> etiketine hem
-// formlara gömülür, JavaScript her istekte gönderir.
 $csrfToken = csrf_token();
+$siteAdi   = (string) setting('site_adi', APP_NAME);
+$aktif     = auth_user($db);   // Giriş yoksa null
+
+/* BAKIM MODU
+ * Ayarlardan açıldıysa, giriş yapmamış ziyaretçilere kapalıyız.
+ * Yöneticiler siteyi normal görmeye devam eder ki düzenleme
+ * yapabilsinler. */
+if (setting_bool('sistem_bakim_modu') && !auth_at_least('editor')) {
+    http_response_code(503);
+    ?>
+    <!DOCTYPE html>
+    <html lang="<?= e((string) setting('site_dil', 'tr')) ?>">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Bakım çalışması | <?= e($siteAdi) ?></title>
+        <link rel="stylesheet" href="assets/css/bootstrap.min.css">
+        <link rel="stylesheet" href="assets/css/cilginyazilim.css">
+    </head>
+    <body class="cy-app">
+        <div class="cy-topbar"></div>
+        <div class="container py-5" style="max-width:520px">
+            <div class="cy-card">
+                <div class="cy-card__body text-center py-5">
+                    <img src="<?= e(site_logo_url()) ?>" alt="" style="width:64px;height:64px;object-fit:contain">
+                    <h1 class="h5 mt-3">Kısa bir bakım çalışması yapıyoruz</h1>
+                    <p class="cy-muted mb-4">Çok yakında geri döneceğiz.</p>
+                    <a href="giris.php" class="btn cy-btn cy-btn--primary btn-sm">Yönetici Girişi</a>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
 ?>
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="<?= e((string) setting('site_dil', 'tr')) ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="author" content="Çılgın Yazılım - cilginyazilim.com">
-    <meta name="description" content="<?= e(APP_DESCRIPTION) ?>">
+    <meta name="description" content="<?= e((string) setting('site_aciklama', APP_DESCRIPTION)) ?>">
+    <meta name="keywords" content="<?= e((string) setting('seo_anahtar_kelimeler', '')) ?>">
+    <?php if (!setting_bool('seo_indeksleme', true)): ?>
+        <meta name="robots" content="noindex, nofollow">
+    <?php endif; ?>
     <meta name="csrf-token" content="<?= e($csrfToken) ?>">
 
-    <title><?= e(APP_NAME) ?> | Çılgın Yazılım</title>
+    <title><?= e($siteAdi) ?></title>
 
-    <link rel="icon" type="image/png" href="assets/images/logo.png">
+    <link rel="icon" type="image/png" href="<?= e(site_logo_url()) ?>">
 
     <!--
         CSS YÜKLEME SIRASI ÖNEMLİDİR:
-        1) bootstrap      → temel çatı
-        2) dataTables     → tablo eklentisi (kullanmıyorsanız silin)
-        3) cilginyazilim  → MARKA TASARIM KALIBI (Bootstrap'i ezer)
-        4) style          → sadece bu projeye özel eklemeler
-        Sonra yüklenen dosya, öncekini geçersiz kılabilir.
+        bootstrap → dataTables → cilginyazilim → style
+        Sonra yüklenen dosya öncekini geçersiz kılabilir.
     -->
     <link rel="stylesheet" href="assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="assets/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="assets/css/cilginyazilim.css">
     <link rel="stylesheet" href="assets/css/style.css">
+
+    <!-- Tema rengini ayarlardan uygula (CSS değişkenini ezerek) -->
+    <style>
+        :root { --cy-brand-600: <?= e((string) setting('sistem_tema_rengi', '#0b5cb5')) ?>; }
+    </style>
 </head>
 
-<!-- "cy-app" sınıfı marka tasarım kalıbını sayfaya uygular. -->
 <body class="cy-app">
-
-    <!-- Sayfanın en üstündeki ince marka şeridi -->
     <div class="cy-topbar"></div>
 
-    <div class="container py-4 py-lg-5">
-
+    <div class="container py-2 py-lg-2">
         <div class="cy-card">
 
-            <!-- ---------- Kart Başlığı (marka gradyanlı) ---------- -->
+            <!-- ---------- Başlık ---------- -->
             <div class="cy-card__header">
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
 
-                    <a class="cy-brand" href="https://cilginyazilim.com" target="_blank" rel="noopener">
+                    <div class="cy-brand">
                         <span class="cy-brand__mark">
-                            <img src="assets/images/logo.png" alt="Çılgın Yazılım logosu">
+                            <img src="<?= e(site_logo_url()) ?>" alt="<?= e($siteAdi) ?> logosu">
                         </span>
                         <div>
-                            <h1 class="cy-brand__title"><?= e(APP_NAME) ?></h1>
-                            <p class="cy-brand__subtitle"><?= e(APP_DESCRIPTION) ?></p>
+                            <h1 class="cy-brand__title"><?= e($siteAdi) ?></h1>
+                            <p class="cy-brand__subtitle">
+                                <?= e((string) setting('site_slogan', (string) setting('site_aciklama', ''))) ?>
+                            </p>
                         </div>
-                    </a>
+                    </div>
 
                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <span class="cy-badge cy-badge--glass">PHP <?= e(PHP_VERSION) ?></span>
-                        <button type="button" id="ping_button" class="btn cy-btn cy-btn--onbrand">
-                            Bağlantıyı Test Et
-                        </button>
+                        <?php if ($aktif !== null): ?>
+                            <span class="cy-badge cy-badge--glass">
+                                <?= e($aktif['ad'] . ' ' . $aktif['soyad']) ?>
+                            </span>
+                            <a href="yonetim/index.php" class="btn cy-btn cy-btn--onbrand">Yönetim Paneli</a>
+                        <?php else: ?>
+                            <a href="giris.php" class="btn cy-btn cy-btn--onbrand">Giriş Yap</a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
 
-            <!-- ---------- Kart Gövdesi ---------- -->
+            <!-- ---------- Gövde ---------- -->
             <div class="cy-card__body">
 
                 <!-- =======================================================
@@ -94,13 +135,26 @@ $csrfToken = csrf_token();
                      ======================================================= -->
 
                 <div class="alert alert-primary" role="alert">
-                    <strong>Şablon hazır.</strong> Başlamak için:
-                    <code>system/config.php</code> içindeki <code>APP_NAME</code> ve
-                    <code>DB_NAME</code> değerlerini değiştirin, sonra bu galeriyi silip
-                    kendi içeriğinizi yazın.
+                    <strong>Şablon hazır ve kurulu.</strong>
+                    Bu sayfadaki site adı, açıklama ve tema rengi doğrudan
+                    <code>ayarlar</code> tablosundan geliyor. Değiştirmek için
+                    <a href="yonetim/ayarlar.php">yönetim panelindeki ayarlar</a>
+                    sayfasını kullanın — kod düzenlemenize gerek yok.
                 </div>
 
-                <h2 class="h6 text-uppercase cy-muted mt-4 mb-3">Butonlar</h2>
+                <h2 class="h6 text-uppercase cy-muted mt-4 mb-3">Ayarlardan Gelen Değerler</h2>
+                <dl class="cy-detail mb-4">
+                    <dt>Site adı</dt>
+                    <dd><?= e((string) setting('site_adi', '—')) ?></dd>
+                    <dt>Açıklama</dt>
+                    <dd><?= e((string) setting('site_aciklama', '—')) ?></dd>
+                    <dt>İletişim</dt>
+                    <dd><?= e((string) setting('iletisim_eposta', 'Tanımlanmamış')) ?></dd>
+                    <dt>Bakım modu</dt>
+                    <dd><?= setting_bool('sistem_bakim_modu') ? 'Açık' : 'Kapalı' ?></dd>
+                </dl>
+
+                <h2 class="h6 text-uppercase cy-muted mb-3">Butonlar</h2>
                 <div class="d-flex flex-wrap gap-2 mb-4">
                     <button class="btn cy-btn cy-btn--primary">Ana Eylem</button>
                     <button class="btn btn-outline-secondary cy-btn">İkincil</button>
@@ -116,124 +170,59 @@ $csrfToken = csrf_token();
                 <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
                     <span class="cy-badge cy-badge--soft">Yumuşak Rozet</span>
                     <span class="cy-avatar cy-avatar--initial">Ç</span>
-                    <img src="assets/images/logo.png" class="cy-avatar" alt="Örnek avatar">
+                    <img src="<?= e(site_logo_url()) ?>" class="cy-avatar" alt="Örnek avatar">
                 </div>
 
-                <h2 class="h6 text-uppercase cy-muted mb-3">Tablo</h2>
-                <div class="table-responsive mb-4">
-                    <table class="table cy-table w-100">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Başlık</th>
-                                <th>Tarih</th>
-                                <th class="text-center">İşlemler</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td class="cy-id">1</td>
-                                <td class="cy-name">Örnek kayıt</td>
-                                <td class="cy-nowrap"><?= e(format_date(date('Y-m-d H:i:s'))) ?></td>
-                                <td class="text-center">
-                                    <span class="cy-actions">
-                                        <button class="cy-btn-icon cy-btn-icon--edit">&#9998;</button>
-                                        <button class="cy-btn-icon cy-btn-icon--delete">&#128465;</button>
-                                    </span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <h2 class="h6 text-uppercase cy-muted mb-3">Modal ve Bildirim</h2>
+                <h2 class="h6 text-uppercase cy-muted mb-3">Bildirim</h2>
                 <div class="d-flex flex-wrap gap-2">
-                    <button class="btn cy-btn cy-btn--primary" data-bs-toggle="modal" data-bs-target="#demoModal">
-                        Modal Aç
-                    </button>
-                    <button class="btn btn-outline-secondary cy-btn js-toast" data-type="success">Başarı Bildirimi</button>
-                    <button class="btn btn-outline-secondary cy-btn js-toast" data-type="danger">Hata Bildirimi</button>
+                    <button class="btn btn-outline-secondary cy-btn js-toast" data-type="success">Başarı</button>
+                    <button class="btn btn-outline-secondary cy-btn js-toast" data-type="danger">Hata</button>
                 </div>
 
                 <!-- ================= GALERİ SONU ================= -->
             </div>
 
             <div class="cy-card__footer d-flex flex-wrap justify-content-between gap-2">
+                <span><?= e($siteAdi) ?></span>
                 <span>Çılgın Yazılım PHP Başlangıç Şablonu</span>
-                <span>cilginyazilim.com</span>
             </div>
         </div>
 
-        <p class="cy-footer-note mt-4 mb-0">
+        <!-- Sosyal medya bağlantıları (sadece doldurulmuş olanlar görünür) -->
+        <?php
+        $sosyal = [
+            'Facebook'  => (string) setting('sosyal_facebook', ''),
+            'X'         => (string) setting('sosyal_x', ''),
+            'Instagram' => (string) setting('sosyal_instagram', ''),
+            'LinkedIn'  => (string) setting('sosyal_linkedin', ''),
+            'YouTube'   => (string) setting('sosyal_youtube', ''),
+            'GitHub'    => (string) setting('sosyal_github', ''),
+        ];
+        $sosyal = array_filter($sosyal);
+        ?>
+        <?php if ($sosyal !== []): ?>
+            <p class="cy-footer-note mt-4 mb-0">
+                <?php foreach ($sosyal as $ad => $url): ?>
+                    <a href="<?= e($url) ?>" target="_blank" rel="noopener" class="me-2"><?= e($ad) ?></a>
+                <?php endforeach; ?>
+            </p>
+        <?php endif; ?>
+
+        <p class="cy-footer-note mt-3 mb-0">
             <a href="https://cilginyazilim.com" target="_blank" rel="noopener">cilginyazilim.com</a>
         </p>
     </div>
 
-
-    <!-- ================================================================
-         ÖRNEK MODAL
-         Kendi modallarınız için bu yapıyı kopyalayın.
-         ================================================================ -->
-    <div class="modal fade cy-modal" id="demoModal" tabindex="-1" aria-labelledby="demoModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title h6 mb-0" id="demoModalLabel">Örnek Modal</h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
-                </div>
-                <div class="modal-body">
-                    <dl class="cy-detail">
-                        <dt>Uygulama</dt>
-                        <dd><?= e(APP_NAME) ?></dd>
-                        <dt>Veritabanı</dt>
-                        <dd><?= e(DB_NAME) ?></dd>
-                        <dt>PHP</dt>
-                        <dd><?= e(PHP_VERSION) ?></dd>
-                    </dl>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary cy-btn" data-bs-dismiss="modal">Kapat</button>
-                    <button type="button" class="btn cy-btn cy-btn--primary" data-bs-dismiss="modal">Tamam</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast (bildirim) balonlarının ekleneceği kapsayıcı -->
     <div class="toast-container cy-toast-container position-fixed top-0 end-0 p-3" id="toast_container"></div>
 
-
-    <!--
-        JAVASCRIPT YÜKLEME SIRASI ÇOK ÖNEMLİDİR:
-        1) jQuery            → diğerleri buna bağımlı
-        2) bootstrap.bundle  → Modal, Toast (Popper dahil)
-        3) dataTables        → tablo motoru (kullanmıyorsanız silin)
-        Sıra bozulursa "$ is not defined" hatası alırsınız.
-    -->
     <script src="assets/js/jquery-3.7.0.js"></script>
     <script src="assets/js/bootstrap.bundle.js"></script>
-    <script src="assets/js/jquery.dataTables.min.js"></script>
-    <script src="assets/js/dataTables.bootstrap5.min.js"></script>
 
     <script>
-    /* =================================================================
-     *  UYGULAMA JAVASCRIPT'İ
-     * -----------------------------------------------------------------
-     *  $(function () { ... }) = "Sayfa hazır olunca çalıştır".
-     *  Bu sarmalayıcı olmadan HTML henüz yüklenmemişken elemanları
-     *  bulmaya çalışır ve kod sessizce çalışmaz.
-     * ================================================================= */
     $(function () {
         'use strict';
 
-        var ENDPOINT   = 'system/ajax.php';
-        var CSRF_TOKEN = $('meta[name="csrf-token"]').attr('content');
-
-        /**
-         * Sağ üstte geçici bildirim (toast) gösterir.
-         * @param {string} message Gösterilecek metin
-         * @param {string} type    'success' | 'danger' | 'info'
-         */
+        /** Sağ üstte geçici bildirim gösterir. */
         function notify(message, type) {
             type = type || 'success';
 
@@ -246,42 +235,14 @@ $csrfToken = csrf_token();
                 '</div>'
             );
 
-            // ÖNEMLİ: .html() değil .text() kullanıyoruz.
-            // .html() olsaydı mesaj içindeki HTML çalışır ve XSS açığı oluşurdu.
+            // .html() değil .text() — mesajdaki HTML çalıştırılmasın (XSS).
             $toast.find('.toast-body').text(message);
             $('#toast_container').append($toast);
 
             var toast = new bootstrap.Toast($toast[0], { delay: 4000 });
-            // Kapanınca DOM'dan kaldır (bellek sızıntısını önler).
             $toast.on('hidden.bs.toast', function () { $toast.remove(); });
             toast.show();
         }
-
-        /* -------------------------------------------------------------
-         *  BAĞLANTI TESTİ
-         *  Şablonun uçtan uca çalıştığını doğrular:
-         *  AJAX → CSRF → veritabanı → JSON yanıt
-         * ----------------------------------------------------------- */
-        $('#ping_button').on('click', function () {
-            var $btn = $(this).prop('disabled', true);
-
-            $.ajax({
-                url: ENDPOINT,
-                method: 'POST',
-                dataType: 'json',
-                data: { action: 'ping', csrf_token: CSRF_TOKEN }
-            })
-            .done(function (res) {
-                notify(res.description + ' (' + res.database + ' · ' + res.server_at + ')', 'success');
-            })
-            .fail(function (xhr) {
-                var res = xhr.responseJSON || {};
-                notify(res.description || 'Bağlantı kurulamadı.', 'danger');
-            })
-            .always(function () {
-                $btn.prop('disabled', false);
-            });
-        });
 
         // Galeri: bildirim örneği (kendi projenizde silin)
         $('.js-toast').on('click', function () {
@@ -290,5 +251,15 @@ $csrfToken = csrf_token();
         });
     });
     </script>
+
+    <?php
+    // SEO: Analytics kodu ayarlardan gelir.
+    // Bu alan yöneticiye ait olduğu için bilerek kaçışlanmadan basılır;
+    // panele sadece güvendiğiniz kişilere admin yetkisi verin.
+    $analytics = (string) setting('seo_analytics', '');
+    if ($analytics !== '') {
+        echo $analytics;
+    }
+    ?>
 </body>
 </html>

@@ -4,7 +4,7 @@
 
 ### Her yeni örnek projeye buradan başlayın
 
-**Tasarım kalıbı + güvenlik iskeleti + AJAX altyapısı hazır. Siz sadece işin özüne odaklanın.**
+**Kurulum sihirbazı + oturum sistemi + yönetim paneli + tasarım kalıbı hazır. Siz sadece işin özüne odaklanın.**
 
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://php.net)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.2-7952B3?style=flat-square&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
@@ -22,14 +22,17 @@ Her yeni PHP örneği yazarken aynı şeyleri tekrar kurmak zorunda kalmayın di
 
 | Hazır gelen | Açıklama |
 |-------------|----------|
+| 🧙 **Adım adım kurulum sihirbazı** | `install.php` — 5 adımda veritabanını oluşturur, şemayı kurar, site ayarlarını ve **yönetici hesabını** yazar. Kod düzenlemeden kurulum. |
+| 🔑 **Oturum ve yetki sistemi** | Giriş/çıkış, `password_hash`, rol tabanlı yetki (`admin` / `editor` / `uye`), kaba kuvvet koruması |
+| ⚙️ **Ayarlar tablosu** | Site adı, iletişim, sosyal medya, SEO, bakım modu… `setting('site_adi')` ile okunur |
+| 🗂️ **Yönetim paneli** | Özet, ayarlar, kullanıcı yönetimi (CRUD), profil sayfaları hazır |
 | 🎨 **Tasarım kalıbı** | `cilginyazilim.css` — marka renkleri, kart, buton, tablo, modal, toast, koyu tema |
 | 🔒 **CSRF koruması** | Token üretimi ve `hash_equals` ile sabit zamanlı doğrulama |
-| 🛡️ **Güvenli PDO kurulumu** | `EMULATE_PREPARES=false`, exception modu, utf8mb4 |
+| 🛡️ **Güvenli PDO kurulumu** | `EMULATE_PREPARES=false`, exception modu, utf8mb4 + Türkçe sıralama |
 | 📤 **Güvenli dosya yükleme** | Tür içerikten doğrulanır, dosya adı sunucuda üretilir, `.htaccess` korumalı klasör |
 | 🔀 **AJAX yönlendirici** | Tek uç nokta, `action` tabanlı, tek noktada hata yakalama |
 | 🧩 **Hazır CRUD örneği** | `list`/`add`/`edit`/`fetch`/`delete` — yorum satırından çıkarıp tablo adını değiştirmeniz yeterli |
-| 🧙 **Kurulum sihirbazı** | `install.php` — veritabanını oluşturur, şemayı içe aktarır, `.env` dosyasını yazar; `config.php`'yi elle düzenlemeye gerek kalmaz |
-| ✅ **Doğrulama fonksiyonları** | Metin, ad, e-posta, ID |
+| ✅ **Doğrulama fonksiyonları** | Metin, ad, e-posta, kullanıcı adı, parola, ID |
 | 📦 **Yerel kütüphaneler** | jQuery, Bootstrap 5, DataTables — CDN yok, çevrimdışı çalışır |
 | 📄 **Belge taslakları** | README taslağı, `.gitignore`, `.env.example`, MIT lisansı |
 
@@ -45,11 +48,26 @@ Kurulumdan hemen sonra karşınıza çıkan sayfa: bağlantı testi butonu ve ta
 
 ![Şablon açılış ekranı](docs/screenshots/01-sablon.png)
 
-### Kurulum sihirbazı
+### Kurulum sihirbazı (adım adım)
 
-`install.php` — sistem kontrolleri, uygulama adı ve veritabanı bilgileri için tek bir form. "Kurulumu Başlat" butonuna basınca veritabanını oluşturur, `database.sql`'i içe aktarır ve `.env` dosyasını yazar.
+Beş adım: **Gereksinimler → Veritabanı → Site Ayarları → Yönetici → Tamamlandı.**
+Veritabanı bağlantısı 2. adımda hemen test edilir; her şeyi doldurduktan sonra "parola yanlış" sürprizi yaşamazsınız.
 
-![Kurulum sihirbazı](docs/screenshots/02-kurulum.png)
+![Kurulum sihirbazı — gereksinimler](docs/screenshots/02-kurulum.png)
+
+![Kurulum sihirbazı — veritabanı adımı](docs/screenshots/03-kurulum-db.png)
+
+### Yönetim paneli
+
+Kurulum biter bitmez çalışan bir panel: özet, ayarlar, kullanıcı yönetimi ve profil.
+
+![Yönetim paneli — özet](docs/screenshots/04-panel-ozet.png)
+
+Ayarlar formundaki **hiçbir alan elle yazılmamıştır** — hepsi `ayarlar` tablosundaki `tip`, `etiket`, `grup` sütunlarından otomatik üretilir. Yeni ayar eklemek için tabloya bir satır eklemeniz yeterli.
+
+![Yönetim paneli — ayarlar](docs/screenshots/05-panel-ayarlar.png)
+
+![Yönetim paneli — kullanıcılar](docs/screenshots/06-panel-kullanicilar.png)
 
 ---
 
@@ -69,9 +87,10 @@ php -S 127.0.0.1:8000
 ```
 
 Tarayıcıda `http://127.0.0.1:8000/` adresini açın. Veritabanı henüz yoksa
-otomatik olarak kurulum sihirbazına yönlendirilirsiniz — orada
-**"Kurulumu Başlat"** butonuna basmanız yeterli, veritabanı ve şema
-sizin için oluşturulur.
+otomatik olarak kurulum sihirbazına yönlendirilirsiniz. Sihirbaz beş adımda
+veritabanını oluşturur, `ayarlar` ve `kullanicilar` tablolarını kurar, site
+bilgilerinizi kaydeder ve **yönetici hesabınızı** açar. Ardından `giris.php`
+üzerinden panele girebilirsiniz.
 
 > **Elle kurulum tercih ederseniz:** `install.php`'yi hiç açmadan
 > `mysql -u root -p < database.sql` ile veritabanını kendiniz
@@ -84,8 +103,9 @@ sizin için oluşturulur.
 
 Şablonu kopyaladıktan sonra sırayla:
 
-- [ ] **Kurulum sihirbazını çalıştırın** (`install.php`) veya `.env.example`'ı `.env` olarak kopyalayıp elle doldurun — `APP_NAME` ve `DB_NAME` en az değişmesi gerekenler
-- [ ] **`database.sql`** → `items` tablosunu kendi yapınızla değiştirin (dosyadaki veritabanı adı önemli değil, sihirbaz zaten görmezden gelir)
+- [ ] **Kurulum sihirbazını çalıştırın** (`install.php`) — site adı, veritabanı ve yönetici hesabı burada belirlenir
+- [ ] **`database.sql`** → `ayarlar` ve `kullanicilar` tablolarını KORUYUN, kendi tablolarınızı bunların altına ekleyin
+- [ ] **Ayarlar** → projeye özel ayarları `ayarlar` tablosuna satır olarak ekleyin (panelde otomatik görünür)
 - [ ] **`index.php`** → "BİLEŞEN GALERİSİ" bölümünü silin, kendi içeriğinizi yazın
 - [ ] **`system/ajax.php`** → tam CRUD lazımsa dosyanın alt kısmındaki yorumlu `handle_list/save/fetch/delete` bloğunu açıp `items` yerine kendi tablonuzu yazın; farklı bir şey lazımsa kendi `case`'lerinizi ekleyin. `ping`'i sonunda silin
 - [ ] **`system/function.php`** → CRUD bloğunu açtıysanız oradaki `find_item()` örneğini de yorumdan çıkarın; farklı sorgular için "PROJEYE ÖZEL" bölümüne yazın
@@ -101,21 +121,33 @@ sizin için oluşturulur.
 
 ```
 .
-├── index.php                  # Başlangıç sayfası + bileşen galerisi
+├── index.php                  # Ana sayfa (herkese açık) + bileşen galerisi
 ├── install.php                # Kurulum sihirbazı (canlıya çıkmadan önce silin)
-├── database.sql               # Veritabanı şablonu
-├── .env.example                # Elle kurulum için ortam değişkeni şablonu
+├── giris.php                  # Giriş sayfası
+├── cikis.php                  # Çıkış (POST + CSRF korumalı)
+├── database.sql               # Şema: ayarlar + kullanicilar tabloları
+├── .env.example               # Elle kurulum için ortam değişkeni şablonu
 ├── README.md                  # Bu dosya (yeni projede değiştirin)
 ├── LICENSE                    # MIT
 ├── .gitignore                 # .env dahil, hassas dosyaları hariç tutar
+│
+├── yonetim/                   # YÖNETİM PANELİ (giriş gerektirir)
+│   ├── _ust.php               # Ortak üst şablon: menü, yetki kontrolü
+│   ├── _alt.php               # Ortak alt şablon: JS yardımcıları (CY nesnesi)
+│   ├── index.php              # Özet / gösterge paneli
+│   ├── ayarlar.php            # Ayar formu (tablodan otomatik üretilir)
+│   ├── kullanicilar.php       # Kullanıcı CRUD (DataTables + modal)
+│   └── profil.php             # Kendi profilini düzenleme
 │
 ├── docs/
 │   ├── README-taslak.md       # Yeni proje için README taslağı
 │   └── screenshots/           # Ekran görüntüleri
 │
 ├── system/
-│   ├── config.php             # .env'i okur, PDO bağlantısını kurar
-│   ├── function.php           # Yardımcı fonksiyonlar
+│   ├── config.php             # .env'i okur, PDO + altyapıyı yükler
+│   ├── function.php           # Yardımcı fonksiyonlar (CSRF, doğrulama, JSON)
+│   ├── settings.php           # setting(), settings_save() — ayar yönetimi
+│   ├── auth.php               # auth_login(), require_role() — oturum/yetki
 │   └── ajax.php               # AJAX yönlendirici
 │
 ├── assets/
@@ -183,6 +215,61 @@ Zorlamak için: `<html data-cy-theme="dark">` (veya `"light"`).
 ---
 
 ## Altyapıyı Kullanma
+
+### Ayarları okumak ve yazmak
+
+Ayarlar sayfa başına **tek sorguyla** okunup önbelleğe alınır; `setting()` fonksiyonunu yüz kere çağırsanız da veritabanına bir kez gidilir.
+
+```php
+echo setting('site_adi');                      // oku (yoksa boş)
+echo setting('iletisim_eposta', 'yok@x.com');  // varsayılanla oku
+if (setting_bool('sistem_bakim_modu')) { … }   // aç/kapa ayarı
+
+settings_save($db, ['site_adi' => 'Yeni Ad']); // yaz (transaction'lı)
+```
+
+**Yeni bir ayar eklemek** için sadece tabloya satır ekleyin — yönetim panelinde doğru tipte alan **kendiliğinden** belirir, HTML yazmanız gerekmez:
+
+```sql
+INSERT INTO ayarlar (anahtar, deger, grup, tip, etiket, sira)
+VALUES ('site_favicon', '', 'genel', 'metin', 'Favicon', 70);
+```
+
+Desteklenen `tip` değerleri: `metin`, `uzun_metin`, `sayi`, `eposta`, `url`, `secim`, `onay`, `renk`.
+
+### Sayfaları korumak
+
+```php
+require __DIR__ . '/system/config.php';
+
+require_login();              // giriş yoksa giriş sayfasına yönlendir
+require_role('admin');        // en az yönetici olmalı (editor/uye engellenir)
+
+if (is_admin()) { … }         // şablon içinde koşullu gösterim
+if (auth_at_least('editor')) { … }
+
+$kullanici = auth_user($db);  // giriş yapanın tüm bilgileri
+```
+
+AJAX uç noktasında yönlendirme değil JSON hata dönmesi gerekir:
+
+```php
+require_csrf();
+require_role_json('admin');   // 401 / 403 JSON döner
+```
+
+> **Roller:** `uye` < `editor` < `admin`. `require_role('editor')` yazarsanız `admin` de geçer — "en az bu rol" mantığıyla çalışır.
+
+### Kurulmuş sistemde neler korunuyor?
+
+Şablon, kendi kendini kilitleme ve yetki yükseltme hatalarına karşı **sunucu tarafında** korunur (arayüzdeki devre dışı butonlar sadece kolaylık):
+
+- Kendi hesabınızın rolünü düşüremez veya pasife alamazsınız
+- Kendinizi silemezsiniz
+- Sistemdeki **son yöneticiyi** silemez veya yetkisini kaldıramazsınız
+- Parola değiştirirken mevcut parola sorulur
+- `duzenlenebilir = 0` olan ayarlar (örn. sürüm) formdan gönderilse bile yazılmaz
+- Kullanıcı listesinde parola özeti **hiçbir zaman** tarayıcıya gönderilmez
 
 ### Hazır CRUD örneğini açmak (en hızlı yol)
 

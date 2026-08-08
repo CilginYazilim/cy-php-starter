@@ -154,12 +154,32 @@ function require_csrf(): void
  *
  * @return array{0:string,1:?string}
  */
-function validate_text(?string $value, string $label, int $min = TEXT_MIN_LENGTH, int $max = TEXT_MAX_LENGTH): array
+function validate_text(?string $value, string $label, ?int $min = null, ?int $max = null): array
 {
+    /* Varsayılan sınırlar config.php'deki sabitlerden gelir. Ancak bu
+     * dosya config.php olmadan da yüklenebilmeli (install.php böyle
+     * kullanır), bu yüzden sabit tanımlı değilse makul bir değere
+     * düşüyoruz. Parametre olarak açıkça verilirse o kullanılır. */
+    $min = $min ?? (defined('TEXT_MIN_LENGTH') ? TEXT_MIN_LENGTH : 2);
+    $max = $max ?? (defined('TEXT_MAX_LENGTH') ? TEXT_MAX_LENGTH : 150);
+
+    $value = (string) $value;
+
+    /* GEÇERSİZ UTF-8 KORUMASI — bu kontrolü atlamayın.
+     * Aşağıdaki preg_replace deseni /u (Unicode) bayrağını kullanır.
+     * Girdi geçerli UTF-8 DEĞİLSE preg_replace null döndürür; null'ı
+     * trim()'e verince PHP 8 ölümcül TypeError fırlatır ve uygulama
+     * 500 ile çöker (hata ayıklama açıkken yığın izini de sızdırır).
+     * Kötü niyetli biri bunu bilerek tetikleyebilir, bu yüzden
+     * bozuk baytları burada nazikçe reddediyoruz. */
+    if (!mb_check_encoding($value, 'UTF-8')) {
+        return ['', $label . ' geçersiz karakterler içeriyor.'];
+    }
+
     // trim(): baştaki/sondaki boşlukları siler.
     // preg_replace('/\s+/u', ' '): aradaki çoklu boşlukları teke indirir.
     // Sondaki /u: desenin UTF-8 (Türkçe karakterli) metinle çalışmasını sağlar.
-    $value = trim(preg_replace('/\s+/u', ' ', (string) $value));
+    $value = trim((string) preg_replace('/\s+/u', ' ', $value));
 
     if ($value === '') {
         return ['', $label . ' alanı boş bırakılamaz.'];

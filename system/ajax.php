@@ -29,8 +29,8 @@
 
 declare(strict_types=1);
 
+// config.php; function.php, settings.php ve auth.php'yi de yükler.
 require __DIR__ . '/config.php';
-require __DIR__ . '/function.php';
 
 /* ---------------------------------------------------------------------
  *  GÜVENLİK KONTROLÜ 1: Sadece POST kabul edilir.
@@ -60,6 +60,25 @@ try {
         // Kendi işlemlerinizi eklemeye başlayınca bunu silebilirsiniz.
         case 'ping':
             handle_ping($db);
+            break;
+
+        /* --- Kullanıcı yönetimi (yonetim/kullanicilar.php kullanır) ---
+         * Hepsi require_role_json('admin') ile korunur. */
+        case 'kullanici_list':
+            handle_kullanici_list($db);
+            break;
+
+        case 'kullanici_getir':
+            handle_kullanici_getir($db);
+            break;
+
+        case 'kullanici_ekle':
+        case 'kullanici_guncelle':
+            handle_kullanici_kaydet($db, $action);
+            break;
+
+        case 'kullanici_sil':
+            handle_kullanici_sil($db);
             break;
 
         /* ---------------------------------------------------------
@@ -116,6 +135,340 @@ function handle_ping(PDO $db): void
         'database'  => DB_NAME,
         'server_at' => format_date((string) $now, 'd.m.Y H:i:s'),
     ]);
+}
+
+
+/* =====================================================================
+ *  KULLANICI YÖNETİMİ
+ * =====================================================================
+ *  Bu dört fonksiyon yonetim/kullanicilar.php sayfasını besler.
+ *
+ *  HEPSİNİN İLK İKİ SATIRI AYNI:
+ *      require_csrf();               → sahte istek koruması
+ *      require_role_json('admin');   → yetki koruması
+ *
+ *  Bu ikisini atlamak, panelinizi internete açmakla eşdeğerdir:
+ *  ajax.php herkese açık bir adrestir, sadece panel sayfası
+ *  korumalı olduğu için buranın da korunduğunu SANMAYIN.
+ * ------------------------------------------------------------------ */
+
+/**
+ * DataTables için kullanıcı listesi.
+ */
+function handle_kullanici_list(PDO $db): void
+{
+    require_csrf();
+    require_role_json('admin');
+
+    // Sıralanabilir sütunlar beyaz listesi (SQL Injection koruması):
+    // kullanıcı bize sadece bir SAYI gönderir, sütun adını BİZ seçeriz.
+    $sortableColumns = [
+        0 => 'id',
+        1 => 'ad',
+        2 => 'eposta',
+        3 => 'rol',
+        4 => 'durum',
+    ];
+
+    $draw   = (int) ($_POST['draw'] ?? 1);
+    $start  = max(0, (int) ($_POST['start'] ?? 0));
+    $length = (int) ($_POST['length'] ?? 10);
+    $search = trim((string) ($_POST['search']['value'] ?? ''));
+
+    $orderColumn = (int) ($_POST['order'][0]['column'] ?? 0);
+    $orderDir    = strtolower((string) ($_POST['order'][0]['dir'] ?? 'desc'));
+
+    $orderBy  = $sortableColumns[$orderColumn] ?? 'id';
+    $orderDir = ($orderDir === 'asc') ? 'ASC' : 'DESC';
+
+    $where  = '';
+    $params = [];
+
+    if ($search !== '') {
+        // NOT: EMULATE_PREPARES kapalıyken aynı yer tutucu birden fazla
+        // kez kullanılamaz; her biri için ayrı isim veriyoruz.
+        $where = ' WHERE ad LIKE :s1 OR soyad LIKE :s2 OR eposta LIKE :s3 OR kullanici_adi LIKE :s4';
+        $desen = '%' . escape_like($search) . '%';
+        $params = [':s1' => $desen, ':s2' => $desen, ':s3' => $desen, ':s4' => $desen];
+    }
+
+    // Filtrelenmiş toplam (sayfalama bunu kullanır).
+    $countStmt = $db->prepare('SELECT COUNT(*) FROM kullanicilar' . $where);
+    $countStmt->execute($params);
+    $filtered = (int) $countStmt->fetchColumn();
+
+    $sql = 'SELECT id, ad, soyad, kullanici_adi, eposta, rol, durum, son_giris
+              FROM kullanicilar' . $where
+        . sprintf(' ORDER BY `%s` %s', $orderBy, $orderDir);
+
+    if ($length > 0) {
+        // LIMIT/OFFSET bind edilemez; %d ile tam sayıya zorluyoruz.
+        // min(...,500): length=999999 gönderilip sunucu yorulmasın.
+        $sql .= sprintf(' LIMIT %d OFFSET %d', min($length, 500), $start);
+    }
+
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+
+    $rolEtiketleri   = auth_role_labels();
+    $durumEtiketleri = auth_status_labels();
+    $aktifId         = auth_id();
+
+    $data = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $id      = (int) $row['id'];
+        $tamAd   = $row['ad'] . ' ' . $row['soyad'];
+        $kendisi = ($id === $aktifId);
+
+        // Durum rozetinin rengi.
+        $durumRengi = match ($row['durum']) {
+            'aktif'  => 'background:#dcfce7;color:#166534',
+            'pasif'  => 'background:#fee2e2;color:#991b1b',
+            default  => 'background:#fef3c7;color:#92400e',
+        };
+
+        /* Kendi hesabınız için silme butonu ÜRETİLMEZ. Yine de bu
+         * sadece arayüz kolaylığıdır — asıl kontrol sunucuda,
+         * handle_kullanici_sil() içinde yapılır. */
+        $silButonu = $kendisi
+            ? '<button type="button" class="cy-btn-icon" disabled title="Kendinizi silemezsiniz">&#128465;</button>'
+            : '<button type="button" class="cy-btn-icon cy-btn-icon--delete js-sil" data-id="' . $id . '"'
+                . ' data-label="' . e($tamAd) . '" title="Sil">&#128465;</button>';
+
+        $data[] = [
+            $id,
+            '<span class="cy-name">' . e($tamAd) . '</span>'
+                . ' <small class="cy-muted">@' . e((string) $row['kullanici_adi']) . '</small>'
+                . ($kendisi ? ' <span class="cy-badge cy-badge--soft" style="font-size:.7rem">siz</span>' : ''),
+            e((string) $row['eposta']),
+            '<span class="cy-badge cy-badge--soft">'
+                . e($rolEtiketleri[$row['rol']] ?? (string) $row['rol']) . '</span>',
+            '<span class="cy-badge" style="' . $durumRengi . '">'
+                . e($durumEtiketleri[$row['durum']] ?? (string) $row['durum']) . '</span>',
+            '<div class="cy-actions">'
+                . '<button type="button" class="cy-btn-icon cy-btn-icon--edit js-duzenle" data-id="' . $id . '" title="Düzenle">&#9998;</button>'
+                . $silButonu
+            . '</div>',
+        ];
+    }
+
+    json_response([
+        'draw'            => $draw,
+        'recordsTotal'    => count_rows($db, 'kullanicilar'),
+        'recordsFiltered' => $filtered,
+        'data'            => $data,
+    ]);
+}
+
+/**
+ * Düzenleme formu için tek kullanıcı getirir.
+ *
+ * DİKKAT: "sifre" sütunu BİLEREK döndürülmez. Parola özetini
+ * tarayıcıya göndermenin hiçbir faydası yoktur, sadece riski vardır.
+ */
+function handle_kullanici_getir(PDO $db): void
+{
+    require_csrf();
+    require_role_json('admin');
+
+    $id = post_id('id');
+    if ($id === null) {
+        json_error('Geçersiz kullanıcı numarası.');
+    }
+
+    $user = find_user($db, $id);
+    if ($user === null) {
+        json_error('Kullanıcı bulunamadı.', 404);
+    }
+
+    json_response([
+        'success'       => true,
+        'id'            => (int) $user['id'],
+        'ad'            => $user['ad'],
+        'soyad'         => $user['soyad'],
+        'kullanici_adi' => $user['kullanici_adi'],
+        'eposta'        => $user['eposta'],
+        'rol'           => $user['rol'],
+        'durum'         => $user['durum'],
+        'telefon'       => $user['telefon'],
+        'hakkinda'      => (string) $user['hakkinda'],
+    ]);
+}
+
+/**
+ * Kullanıcı ekler veya günceller.
+ */
+function handle_kullanici_kaydet(PDO $db, string $action): void
+{
+    require_csrf();
+    require_role_json('admin');
+
+    $duzenleme = ($action === 'kullanici_guncelle');
+    $mevcut    = null;
+
+    if ($duzenleme) {
+        $id = post_id('id');
+        if ($id === null) {
+            json_error('Geçersiz kullanıcı numarası.');
+        }
+
+        $mevcut = find_user($db, $id);
+        if ($mevcut === null) {
+            json_error('Güncellenecek kullanıcı bulunamadı.', 404);
+        }
+    }
+
+    $errors = [];
+
+    [$ad, $adHata]         = validate_name($_POST['ad'] ?? '', 'Ad');
+    [$soyad, $soyadHata]   = validate_name($_POST['soyad'] ?? '', 'Soyad');
+    [$kadi, $kadiHata]     = validate_username($_POST['kullanici_adi'] ?? '');
+    [$eposta, $epostaHata] = validate_email($_POST['eposta'] ?? '');
+
+    if ($adHata !== null)     { $errors['ad'] = $adHata; }
+    if ($soyadHata !== null)  { $errors['soyad'] = $soyadHata; }
+    if ($kadiHata !== null)   { $errors['kullanici_adi'] = $kadiHata; }
+    if ($epostaHata !== null) { $errors['eposta'] = $epostaHata; }
+
+    // Benzersizlik kontrolü (düzenlemede kendi kaydını hariç tut).
+    $haricId = $duzenleme ? (int) $mevcut['id'] : null;
+
+    if (!isset($errors['eposta']) && user_field_taken($db, 'eposta', $eposta, $haricId)) {
+        $errors['eposta'] = 'Bu e-posta adresi zaten kayıtlı.';
+    }
+    if (!isset($errors['kullanici_adi']) && user_field_taken($db, 'kullanici_adi', $kadi, $haricId)) {
+        $errors['kullanici_adi'] = 'Bu kullanıcı adı zaten alınmış.';
+    }
+
+    // Rol ve durum: beyaz liste dışındaki değerler kabul edilmez.
+    $rol   = (string) ($_POST['rol'] ?? 'uye');
+    $durum = (string) ($_POST['durum'] ?? 'aktif');
+
+    if (!array_key_exists($rol, auth_role_labels())) {
+        $errors['rol'] = 'Geçersiz rol.';
+    }
+    if (!array_key_exists($durum, auth_status_labels())) {
+        $errors['durum'] = 'Geçersiz durum.';
+    }
+
+    // Parola: eklemede zorunlu, düzenlemede boş bırakılabilir.
+    $sifre = (string) ($_POST['sifre'] ?? '');
+
+    if (!$duzenleme || $sifre !== '') {
+        $sifreHata = validate_password($sifre);
+        if ($sifreHata !== null) {
+            $errors['sifre'] = $sifreHata;
+        }
+    }
+
+    /* KENDİ KENDİNİ KİLİTLEME KORUMASI
+     * Yönetici kendi rolünü düşürür veya hesabını pasife alırsa
+     * panele bir daha giremez. Ayrıca sistemdeki SON yöneticiyi
+     * yetkisiz bırakmak, kimsenin yönetemediği bir site demektir. */
+    if ($duzenleme && (int) $mevcut['id'] === auth_id()) {
+        if ($rol !== 'admin') {
+            $errors['rol'] = 'Kendi yönetici yetkinizi kaldıramazsınız.';
+        }
+        if ($durum !== 'aktif') {
+            $errors['durum'] = 'Kendi hesabınızı pasife alamazsınız.';
+        }
+    } elseif ($duzenleme && $mevcut['rol'] === 'admin' && $rol !== 'admin' && admin_count($db) <= 1) {
+        $errors['rol'] = 'Sistemdeki son yöneticinin yetkisini kaldıramazsınız.';
+    }
+
+    if ($errors !== []) {
+        json_error('Lütfen formdaki hataları düzeltin.', 422, ['errors' => $errors]);
+    }
+
+    $telefon  = trim((string) ($_POST['telefon'] ?? ''));
+    $hakkinda = trim((string) ($_POST['hakkinda'] ?? ''));
+
+    if ($duzenleme) {
+        $sql = 'UPDATE kullanicilar
+                   SET ad = :ad, soyad = :soyad, kullanici_adi = :kadi, eposta = :eposta,
+                       rol = :rol, durum = :durum, telefon = :telefon, hakkinda = :hakkinda';
+        $params = [
+            ':ad'       => $ad,
+            ':soyad'    => $soyad,
+            ':kadi'     => $kadi,
+            ':eposta'   => $eposta,
+            ':rol'      => $rol,
+            ':durum'    => $durum,
+            ':telefon'  => $telefon,
+            ':hakkinda' => $hakkinda,
+            ':id'       => $mevcut['id'],
+        ];
+
+        // Parola sadece doldurulduysa değişir.
+        if ($sifre !== '') {
+            $sql .= ', sifre = :sifre';
+            $params[':sifre'] = hash_password($sifre);
+        }
+
+        $sql .= ' WHERE id = :id';
+
+        $db->prepare($sql)->execute($params);
+
+        json_success('Kullanıcı güncellendi.', ['id' => (int) $mevcut['id']]);
+    }
+
+    $stmt = $db->prepare(
+        'INSERT INTO kullanicilar (ad, soyad, kullanici_adi, eposta, sifre, rol, durum, telefon, hakkinda)
+         VALUES (:ad, :soyad, :kadi, :eposta, :sifre, :rol, :durum, :telefon, :hakkinda)'
+    );
+    $stmt->execute([
+        ':ad'       => $ad,
+        ':soyad'    => $soyad,
+        ':kadi'     => $kadi,
+        ':eposta'   => $eposta,
+        // Parolanın kendisi değil, geri döndürülemez özeti saklanır.
+        ':sifre'    => hash_password($sifre),
+        ':rol'      => $rol,
+        ':durum'    => $durum,
+        ':telefon'  => $telefon,
+        ':hakkinda' => $hakkinda,
+    ]);
+
+    json_success('Kullanıcı eklendi.', ['id' => (int) $db->lastInsertId()]);
+}
+
+/**
+ * Kullanıcı siler.
+ */
+function handle_kullanici_sil(PDO $db): void
+{
+    require_csrf();
+    require_role_json('admin');
+
+    $id = post_id('id');
+    if ($id === null) {
+        json_error('Geçersiz kullanıcı numarası.');
+    }
+
+    // Kendinizi silemezsiniz (arayüzde buton kapalı ama sunucuda da kontrol şart).
+    if ($id === auth_id()) {
+        json_error('Kendi hesabınızı silemezsiniz.', 422);
+    }
+
+    $user = find_user($db, $id);
+    if ($user === null) {
+        json_error('Silinecek kullanıcı bulunamadı.', 404);
+    }
+
+    // Son yöneticiyi silmek, yönetilemeyen bir site bırakır.
+    if ($user['rol'] === 'admin' && admin_count($db) <= 1) {
+        json_error('Sistemdeki son yöneticiyi silemezsiniz.', 422);
+    }
+
+    $stmt = $db->prepare('DELETE FROM kullanicilar WHERE id = :id');
+    $stmt->execute([':id' => $id]);
+
+    // Avatarı varsa diskten de temizle (yetim dosya bırakmamak için).
+    if ($user['avatar'] !== '') {
+        delete_upload((string) $user['avatar']);
+    }
+
+    json_success('Kullanıcı silindi.', ['id' => $id]);
 }
 
 
