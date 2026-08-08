@@ -28,19 +28,28 @@ Her yeni PHP örneği yazarken aynı şeyleri tekrar kurmak zorunda kalmayın di
 | 📤 **Güvenli dosya yükleme** | Tür içerikten doğrulanır, dosya adı sunucuda üretilir, `.htaccess` korumalı klasör |
 | 🔀 **AJAX yönlendirici** | Tek uç nokta, `action` tabanlı, tek noktada hata yakalama |
 | 🧩 **Hazır CRUD örneği** | `list`/`add`/`edit`/`fetch`/`delete` — yorum satırından çıkarıp tablo adını değiştirmeniz yeterli |
+| 🧙 **Kurulum sihirbazı** | `install.php` — veritabanını oluşturur, şemayı içe aktarır, `.env` dosyasını yazar; `config.php`'yi elle düzenlemeye gerek kalmaz |
 | ✅ **Doğrulama fonksiyonları** | Metin, ad, e-posta, ID |
 | 📦 **Yerel kütüphaneler** | jQuery, Bootstrap 5, DataTables — CDN yok, çevrimdışı çalışır |
-| 📄 **Belge taslakları** | README taslağı, `.gitignore`, MIT lisansı |
+| 📄 **Belge taslakları** | README taslağı, `.gitignore`, `.env.example`, MIT lisansı |
 
 > **Bağımlılık yok.** Composer yok, npm yok. Klonla, çalıştır.
 
 ---
 
-## Şablon Açılış Ekranı
+## Ekran Görüntüleri
+
+### Şablon açılış ekranı
 
 Kurulumdan hemen sonra karşınıza çıkan sayfa: bağlantı testi butonu ve tasarım kalıbındaki hazır bileşenlerin galerisi. Yeni projeye başlarken galeriyi silip yerine kendi içeriğinizi yazarsınız.
 
 ![Şablon açılış ekranı](docs/screenshots/01-sablon.png)
+
+### Kurulum sihirbazı
+
+`install.php` — sistem kontrolleri, uygulama adı ve veritabanı bilgileri için tek bir form. "Kurulumu Başlat" butonuna basınca veritabanını oluşturur, `database.sql`'i içe aktarır ve `.env` dosyasını yazar.
+
+![Kurulum sihirbazı](docs/screenshots/02-kurulum.png)
 
 ---
 
@@ -55,15 +64,19 @@ cd yeni-projem
 rm -rf .git
 git init
 
-# 3) Veritabanını oluştur
-mysql -u root -p < database.sql
-
-# 4) Çalıştır
+# 3) Çalıştır
 php -S 127.0.0.1:8000
 ```
 
-Tarayıcıda `http://127.0.0.1:8000/` adresini açın ve **"Bağlantıyı Test Et"** butonuna basın.
-Yeşil bildirim görüyorsanız her şey hazır: AJAX, CSRF ve veritabanı çalışıyor.
+Tarayıcıda `http://127.0.0.1:8000/` adresini açın. Veritabanı henüz yoksa
+otomatik olarak kurulum sihirbazına yönlendirilirsiniz — orada
+**"Kurulumu Başlat"** butonuna basmanız yeterli, veritabanı ve şema
+sizin için oluşturulur.
+
+> **Elle kurulum tercih ederseniz:** `install.php`'yi hiç açmadan
+> `mysql -u root -p < database.sql` ile veritabanını kendiniz
+> oluşturabilir, `.env.example` dosyasını `.env` olarak kopyalayıp
+> elle doldurabilirsiniz. İkisi de aynı sonuca gider.
 
 ---
 
@@ -71,8 +84,8 @@ Yeşil bildirim görüyorsanız her şey hazır: AJAX, CSRF ve veritabanı çal�
 
 Şablonu kopyaladıktan sonra sırayla:
 
-- [ ] **`system/config.php`** → `APP_NAME`, `APP_DESCRIPTION` ve `DB_NAME` değerlerini değiştirin
-- [ ] **`database.sql`** → `yeni_proje` adını ve `items` tablosunu kendi yapınızla değiştirin
+- [ ] **Kurulum sihirbazını çalıştırın** (`install.php`) veya `.env.example`'ı `.env` olarak kopyalayıp elle doldurun — `APP_NAME` ve `DB_NAME` en az değişmesi gerekenler
+- [ ] **`database.sql`** → `items` tablosunu kendi yapınızla değiştirin (dosyadaki veritabanı adı önemli değil, sihirbaz zaten görmezden gelir)
 - [ ] **`index.php`** → "BİLEŞEN GALERİSİ" bölümünü silin, kendi içeriğinizi yazın
 - [ ] **`system/ajax.php`** → tam CRUD lazımsa dosyanın alt kısmındaki yorumlu `handle_list/save/fetch/delete` bloğunu açıp `items` yerine kendi tablonuzu yazın; farklı bir şey lazımsa kendi `case`'lerinizi ekleyin. `ping`'i sonunda silin
 - [ ] **`system/function.php`** → CRUD bloğunu açtıysanız oradaki `find_item()` örneğini de yorumdan çıkarın; farklı sorgular için "PROJEYE ÖZEL" bölümüne yazın
@@ -80,6 +93,7 @@ Yeşil bildirim görüyorsanız her şey hazır: AJAX, CSRF ve veritabanı çal�
 - [ ] **`README.md`** → `docs/README-taslak.md` dosyasını buraya kopyalayıp doldurun
 - [ ] **`docs/screenshots/`** → ekran görüntülerini ekleyin
 - [ ] **`.gitignore`** → örnek görselleri paylaşacaksanız `upload/*` satırını yorumlayın
+- [ ] **Canlıya çıkmadan önce `install.php`'yi silin** (bkz. [Canlıya Alırken](#canlıya-alırken))
 
 ---
 
@@ -88,17 +102,19 @@ Yeşil bildirim görüyorsanız her şey hazır: AJAX, CSRF ve veritabanı çal�
 ```
 .
 ├── index.php                  # Başlangıç sayfası + bileşen galerisi
+├── install.php                # Kurulum sihirbazı (canlıya çıkmadan önce silin)
 ├── database.sql               # Veritabanı şablonu
+├── .env.example                # Elle kurulum için ortam değişkeni şablonu
 ├── README.md                  # Bu dosya (yeni projede değiştirin)
 ├── LICENSE                    # MIT
-├── .gitignore
+├── .gitignore                 # .env dahil, hassas dosyaları hariç tutar
 │
 ├── docs/
 │   ├── README-taslak.md       # Yeni proje için README taslağı
 │   └── screenshots/           # Ekran görüntüleri
 │
 ├── system/
-│   ├── config.php             # ◄ İLK BURAYI DEĞİŞTİRİN
+│   ├── config.php             # .env'i okur, PDO bağlantısını kurar
 │   ├── function.php           # Yardımcı fonksiyonlar
 │   └── ajax.php               # AJAX yönlendirici
 │
@@ -278,7 +294,8 @@ Bu şablonla çalışırken asla atlamayın:
 
 ## Canlıya Alırken
 
-- [ ] `APP_DEBUG` → `false`
+- [ ] **`install.php` dosyasını silin** (veya sunucu düzeyinde erişimini kısıtlayın) — çalışır durumda kalırsa herkes veritabanınızı yeniden yapılandırabilir
+- [ ] `APP_DEBUG` → `false` (`.env` içinde `APP_DEBUG=false`)
 - [ ] `root` yerine sınırlı yetkili veritabanı kullanıcısı
 - [ ] Kimlik bilgileri ortam değişkeninden
 - [ ] HTTPS + `session.cookie_secure = 1`, `session.cookie_httponly = 1`

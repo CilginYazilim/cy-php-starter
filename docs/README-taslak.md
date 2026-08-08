@@ -91,39 +91,46 @@
 git clone https://github.com/CilginYazilim/{{REPO-ADI}}.git
 cd {{REPO-ADI}}
 
-# 2) Veritabanını oluşturun (dosya veritabanını da kendisi oluşturur)
-mysql -u root -p < database.sql
-
-# 3) Çalıştırın
+# 2) Çalıştırın
 php -S 127.0.0.1:8000
 ```
 
-Tarayıcıda `http://127.0.0.1:8000/` adresini açın.
+Tarayıcıda `http://127.0.0.1:8000/` adresini açın. Veritabanı henüz yoksa
+otomatik olarak kurulum sihirbazına (`install.php`) yönlendirilirsiniz —
+**"Kurulumu Başlat"** butonuna basmanız yeterli, veritabanı ve şema sizin
+için oluşturulur.
+
+<!-- ► install.php'yi projenizden kaldırdıysanız, bu bölümü aşağıdakiyle
+     değiştirin:
+
+mysql -u root -p < database.sql
+
+sonra php -S 127.0.0.1:8000 çalıştırın.
+-->
 
 XAMPP kullanıyorsanız projeyi `htdocs` altına koyup
 `http://localhost/{{REPO-ADI}}/` adresine gidin.
 
 > **Linux/macOS:** `upload/` klasörüne yazma izni gerekir → `chmod 755 upload`
+> **Canlıya alırken:** `install.php` dosyasını silmeyi unutmayın.
 
 ---
 
 ## Yapılandırma
 
-Tüm ayarlar [system/config.php](system/config.php) içindedir:
+Ayarlar `install.php` sihirbazı tarafından otomatik `.env` dosyasına
+yazılır (`.gitignore` içindedir, Git'e gönderilmez). Elle değiştirmek
+isterseniz `.env.example` dosyasını `.env` olarak kopyalayıp
+düzenleyin, ya da [system/config.php](system/config.php) içindeki
+varsayılanları değiştirin.
 
-| Sabit | Varsayılan | Açıklama |
-|-------|-----------|----------|
+| Anahtar | Varsayılan | Açıklama |
+|---------|-----------|----------|
 | `DB_HOST` | `127.0.0.1` | Veritabanı sunucusu |
 | `DB_NAME` | `{{veritabani_adi}}` | Veritabanı adı |
 | `DB_USER` | `root` | Kullanıcı adı |
 | `DB_PASS` | *(boş)* | Parola |
 | `APP_DEBUG` | `true` | **Canlıda `false` yapın** |
-
-Şifreyi koda yazmamak için ortam değişkeni kullanabilirsiniz:
-
-```bash
-export DB_USER=uygulama DB_PASS='guclu-sifre'
-```
 
 ---
 
@@ -132,9 +139,11 @@ export DB_USER=uygulama DB_PASS='guclu-sifre'
 ```
 .
 ├── index.php              # Arayüz + JavaScript
+├── install.php            # Kurulum sihirbazı (canlıya çıkmadan önce silin)
 ├── database.sql           # Veritabanı şeması
+├── .env.example           # Elle kurulum için ortam değişkeni şablonu
 ├── system/
-│   ├── config.php         # Ayarlar ve PDO bağlantısı
+│   ├── config.php         # .env'i okur, PDO bağlantısını kurar
 │   ├── function.php       # Yardımcı fonksiyonlar
 │   └── ajax.php           # AJAX uç noktası
 ├── assets/                # CSS, JS, görseller
