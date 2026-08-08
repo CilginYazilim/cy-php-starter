@@ -1,0 +1,31 @@
+# =====================================================================
+#  .gitignore – Git'in TAKİP ETMEYECEĞİ dosyalar
+# =====================================================================
+
+# --- Kullanıcıların yüklediği dosyalar ------------------------------
+#  Örnek görselleri repoda paylaşmak isterseniz aşağıdaki iki satırı
+#  yorum satırı yapın (başına # koyun).
+upload/*
+!upload/.htaccess
+
+# --- Yerel ortam ayarları (şifre içerebilir, ASLA paylaşmayın) ------
+.env
+system/config.local.php
+
+# --- Editör ve işletim sistemi artıkları ----------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# --- Log ve geçici dosyalar -----------------------------------------
+*.log
+*.tmp
+*.bak
+
+# --- Bağımlılık klasörleri ------------------------------------------
+/vendor/
+/node_modules/
