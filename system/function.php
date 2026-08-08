@@ -403,13 +403,18 @@ function count_rows(PDO $db, string $table): int
  * =====================================================================
  *  ► Kendi sorgularınızı buraya yazın.
  *
- *  ÖRNEK:
+ *  Aşağıdaki find_item() örneği, system/ajax.php içindeki hazır CRUD
+ *  örneğiyle (handle_save / handle_fetch / handle_delete) birlikte
+ *  çalışacak şekilde yazıldı. CRUD örneğini açtığınızda bunu da
+ *  yorumdan çıkarın.
  *
  *  function find_item(PDO $db, int $id): ?array
  *  {
  *      // SELECT * yerine sütunları tek tek yazmak iyi bir alışkanlıktır:
  *      // ileride "sifre" gibi bir sütun eklenirse yanlışlıkla sızmaz.
- *      $stmt = $db->prepare('SELECT id, title, created_at FROM items WHERE id = :id LIMIT 1');
+ *      $stmt = $db->prepare(
+ *          'SELECT id, title, description, image, created_at FROM items WHERE id = :id LIMIT 1'
+ *      );
  *      $stmt->execute([':id' => $id]);
  *
  *      // fetch() kayıt yoksa false döner; biz null'a çeviriyoruz.

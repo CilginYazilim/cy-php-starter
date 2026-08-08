@@ -18,6 +18,12 @@
  *    1. Aşağıdaki switch bloğuna bir "case" ekleyin
  *    2. Karşılık gelen handle_xxx() fonksiyonunu yazın
  *    3. Veri DEĞİŞTİREN işlemlerde ilk satır require_csrf() olsun
+ *
+ *  ► TAM CRUD LAZIMSA (ekle/düzenle/getir/sil + DataTables listesi):
+ *    Dosyanın en altında, yorum içinde HAZIR ve TEST EDİLMİŞ bir örnek
+ *    var (handle_list/handle_save/handle_fetch/handle_delete). Yorumu
+ *    kaldırıp "items" tablo adını kendinize göre değiştirmeniz yeterli.
+ *    Ayrıntılı adımlar: README.md → "Hazır CRUD örneğini açmak"
  * =====================================================================
  */
 
@@ -197,6 +203,169 @@ function handle_list(PDO $db): void
         'recordsFiltered' => count_rows($db, 'items'), // aramada ayrı sorgu yazın!
         'data'            => $data,
     ]);
+}
+
+
+/* =====================================================================
+ *  EKLEME / GÜNCELLEME (add + edit ortak)
+ * =====================================================================
+ *  Aynı fonksiyon hem ekleme hem düzenleme yapar; farkı $action belirler.
+ *  Görsel yüklemeyi kullanmıyorsanız $hasNewImage bloğunu silebilirsiniz.
+ * ------------------------------------------------------------------
+
+function handle_save(PDO $db, string $action): void
+{
+    require_csrf();   // ◄── veri değiştiren her işlemin ilk satırı
+
+    $errors = [];
+
+    [$title, $titleError] = validate_text($_POST['title'] ?? '', 'Başlık');
+    if ($titleError !== null) {
+        $errors['title'] = $titleError;
+    }
+
+    // Açıklama zorunlu değil.
+    $description = trim((string) ($_POST['description'] ?? ''));
+
+    $isEdit  = ($action === 'edit');
+    $current = null;
+
+    if ($isEdit) {
+        $id = post_id('id');
+        if ($id === null) {
+            json_error('Geçersiz kayıt numarası.');
+        }
+
+        $current = find_item($db, $id);
+        if ($current === null) {
+            json_error('Güncellenecek kayıt bulunamadı.', 404);
+        }
+    }
+
+    // --- Görsel yükleme (opsiyonel alan; kullanmıyorsanız bu bloğu silin) ---
+    $hasNewImage = isset($_FILES['image'])
+        && is_array($_FILES['image'])
+        && (int) $_FILES['image']['error'] !== UPLOAD_ERR_NO_FILE;
+
+    $newImage = null;
+
+    if ($hasNewImage && $errors === []) {
+        try {
+            $newImage = upload_image($_FILES['image']);
+        } catch (RuntimeException $e) {
+            $errors['image'] = $e->getMessage();
+        }
+    }
+
+    if ($errors !== []) {
+        // Kısmi yükleme olduysa diskte yetim kalmasın.
+        if ($newImage !== null) {
+            delete_upload($newImage);
+        }
+        json_error('Lütfen formdaki hataları düzeltin.', 422, ['errors' => $errors]);
+    }
+
+    if ($isEdit) {
+        // Yeni görsel yoksa eskisini koru. ÖNEMLİ: eski dosya adı
+        // istemciden değil, veritabanından ($current) okunur —
+        // aksi halde saldırgan başka bir dosya adı gönderip sunucudaki
+        // rastgele bir dosyayı "değiştirilmiş" gibi gösterebilirdi.
+        $image = $newImage ?? (string) $current['image'];
+
+        $stmt = $db->prepare(
+            'UPDATE items SET title = :title, description = :description, image = :image WHERE id = :id'
+        );
+        $stmt->execute([
+            ':title'       => $title,
+            ':description' => $description,
+            ':image'       => $image,
+            ':id'          => $current['id'],
+        ]);
+
+        if ($newImage !== null && $current['image'] !== '') {
+            delete_upload((string) $current['image']);
+        }
+
+        json_success('Kayıt güncellendi.', ['id' => (int) $current['id']]);
+    }
+
+    $stmt = $db->prepare(
+        'INSERT INTO items (title, description, image) VALUES (:title, :description, :image)'
+    );
+    $stmt->execute([
+        ':title'       => $title,
+        ':description' => $description,
+        ':image'       => $newImage ?? '',
+    ]);
+
+    json_success('Kayıt eklendi.', ['id' => (int) $db->lastInsertId()]);
+}
+
+
+/* =====================================================================
+ *  TEK KAYIT GETİRME (detay / düzenleme formu için)
+ * =====================================================================
+ *  Sunucudan hazır HTML değil HAM VERİ döner. Ekranı JavaScript
+ *  .text() ile doldurduğu için XSS riski oluşmaz.
+ * ------------------------------------------------------------------
+
+function handle_fetch(PDO $db): void
+{
+    require_csrf();
+
+    $id = post_id('id');
+    if ($id === null) {
+        json_error('Geçersiz kayıt numarası.');
+    }
+
+    $item = find_item($db, $id);
+    if ($item === null) {
+        json_error('Kayıt bulunamadı.', 404);
+    }
+
+    json_response([
+        'success'     => true,
+        'id'          => (int) $item['id'],
+        'title'       => $item['title'],
+        'description' => $item['description'],
+        'image'       => $item['image'],
+        'image_url'   => $item['image'] !== '' ? UPLOAD_URL . rawurlencode((string) $item['image']) : '',
+        'created_at'  => format_date($item['created_at']),
+    ]);
+}
+
+
+/* =====================================================================
+ *  SİLME
+ * =====================================================================
+ *  Kayıt ve ilişkili görsel dosyası birlikte silinir.
+ * ------------------------------------------------------------------
+
+function handle_delete(PDO $db): void
+{
+    require_csrf();
+
+    $id = post_id('id');
+    if ($id === null) {
+        json_error('Geçersiz kayıt numarası.');
+    }
+
+    // Kaydı silmeden ÖNCE görsel adını öğren; sonra öğrenemeyiz.
+    $item = find_item($db, $id);
+
+    $stmt = $db->prepare('DELETE FROM items WHERE id = :id');
+    $stmt->execute([':id' => $id]);
+
+    // rowCount(): kaç satır etkilendi? 0 ise böyle bir kayıt yoktu.
+    if ($stmt->rowCount() === 0) {
+        json_error('Silinecek kayıt bulunamadı.', 404);
+    }
+
+    if ($item !== null && $item['image'] !== '') {
+        delete_upload((string) $item['image']);
+    }
+
+    json_success('Kayıt silindi.', ['id' => $id]);
 }
 
 --------------------------------------------------------------------- */

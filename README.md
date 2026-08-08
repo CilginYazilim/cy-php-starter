@@ -27,6 +27,7 @@ Her yeni PHP örneği yazarken aynı şeyleri tekrar kurmak zorunda kalmayın di
 | 🛡️ **Güvenli PDO kurulumu** | `EMULATE_PREPARES=false`, exception modu, utf8mb4 |
 | 📤 **Güvenli dosya yükleme** | Tür içerikten doğrulanır, dosya adı sunucuda üretilir, `.htaccess` korumalı klasör |
 | 🔀 **AJAX yönlendirici** | Tek uç nokta, `action` tabanlı, tek noktada hata yakalama |
+| 🧩 **Hazır CRUD örneği** | `list`/`add`/`edit`/`fetch`/`delete` — yorum satırından çıkarıp tablo adını değiştirmeniz yeterli |
 | ✅ **Doğrulama fonksiyonları** | Metin, ad, e-posta, ID |
 | 📦 **Yerel kütüphaneler** | jQuery, Bootstrap 5, DataTables — CDN yok, çevrimdışı çalışır |
 | 📄 **Belge taslakları** | README taslağı, `.gitignore`, MIT lisansı |
@@ -73,8 +74,8 @@ Yeşil bildirim görüyorsanız her şey hazır: AJAX, CSRF ve veritabanı çal�
 - [ ] **`system/config.php`** → `APP_NAME`, `APP_DESCRIPTION` ve `DB_NAME` değerlerini değiştirin
 - [ ] **`database.sql`** → `yeni_proje` adını ve `items` tablosunu kendi yapınızla değiştirin
 - [ ] **`index.php`** → "BİLEŞEN GALERİSİ" bölümünü silin, kendi içeriğinizi yazın
-- [ ] **`system/ajax.php`** → `switch` bloğuna kendi `case`'lerinizi ekleyin, `ping`'i silin
-- [ ] **`system/function.php`** → en alttaki "PROJEYE ÖZEL" bölümüne sorgularınızı yazın
+- [ ] **`system/ajax.php`** → tam CRUD lazımsa dosyanın alt kısmındaki yorumlu `handle_list/save/fetch/delete` bloğunu açıp `items` yerine kendi tablonuzu yazın; farklı bir şey lazımsa kendi `case`'lerinizi ekleyin. `ping`'i sonunda silin
+- [ ] **`system/function.php`** → CRUD bloğunu açtıysanız oradaki `find_item()` örneğini de yorumdan çıkarın; farklı sorgular için "PROJEYE ÖZEL" bölümüne yazın
 - [ ] **`assets/css/style.css`** → projeye özel stiller (⚠️ `cilginyazilim.css`'e dokunmayın)
 - [ ] **`README.md`** → `docs/README-taslak.md` dosyasını buraya kopyalayıp doldurun
 - [ ] **`docs/screenshots/`** → ekran görüntülerini ekleyin
@@ -166,6 +167,41 @@ Zorlamak için: `<html data-cy-theme="dark">` (veya `"light"`).
 ---
 
 ## Altyapıyı Kullanma
+
+### Hazır CRUD örneğini açmak (en hızlı yol)
+
+`system/ajax.php` dosyasının alt kısmında, `handle_ping()`'den sonra tek büyük
+yorum bloğu içinde **tam çalışan** bir CRUD örneği durur: `handle_list()`
+(DataTables server-side listeleme), `handle_save()` (ekle+düzenle ortak),
+`handle_fetch()` (tek kayıt) ve `handle_delete()`. Bu blok
+[php-not-listesi-ornegi](https://github.com/CilginYazilim/php-not-listesi-ornegi)
+ve [PHP PDO MySQL Ajax CRUD](https://github.com/CilginYazilim/PHP-PDO-MySQL-Ajax-CRUD-DataTables-Bootstrap-5-Modals)
+projelerindeki güvenlik mantığıyla birebirdir; sadece jenerik bir `items`
+tablosu üzerinden yazılmıştır.
+
+Açmak için üç adım:
+
+1. `system/ajax.php` içindeki `/* ... */` yorum işaretlerini kaldırın
+   (blok, `handle_list()`'ten `handle_delete()`'in kapanışına kadar sürer)
+2. `system/function.php`'nin en altındaki `find_item()` örneğini de
+   yorumdan çıkarın — CRUD bloğu bu fonksiyonu çağırır
+3. `switch` bloğundaki hazır case'lerin yorumunu kaldırın:
+   ```php
+   case 'list':   handle_list($db);   break;
+   case 'add':
+   case 'edit':   handle_save($db, $action); break;
+   case 'fetch':  handle_fetch($db);  break;
+   case 'delete': handle_delete($db); break;
+   ```
+
+Sonra `items` tablo adını ve `title`/`description` sütunlarını kendi
+şemanıza göre değiştirin (`database.sql`'de de aynı isimleri kullanın).
+Görsel yükleme kullanmıyorsanız `handle_save()` içindeki `$hasNewImage`
+bloğunu silin.
+
+> Her iki blok da (CRUD ve `find_item()`) tek bir yorum içinde yazıldığı
+> için içlerine **iç içe** `/* */` eklemeyin — C-stili yorumlar iç içe
+> geçemez, ilk `*/` tüm bloğu erken kapatır ve dosya bozulur.
 
 ### Yeni bir AJAX işlemi eklemek
 
@@ -260,6 +296,7 @@ Bu şablonla çalışırken asla atlamayın:
 Bu şablonla üretilen örnekler:
 
 - [PHP PDO MySQL Ajax CRUD](https://github.com/CilginYazilim/PHP-PDO-MySQL-Ajax-CRUD-DataTables-Bootstrap-5-Modals) — DataTables, modallar, dosya yükleme
+- [Basit Not Listesi](https://github.com/CilginYazilim/php-not-listesi-ornegi) — küçük ölçekli, öğretici bir liste+ekleme örneği
 
 ---
 
