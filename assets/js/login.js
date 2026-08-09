@@ -17,6 +17,19 @@ jQuery(function ($) {
 
     if (!$form.length) { return; }
 
+    // Demo hesap butonları: alanları doldurup formu otomatik gönderir.
+    // "Pasif" / "Askıda" hesaplar sunucu tarafında reddedilir; bu da
+    // durum kontrolünün gerçekten çalıştığını gösterir.
+    $('.js-quick-login').on('click', function () {
+        var $button = $(this);
+
+        $('#identifier').val($button.data('identifier'));
+        $('#password').val($button.data('password'));
+
+        $('.js-quick-login').prop('disabled', true);
+        $form.trigger('submit');
+    });
+
     $form.on('submit', function () {
         var $button = $form.find('button[type="submit"]');
 

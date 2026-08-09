@@ -35,7 +35,17 @@ $roles = $roles ?? Role::options();
             </div>
         </div>
 
-        <div class="cy-toolbar__filters">
+        <button type="button" class="btn cy-btn cy-btn--ghost cy-btn--sm cy-filter-toggle" id="filters_toggle"
+                data-bs-toggle="collapse" data-bs-target="#user_filters_panel"
+                aria-expanded="false" aria-controls="user_filters_panel">
+            <?= icon('filter', 'cy-icon cy-icon--sm') ?> Filtreler
+            <span class="cy-badge cy-badge--count d-none" id="active_filter_count">0</span>
+            <?= icon('chevron', 'cy-icon cy-icon--sm cy-filter-toggle__chevron') ?>
+        </button>
+    </div>
+
+    <div class="collapse" id="user_filters_panel">
+        <div class="cy-toolbar cy-toolbar--filters">
             <select class="form-select" id="filter_role" aria-label="Role göre filtrele">
                 <option value="">Tüm roller</option>
                 <?php foreach ($roles as $value => $label): ?>
@@ -50,7 +60,13 @@ $roles = $roles ?? Role::options();
                 <option value="askida">Askıda</option>
             </select>
 
-            <button type="button" class="btn cy-btn cy-btn--ghost cy-btn--sm" id="reset_filters">Sıfırla</button>
+            <div class="cy-toolbar__daterange" role="group" aria-label="Kayıt tarihine göre filtrele">
+                <input type="date" class="form-control" id="filter_date_from" aria-label="Başlangıç tarihi">
+                <span class="cy-toolbar__daterange-sep">–</span>
+                <input type="date" class="form-control" id="filter_date_to" aria-label="Bitiş tarihi">
+            </div>
+
+            <button type="button" class="btn cy-btn cy-btn--ghost cy-btn--sm" id="reset_filters" disabled>Sıfırla</button>
         </div>
     </div>
 
@@ -65,7 +81,6 @@ $roles = $roles ?? Role::options();
                         <th scope="col" class="cy-hide-sm">E-posta</th>
                         <th scope="col" style="width:110px">Rol</th>
                         <th scope="col" style="width:110px" class="cy-hide-xs">Durum</th>
-                        <th scope="col" class="cy-hide-sm" style="width:150px">Kayıt Tarihi</th>
                         <th scope="col" style="width:130px" class="text-center">İşlemler</th>
                     </tr>
                 </thead>

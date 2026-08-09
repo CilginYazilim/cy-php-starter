@@ -57,7 +57,8 @@ return [
             'image/webp' => 'webp',
         ],
 
-        'max_dimension' => 1200,
+        'max_dimension'    => 1200, // logo ve genel görseller
+        'avatar_dimension' => 480,  // profil fotoğrafları (kare kırpılır)
     ],
 
     'security' => [

@@ -29,6 +29,7 @@ final class User
         public readonly string $eposta,
         public readonly string $rol,
         public readonly string $durum   = 'aktif',
+        public readonly string $tema    = 'acik',
         public readonly string $avatar  = '',
         public readonly string $telefon = '',
         public readonly string $hakkinda = '',
@@ -52,6 +53,7 @@ final class User
             eposta:       (string) ($row['eposta'] ?? ''),
             rol:          (string) ($row['rol'] ?? Role::MEMBER),
             durum:        (string) ($row['durum'] ?? 'aktif'),
+            tema:         (string) ($row['tema'] ?? 'acik'),
             avatar:       (string) ($row['avatar'] ?? ''),
             telefon:      (string) ($row['telefon'] ?? ''),
             hakkinda:     (string) ($row['hakkinda'] ?? ''),
@@ -101,6 +103,12 @@ final class User
     public function isActive(): bool
     {
         return $this->durum === 'aktif';
+    }
+
+    /** "dark" | "light" — HTML'deki data-cy-theme özniteliğinde doğrudan kullanılır. */
+    public function themeAttr(): string
+    {
+        return $this->tema === 'koyu' ? 'dark' : 'light';
     }
 
     public function isAdmin(): bool

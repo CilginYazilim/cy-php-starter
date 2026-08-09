@@ -108,6 +108,27 @@ final class ProfileController extends Controller
         Response::redirect(url('panel/hesabim'));
     }
 
+    /**
+     * Açık/koyu tema tercihini kaydeder (üst çubuktaki düğmeden AJAX ile
+     * çağrılır). Böylece kullanıcı farklı bir cihaz/tarayıcıdan giriş
+     * yaptığında da kendi seçtiği temayı görür — yalnızca çereze değil,
+     * hesaba bağlıdır.
+     */
+    public function updateTheme(Request $request): void
+    {
+        $user = Auth::user();
+
+        if ($user === null) {
+            Response::error('Oturum bulunamadı.', 401);
+        }
+
+        $tema = $request->input('tema') === 'koyu' ? 'koyu' : 'acik';
+
+        $this->users()->updateTheme($user->id, $tema);
+
+        Response::success('Tema tercihi kaydedildi.', ['tema' => $tema]);
+    }
+
     public function uploadAvatar(Request $request): void
     {
         $user = Auth::user();
@@ -122,7 +143,7 @@ final class ProfileController extends Controller
         }
 
         try {
-            $newAvatar = Uploader::image((array) $request->file('avatar'));
+            $newAvatar = Uploader::avatar((array) $request->file('avatar'));
         } catch (RuntimeException $e) {
             Flash::error($e->getMessage());
             Response::redirect(url('panel/hesabim'));

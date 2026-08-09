@@ -70,7 +70,7 @@ final class SettingsController extends Controller
         }
 
         try {
-            $newFile = Uploader::image((array) $request->file('logo'));
+            $newFile = Uploader::logo((array) $request->file('logo'));
         } catch (RuntimeException $e) {
             Flash::error($e->getMessage());
             Response::redirect(url('panel/ayarlar'));

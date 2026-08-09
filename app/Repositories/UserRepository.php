@@ -18,17 +18,22 @@ use PDO;
 
 final class UserRepository
 {
-    private const COLUMNS = 'id, ad, soyad, kullanici_adi, eposta, rol, durum, avatar, telefon,
+    private const COLUMNS = 'id, ad, soyad, kullanici_adi, eposta, rol, durum, tema, avatar, telefon,
                              hakkinda, son_giris, son_giris_ip, giris_sayisi, created_at, updated_at';
 
-    /** @var array<int,string> */
+    /**
+     * DataTables sütun sırasına göre sıralanabilir sütunlar.
+     * Anahtar, JS tarafındaki GÖRÜNÜR sütun indeksiyle birebir eşleşmeli
+     * (0:#, 1:görsel, 2:Kullanıcı, 3:E-posta, 4:Rol, 5:Durum, 6:İşlemler).
+     *
+     * @var array<int,string>
+     */
     private const SORTABLE = [
         0 => 'id',
-        1 => 'ad',
-        2 => 'eposta',
-        3 => 'rol',
-        4 => 'durum',
-        5 => 'created_at',
+        2 => 'ad',
+        3 => 'eposta',
+        4 => 'rol',
+        5 => 'durum',
     ];
 
     public function __construct(private PDO $db)
@@ -154,6 +159,19 @@ final class UserRepository
             $params[':durum'] = $status;
         }
 
+        $dateFrom = $this->validDate((string) ($options['date_from'] ?? ''));
+        $dateTo   = $this->validDate((string) ($options['date_to'] ?? ''));
+
+        if ($dateFrom !== null) {
+            $conditions[] = 'created_at >= :tarih_bas';
+            $params[':tarih_bas'] = $dateFrom . ' 00:00:00';
+        }
+
+        if ($dateTo !== null) {
+            $conditions[] = 'created_at <= :tarih_bit';
+            $params[':tarih_bit'] = $dateTo . ' 23:59:59';
+        }
+
         $where = $conditions === [] ? '' : ' WHERE ' . implode(' AND ', $conditions);
 
         return [$where, $params];
@@ -162,6 +180,17 @@ final class UserRepository
     private function escapeLike(string $value): string
     {
         return str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $value);
+    }
+
+    private function validDate(string $value): ?string
+    {
+        if ($value === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            return null;
+        }
+
+        $date = \DateTimeImmutable::createFromFormat('Y-m-d', $value);
+
+        return $date !== false ? $date->format('Y-m-d') : null;
     }
 
     public function countAll(): int
@@ -287,6 +316,12 @@ final class UserRepository
     {
         $stmt = $this->db->prepare('UPDATE kullanicilar SET sifre = :sifre WHERE id = :id');
         $stmt->execute([':sifre' => $hash, ':id' => $id]);
+    }
+
+    public function updateTheme(int $id, string $tema): void
+    {
+        $stmt = $this->db->prepare('UPDATE kullanicilar SET tema = :tema WHERE id = :id');
+        $stmt->execute([':tema' => $tema, ':id' => $id]);
     }
 
     public function touchLogin(int $id, string $ip): void

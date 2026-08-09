@@ -33,7 +33,7 @@ jQuery(function ($) {
         order: [[4, 'desc']],
         pageLength: 10,
         lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-        dom: '<"cy-dt-top"l>rt<"cy-dt-bottom"ip>',
+        dom: 'rt<"cy-dt-bottom"<"cy-dt-bottom__left"li>p>',
 
         ajax: {
             url: API.list,

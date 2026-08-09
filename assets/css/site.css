@@ -104,10 +104,91 @@ body.cy-site { background: var(--cy-bg); }
 .cy-tabnav .nav-link.active { color: var(--cy-brand-600); background: var(--cy-brand-100); }
 
 /* ------------------------------------------------------------------
+ *  GİRİŞ / KAYIT EKRANI
+ * ------------------------------------------------------------------ */
+.cy-auth-page {
+    display: flex;
+    align-items: center;
+    min-height: calc(100vh - 280px);
+    padding: 3rem 0;
+    background:
+        radial-gradient(480px 260px at 15% 0%, var(--cy-brand-50), transparent 60%),
+        radial-gradient(420px 240px at 100% 100%, var(--cy-brand-100), transparent 55%);
+}
+
+.cy-auth-card { box-shadow: var(--cy-shadow-sm); }
+
+.cy-auth-card__logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 68px;
+    height: 68px;
+    border-radius: var(--cy-radius-lg);
+    background: var(--cy-brand-50);
+    border: 1px solid var(--cy-brand-100);
+}
+.cy-auth-card__logo img { width: 40px; height: 40px; object-fit: contain; }
+
+/* --- Demo hesaplarla hızlı giriş --- */
+.cy-quick-login { margin-top: 1.5rem; }
+
+.cy-quick-login__divider {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin-bottom: 1rem;
+    color: var(--cy-text-muted);
+    font-size: .75rem;
+}
+.cy-quick-login__divider::before,
+.cy-quick-login__divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--cy-border);
+}
+
+.cy-quick-login__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: .6rem;
+}
+
+.cy-quick-login__item {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    padding: .55rem .7rem;
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius-sm);
+    background: var(--cy-surface);
+    text-align: left;
+    transition: border-color var(--cy-transition), background-color var(--cy-transition), transform var(--cy-transition);
+}
+.cy-quick-login__item:hover { border-color: var(--cy-brand-400); background: var(--cy-brand-50); transform: translateY(-1px); }
+.cy-quick-login__item:disabled { opacity: .55; pointer-events: none; }
+
+.cy-quick-login__item .cy-icon { flex-shrink: 0; color: var(--cy-text-muted); }
+.cy-quick-login__item.is-editor .cy-icon  { color: var(--cy-warning); }
+.cy-quick-login__item.is-member .cy-icon  { color: var(--cy-info); }
+.cy-quick-login__item.is-passive .cy-icon { color: var(--cy-text-muted); }
+.cy-quick-login__item.is-hold .cy-icon    { color: var(--cy-warning); }
+
+.cy-quick-login__text { display: flex; flex-direction: column; min-width: 0; }
+.cy-quick-login__text strong { font-size: .8125rem; line-height: 1.25; }
+.cy-quick-login__text small { color: var(--cy-text-muted); font-size: .6875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.cy-quick-login__hint { margin: .85rem 0 0; color: var(--cy-text-muted); font-size: .6875rem; line-height: 1.5; }
+.cy-quick-login__hint code { font-size: .6875rem; }
+
+/* ------------------------------------------------------------------
  *  MOBİL UYUM
  * ------------------------------------------------------------------ */
 @media (max-width: 767.98px) {
     .cy-hero__title { font-size: 1.75rem; }
     .cy-hero__logo { display: none; }
     .cy-site-footer { padding: 2rem 0 1.25rem; }
+    .cy-auth-page { padding: 2rem 0; }
+    .cy-quick-login__grid { grid-template-columns: 1fr; }
 }

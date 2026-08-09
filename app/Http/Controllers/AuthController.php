@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Core\Auth;
+use App\Core\Config;
 use App\Core\Flash;
 use App\Core\Request;
 use App\Core\Response;
@@ -20,6 +21,21 @@ use App\Http\Controller;
 
 final class AuthController extends Controller
 {
+    /**
+     * kurulum/database.sql ile birlikte gelen örnek kullanıcılar.
+     * Yalnızca geliştirme ortamında (APP_DEBUG=true) giriş ekranında
+     * gösterilir — canlıda parolası bilinen hesapların önerilmesi
+     * güvenlik açığıdır.
+     *
+     * @var array<int,array<string,string>>
+     */
+    private const DEMO_ACCOUNTS = [
+        ['identifier' => 'elif.editor', 'password' => 'Demo1234!', 'name' => 'Elif Demir',  'label' => 'Editör',     'variant' => 'editor',  'icon' => 'edit'],
+        ['identifier' => 'mehmet.uye',  'password' => 'Demo1234!', 'name' => 'Mehmet Kaya',  'label' => 'Üye',        'variant' => 'member',  'icon' => 'user'],
+        ['identifier' => 'ayse.pasif',  'password' => 'Demo1234!', 'name' => 'Ayşe Şahin',   'label' => 'Pasif Üye',  'variant' => 'passive', 'icon' => 'user'],
+        ['identifier' => 'can.askida',  'password' => 'Demo1234!', 'name' => 'Can Yıldız',   'label' => 'Askıda Üye', 'variant' => 'hold',    'icon' => 'user'],
+    ];
+
     public function showLogin(Request $request): void
     {
         if (Session::pull('_expired') === true) {
@@ -27,10 +43,11 @@ final class AuthController extends Controller
         }
 
         $this->view('auth/login', [
-            'title'   => 'Giriş Yap',
-            'errors'  => Flash::errors(),
-            'old'     => Flash::old(),
-            'scripts' => ['login.js'],
+            'title'        => 'Giriş Yap',
+            'errors'       => Flash::errors(),
+            'old'          => Flash::old(),
+            'scripts'      => ['login.js'],
+            'demoAccounts' => Config::get('app.debug', false) ? self::DEMO_ACCOUNTS : [],
         ], 'layouts/site');
     }
 

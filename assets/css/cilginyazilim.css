@@ -461,6 +461,7 @@ button.cy-status:hover { border-color: var(--cy-border-strong); background: var(
 
 .cy-status.is-active  { color: var(--cy-success); background: var(--cy-success-soft); }
 .cy-status.is-passive { color: var(--cy-text-muted); }
+.cy-status.is-hold    { color: var(--cy-warning); background: var(--cy-warning-soft); }
 
 /* Küçük gri etiket ("siz" işareti gibi) */
 .cy-tag {
@@ -523,7 +524,7 @@ button.cy-status:hover { border-color: var(--cy-border-strong); background: var(
 .cy-app .form-select {
     min-height: 40px;
     padding: .5rem .75rem;
-    background: var(--cy-surface);
+    background-color: var(--cy-surface);
     color: var(--cy-text);
     border: 1px solid var(--cy-border-strong);
     border-radius: var(--cy-radius-sm);
@@ -531,9 +532,21 @@ button.cy-status:hover { border-color: var(--cy-border-strong); background: var(
     transition: border-color var(--cy-transition), box-shadow var(--cy-transition);
 }
 
+/* "background" kısayolu üstteki kuralda background-image'i de sıfırlardı;
+   bu yüzden ok ikonunu AYRI bir kuralda, kısayol OLMADAN tanımlıyoruz. */
+.cy-app .form-select {
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right .75rem center;
+    background-size: 14px 10px;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
 .cy-app .form-control:focus,
 .cy-app .form-select:focus {
-    background: var(--cy-surface);
+    background-color: var(--cy-surface);
     color: var(--cy-text);
     border-color: var(--cy-brand-500);
     box-shadow: var(--cy-focus);
@@ -552,6 +565,52 @@ button.cy-status:hover { border-color: var(--cy-border-strong); background: var(
 }
 .cy-app .form-control.is-invalid:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, .2); }
 .cy-app .invalid-feedback { font-size: .75rem; color: var(--cy-danger); }
+
+/* Seçim grubu: tek seçimlik radyo gruplarını, tablodaki rol/durum
+   rozetleriyle aynı görsel dilde tıklanabilir "hap" (pill) düğmeler
+   olarak gösterir — açılır menüden daha hızlı ve daha okunaklıdır. */
+.cy-choice-group { display: flex; flex-wrap: wrap; gap: .45rem; }
+
+.cy-choice-group__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.cy-choice-group__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+    opacity: .55;
+    filter: saturate(.6);
+    transition: opacity var(--cy-transition), filter var(--cy-transition), box-shadow var(--cy-transition);
+}
+
+.cy-choice-group__pill:hover { opacity: .85; }
+
+.cy-choice-group__input:checked + .cy-choice-group__pill {
+    opacity: 1;
+    filter: none;
+    box-shadow: 0 0 0 1px currentColor inset;
+}
+
+.cy-choice-group__input:focus-visible + .cy-choice-group__pill {
+    outline: 2px solid var(--cy-brand-500);
+    outline-offset: 2px;
+}
+
+.cy-choice-group.is-invalid-group {
+    outline: 1px solid var(--cy-danger);
+    outline-offset: 6px;
+    border-radius: var(--cy-radius-sm);
+}
 
 /* Onay anahtarı (switch) */
 .cy-app .form-check-input {
@@ -626,7 +685,16 @@ button.cy-status:hover { border-color: var(--cy-border-strong); background: var(
 
 .cy-table > tbody > tr:last-child > td { border-bottom: 0; }
 .cy-table > tbody > tr { transition: background-color var(--cy-transition); }
+.cy-table > tbody > tr:nth-child(even) > td { background-color: color-mix(in srgb, var(--cy-surface-soft) 55%, transparent); }
 .cy-table > tbody > tr:hover > td { background-color: var(--cy-surface-soft); }
+
+/* DataTables'ın "kayıt yok" satırı ferah bir boşlukla göze daha az çarpar. */
+.cy-table > tbody > tr > td.dataTables_empty {
+    padding: 2.5rem 1rem;
+    text-align: center;
+    color: var(--cy-text-muted);
+    background: transparent;
+}
 
 .cy-id {
     font-variant-numeric: tabular-nums;
@@ -796,6 +864,23 @@ table.dataTable > thead .sorting_desc:after { display: none !important; }
 }
 
 .cy-modal .modal-title { font-size: .975rem; font-weight: 700; letter-spacing: -.01em; }
+.cy-modal__heading { min-width: 0; }
+.cy-modal__subtitle { margin: .2rem 0 0; font-size: .8125rem; color: var(--cy-text-muted); }
+
+/* Form içindeki bölüm başlıkları (Hesap Bilgileri, Yetkilendirme…).
+   Bootstrap'in .row/.col gutter sistemiyle çakışmasın diye grid'in
+   İÇİNDE değil, satırlar arasında bağımsız bir blok olarak durur. */
+.cy-form-section {
+    margin: 1.5rem 0 .75rem;
+    padding-bottom: .4rem;
+    border-bottom: 1px solid var(--cy-border);
+    font-size: .6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--cy-text-muted);
+}
+.cy-form-section:first-child { margin-top: 0; }
 
 .cy-modal .modal-body   { padding: 1.25rem; }
 .cy-modal .modal-footer {
@@ -889,6 +974,78 @@ table.dataTable > thead .sorting_desc:after { display: none !important; }
 .cy-alert--success { background: var(--cy-success-soft); color: var(--cy-success); }
 .cy-alert--warning { background: var(--cy-warning-soft); color: var(--cy-warning); }
 .cy-alert--info    { background: var(--cy-info-soft);    color: var(--cy-info); }
+
+/* Kontrol listesi (gereksinim kontrolleri, sistem sağlığı vb.) */
+.cy-timeline { display: flex; flex-direction: column; }
+
+.cy-timeline__item {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    padding: .65rem 0;
+    border-bottom: 1px solid var(--cy-border);
+}
+.cy-timeline__item:last-child { border-bottom: 0; }
+
+.cy-timeline__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    font-size: .8125rem;
+    font-weight: 700;
+    line-height: 1;
+}
+.cy-timeline__icon--success { background: var(--cy-success-soft); color: var(--cy-success); }
+.cy-timeline__icon--warning { background: var(--cy-warning-soft); color: var(--cy-warning); }
+.cy-timeline__icon--danger  { background: var(--cy-danger-soft);  color: var(--cy-danger); }
+
+.cy-timeline__body { min-width: 0; padding-top: .1rem; }
+.cy-timeline__text { margin: 0; font-size: .8125rem; }
+.cy-timeline__meta { display: block; margin-top: .1rem; font-size: .75rem; color: var(--cy-text-muted); }
+
+/* Açık/koyu tema düğmesi (üst menü, üst çubuk — her iki düzende de kullanılır) */
+.cy-topbar__toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius-sm);
+    background: var(--cy-surface);
+    color: var(--cy-text-soft);
+    flex-shrink: 0;
+    transition: all var(--cy-transition);
+}
+.cy-topbar__toggle:hover { background: var(--cy-surface-hover); color: var(--cy-text); }
+
+/* Tema düğmesindeki ay/güneş ikonları (biri her zaman gizli) */
+.cy-theme-icon { display: inline-flex; }
+.cy-theme-icon.d-none { display: none !important; }
+
+/* Parola göster/gizle düğmesi (giriş, kayıt, profil parola formları) */
+.cy-password { position: relative; }
+.cy-password .form-control { padding-right: 2.75rem; }
+.cy-password__toggle {
+    position: absolute;
+    top: 50%;
+    right: .35rem;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: var(--cy-radius-xs);
+    background: transparent;
+    color: var(--cy-text-muted);
+}
+.cy-password__toggle:hover { color: var(--cy-text); background: var(--cy-surface-hover); }
 
 .cy-empty {
     padding: 2.5rem 1rem;

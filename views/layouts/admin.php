@@ -9,8 +9,7 @@ use App\Core\Csrf;
 use App\Core\Flash;
 use App\Core\View;
 
-$theme     = ($_COOKIE['cy_theme'] ?? '') === 'dark' ? 'dark'
-           : ((($_COOKIE['cy_theme'] ?? '') === 'light') ? 'light' : '');
+$theme     = resolve_theme();
 $collapsed = ($_COOKIE['cy_sidebar'] ?? '') === 'collapsed';
 
 $pageTitle    = $title ?? 'Panel';
@@ -37,7 +36,7 @@ $flashes      = Flash::pull();
     <link rel="stylesheet" href="<?= e(asset('css/admin.css')) ?>">
 </head>
 
-<body class="cy-app<?= $collapsed ? ' is-collapsed' : '' ?>">
+<body class="cy-app<?= $collapsed ? ' is-collapsed' : '' ?>" data-cy-auth="1">
 
     <a href="#cy-content" class="cy-sr-only">İçeriğe geç</a>
 

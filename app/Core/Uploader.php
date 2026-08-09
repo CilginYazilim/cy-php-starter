@@ -6,6 +6,15 @@
  *  1. İçerik doğrulanır (getimagesize)  2. Ad/uzantı sunucu belirler
  *  3. Rastgele adla kaydedilir          4. upload/.htaccess PHP kapatır
  *  5. Görsel yeniden üretilerek gömülü veri (EXIF, kod) atılır
+ *
+ *  KLASÖR DÜZENİ
+ *    upload/img/avatar/  → kullanıcı profil görselleri (kare kırpılır)
+ *    upload/img/logo/    → site logosu (oranı korunur)
+ *    upload/             → "kind" verilmezse (genel amaçlı, geriye dönük uyum)
+ *
+ *  Veritabanında dosya adı yerine upload/ köküne GÖRELİ yol saklanır
+ *  (örn. "img/avatar/ab12….png"); böylece eski kayıtlar (yalın dosya
+ *  adı) de çalışmaya devam eder.
  * =====================================================================
  */
 
@@ -17,11 +26,27 @@ use RuntimeException;
 
 final class Uploader
 {
-    public static function image(array $file): string
+    /** Profil fotoğrafı: kare kırpılır, küçük boyutta tutulur. */
+    public static function avatar(array $file): string
+    {
+        return self::image($file, 'avatar', true);
+    }
+
+    /** Site logosu: en/boy oranı korunur, kırpılmaz. */
+    public static function logo(array $file): string
+    {
+        return self::image($file, 'logo', false);
+    }
+
+    /**
+     * @param string $kind   Alt klasör adı ("avatar", "logo"…); boşsa upload/ köküne kaydeder.
+     * @param bool   $square Doğruysa görsel merkezden kare kırpılır (avatarlar için).
+     */
+    public static function image(array $file, string $kind = '', bool $square = false): string
     {
         $mime = self::validate($file);
 
-        $dir       = (string) Config::get('upload.dir');
+        $dir       = self::resolveDir($kind);
         $extension = (string) Config::get('upload.allowed_types')[$mime];
 
         if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
@@ -39,9 +64,31 @@ final class Uploader
         }
 
         @chmod($target, 0644);
-        self::sanitize($target, $mime);
 
-        return $name;
+        $maxDimension = $kind === 'avatar'
+            ? (int) Config::get('upload.avatar_dimension', 480)
+            : (int) Config::get('upload.max_dimension', 1200);
+
+        self::sanitize($target, $mime, $square, $maxDimension);
+
+        $relative = $kind !== '' ? 'img/' . $kind . '/' . $name : $name;
+
+        return $relative;
+    }
+
+    private static function resolveDir(string $kind): string
+    {
+        $root = rtrim((string) Config::get('upload.dir'), '/\\') . DIRECTORY_SEPARATOR;
+
+        if ($kind === '') {
+            return $root;
+        }
+
+        // Yalnızca harf/rakam/tire: "kind" hiçbir zaman dışarıdan
+        // gelen kullanıcı girdisi olmamalı, ama yine de savunma amaçlı.
+        $kind = preg_replace('/[^a-z0-9\-]/', '', strtolower($kind)) ?? '';
+
+        return $root . 'img' . DIRECTORY_SEPARATOR . $kind . DIRECTORY_SEPARATOR;
     }
 
     public static function validate(array $file): string
@@ -96,17 +143,21 @@ final class Uploader
         return $mime;
     }
 
-    public static function delete(?string $filename): void
+    public static function delete(?string $relative): void
     {
-        $filename = basename(trim((string) $filename));
+        $relative = self::sanitizeRelativePath((string) $relative);
 
-        if ($filename === '' || $filename === '.' || $filename === '..') {
+        if ($relative === null) {
             return;
         }
 
         $dir  = (string) Config::get('upload.dir');
-        $path = $dir . $filename;
+        $path = $dir . $relative;
 
+        // "realpath" hem sembolik bağlantıları hem de "kalan" .. parçalarını
+        // çözer; sonucun kök klasörün İÇİNDE kaldığını doğrulamak, dizin
+        // dışına çıkmayı engelleyen ASIL katmandır (üstteki string kontrolü
+        // sadece ilk elemedir).
         $realDir  = realpath($dir);
         $realPath = realpath($path);
 
@@ -119,24 +170,56 @@ final class Uploader
         }
     }
 
-    public static function url(?string $filename): string
+    public static function url(?string $relative): string
     {
-        $filename = basename(trim((string) $filename));
+        $relative = self::sanitizeRelativePath((string) $relative);
 
-        if ($filename === '' || !is_file((string) Config::get('upload.dir') . $filename)) {
+        if ($relative === null || !is_file((string) Config::get('upload.dir') . $relative)) {
             return '';
         }
 
-        return (string) Config::get('upload.url') . rawurlencode($filename);
+        // Yolun her SEGMENTİ ayrı ayrı kodlanır; rawurlencode'u doğrudan
+        // tüm yola uygulamak "/" karakterini de kodlayıp adresi bozar.
+        $encoded = implode('/', array_map('rawurlencode', explode('/', $relative)));
+
+        return (string) Config::get('upload.url') . $encoded;
     }
 
-    private static function sanitize(string $path, string $mime): void
+    /**
+     * "img/avatar/ab12….png" gibi upload/ köküne göreli bir yolu güvenle
+     * doğrular. Dizin dışına çıkma teşebbüsü (".." veya mutlak yol) her
+     * zaman reddedilir — dönen değer yalnızca bu doğrulamadan geçmiş,
+     * normalize edilmiş bir yoldur (nihai güvenlik denetimi yine de
+     * realpath ile yapılır, bkz. delete()/url()).
+     */
+    private static function sanitizeRelativePath(string $path): ?string
+    {
+        $path = trim(str_replace('\\', '/', trim($path)), '/');
+
+        if ($path === '') {
+            return null;
+        }
+
+        foreach (explode('/', $path) as $segment) {
+            if ($segment === '' || $segment === '.' || $segment === '..') {
+                return null;
+            }
+        }
+
+        return $path;
+    }
+
+    /**
+     * Görseli yeniden üreterek gömülü veriyi (EXIF, olası kötücül kod)
+     * atar. $square true ise (avatarlar) önce ORTADAN kare kırpılır,
+     * sonra $maxDimension'a küçültülür — böylece hangi oranda
+     * yüklenirse yüklensin, sonuç her zaman düzgün bir kare olur.
+     */
+    private static function sanitize(string $path, string $mime, bool $square = false, int $maxDimension = 1200): void
     {
         if (!function_exists('imagecreatetruecolor')) {
             return;
         }
-
-        $maxDimension = (int) Config::get('upload.max_dimension', 1200);
 
         $source = match ($mime) {
             'image/jpeg' => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($path) : false,
@@ -152,10 +235,23 @@ final class Uploader
 
         $width  = imagesx($source);
         $height = imagesy($source);
-        $scale  = min(1, $maxDimension / max($width, $height));
 
-        $newWidth  = max(1, (int) round($width * $scale));
-        $newHeight = max(1, (int) round($height * $scale));
+        if ($square) {
+            $cropSize = min($width, $height);
+            $srcX     = (int) round(($width - $cropSize) / 2);
+            $srcY     = (int) round(($height - $cropSize) / 2);
+            $srcWidth  = $srcHeight = $cropSize;
+
+            $newWidth = $newHeight = max(1, min($cropSize, $maxDimension));
+        } else {
+            $srcX = $srcY = 0;
+            $srcWidth  = $width;
+            $srcHeight = $height;
+
+            $scale     = min(1, $maxDimension / max($width, $height));
+            $newWidth  = max(1, (int) round($width * $scale));
+            $newHeight = max(1, (int) round($height * $scale));
+        }
 
         $target = imagecreatetruecolor($newWidth, $newHeight);
 
@@ -166,7 +262,7 @@ final class Uploader
             imagefilledrectangle($target, 0, 0, $newWidth, $newHeight, $transparent);
         }
 
-        imagecopyresampled($target, $source, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+        imagecopyresampled($target, $source, 0, 0, $srcX, $srcY, $newWidth, $newHeight, $srcWidth, $srcHeight);
 
         match ($mime) {
             'image/jpeg' => @imagejpeg($target, $path, 85),

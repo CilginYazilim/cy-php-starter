@@ -30,6 +30,7 @@ jQuery(function ($) {
     function clearErrors() {
         var $form = $('#user_form');
         $form.find('.is-invalid').removeClass('is-invalid');
+        $form.find('.is-invalid-group').removeClass('is-invalid-group');
         $form.find('[data-error-for]').text('');
         $('#form_alert').addClass('d-none').text('');
     }
@@ -40,11 +41,14 @@ jQuery(function ($) {
         if (general) { $('#form_alert').removeClass('d-none').text(general); }
 
         $.each(errors || {}, function (field, message) {
+            // "rol"/"durum" artık radyo grubu; grubun kendi id'si yoktur,
+            // ama "<alan>_group" sarmalayıcısı vardır (bkz. modals.php).
             $('#' + field).addClass('is-invalid');
+            $('#' + field + '_group').addClass('is-invalid-group');
             $('[data-error-for="' + field + '"]').text(message);
         });
 
-        var $first = $('#user_form').find('.is-invalid').first();
+        var $first = $('#user_form').find('.is-invalid, .is-invalid-group').first();
         if ($first.length) { $first.trigger('focus'); }
     }
 
@@ -59,7 +63,7 @@ jQuery(function ($) {
         $('#user_id').val('');
         $('#avatar_preview').addClass('d-none').attr('src', '');
         $('#avatar_placeholder').removeClass('d-none');
-        $('#durum').val('aktif');
+        $('#durum_aktif').prop('checked', true);
         clearErrors();
     }
 
@@ -83,10 +87,11 @@ jQuery(function ($) {
         $('#eposta').val(data.eposta);
         $('#telefon').val(data.telefon);
         $('#hakkinda').val(data.hakkinda);
-        $('#rol').val(data.rol);
-        $('#durum').val(data.durum);
+        $('#rol_' + data.rol).prop('checked', true);
+        $('#durum_' + data.durum).prop('checked', true);
 
         $('#userModalLabel').text('Kullanıcıyı Düzenle');
+        $('#userModalSubtitle').text('#' + data.id + ' numaralı hesabın bilgilerini güncelleyin.');
         $('#password_required').addClass('d-none');
         $('#password_hint').text('Değiştirmek istemiyorsanız boş bırakın.');
         $('#sifre').attr('placeholder', 'Boş bırakılırsa değişmez');
@@ -105,15 +110,17 @@ jQuery(function ($) {
         order: [[0, 'desc']],
         pageLength: 10,
         lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-        dom: '<"cy-dt-top"l>rt<"cy-dt-bottom"ip>',
+        dom: 'rt<"cy-dt-bottom"<"cy-dt-bottom__left"li>p>',
 
         ajax: {
             url: API.list,
             type: 'POST',
             data: function (d) {
-                d.csrf_token    = CY.token();
-                d.filter_role   = $('#filter_role').val() || '';
-                d.filter_status = $('#filter_status').val() || '';
+                d.csrf_token      = CY.token();
+                d.filter_role     = $('#filter_role').val() || '';
+                d.filter_status   = $('#filter_status').val() || '';
+                d.filter_date_from = $('#filter_date_from').val() || '';
+                d.filter_date_to   = $('#filter_date_to').val() || '';
             },
             error: function (xhr) { CY.ajaxError(xhr, 'Kayıtlar yüklenirken bir hata oluştu.'); }
         },
@@ -123,8 +130,7 @@ jQuery(function ($) {
             { targets: 1, orderable: false, searchable: false },
             { targets: 3, className: 'cy-hide-sm' },
             { targets: 5, className: 'cy-hide-xs' },
-            { targets: 6, className: 'cy-hide-sm' },
-            { targets: 7, orderable: false, searchable: false, className: 'text-center' }
+            { targets: 6, orderable: false, searchable: false, className: 'text-center' }
         ],
 
         drawCallback: function (settings) {
@@ -150,18 +156,49 @@ jQuery(function ($) {
 
     function reload(resetPaging) { table.ajax.reload(null, resetPaging === true); }
 
+    function updateFilterState() {
+        var count = 0;
+        if ($('#table_search').val()) { count++; }
+        if ($('#filter_role').val()) { count++; }
+        if ($('#filter_status').val()) { count++; }
+        if ($('#filter_date_from').val()) { count++; }
+        if ($('#filter_date_to').val()) { count++; }
+
+        $('#reset_filters').prop('disabled', count === 0);
+        $('#active_filter_count').text(count).toggleClass('d-none', count === 0);
+    }
+
     $('#table_search').on('input', function () {
         var value = this.value;
+        updateFilterState();
         window.clearTimeout(searchTimer);
         searchTimer = window.setTimeout(function () { table.search(value).draw(); }, 350);
     });
 
-    $('#filter_role, #filter_status').on('change', function () { reload(true); });
+    $('#filter_role, #filter_status').on('change', function () {
+        updateFilterState();
+        reload(true);
+    });
+
+    $('#filter_date_from, #filter_date_to').on('change', function () {
+        // Bitiş tarihi başlangıçtan küçükse ikisini de aynı güne çek.
+        var from = $('#filter_date_from').val();
+        var to   = $('#filter_date_to').val();
+        if (from && to && to < from) {
+            if (this.id === 'filter_date_from') { $('#filter_date_to').val(from); }
+            else { $('#filter_date_from').val(to); }
+        }
+        updateFilterState();
+        reload(true);
+    });
 
     $('#reset_filters').on('click', function () {
         $('#table_search').val('');
         $('#filter_role').val('');
         $('#filter_status').val('');
+        $('#filter_date_from').val('');
+        $('#filter_date_to').val('');
+        updateFilterState();
         table.search('').draw();
     });
 
@@ -169,6 +206,7 @@ jQuery(function ($) {
         resetForm();
         $('#form_action').val('add');
         $('#userModalLabel').text('Yeni Kullanıcı');
+        $('#userModalSubtitle').text('Formu doldurup hesabı oluşturun.');
         $('#password_required').removeClass('d-none');
         $('#password_hint').text('En az 8 karakter; harf ve rakam içermelidir.');
         $('#sifre').attr('placeholder', 'En az 8 karakter, harf ve rakam');

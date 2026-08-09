@@ -82,12 +82,12 @@ INSERT INTO `ayarlar`
 ('iletisim_saatler','',           'iletisim', 'metin',   'Çalışma Saatleri',   'Örn: Hafta içi 09:00 – 18:00', NULL, 40),
 
 -- ---- SOSYAL MEDYA ----
-('sosyal_facebook',  '',          'sosyal', 'url', 'Facebook',  NULL, NULL, 10),
-('sosyal_x',         '',          'sosyal', 'url', 'X (Twitter)', NULL, NULL, 20),
-('sosyal_instagram', '',          'sosyal', 'url', 'Instagram', NULL, NULL, 30),
-('sosyal_linkedin',  '',          'sosyal', 'url', 'LinkedIn',  NULL, NULL, 40),
-('sosyal_youtube',   '',          'sosyal', 'url', 'YouTube',   NULL, NULL, 50),
-('sosyal_github',    '',          'sosyal', 'url', 'GitHub',    NULL, NULL, 60),
+('sosyal_facebook',  'https://www.facebook.com/cilginyazilim',                  'sosyal', 'url', 'Facebook',    NULL, NULL, 10),
+('sosyal_x',         'https://x.com/cilginyazilim',                             'sosyal', 'url', 'X (Twitter)', NULL, NULL, 20),
+('sosyal_instagram', 'https://www.instagram.com/cilginyazilim',                 'sosyal', 'url', 'Instagram',   NULL, NULL, 30),
+('sosyal_linkedin',  'https://tr.linkedin.com/in/evren-%C3%A7ilgin-193262216',  'sosyal', 'url', 'LinkedIn',    NULL, NULL, 40),
+('sosyal_youtube',   'https://www.youtube.com/@cilginyazilim',                  'sosyal', 'url', 'YouTube',     NULL, NULL, 50),
+('sosyal_github',    'https://github.com/CilginYazilim',                        'sosyal', 'url', 'GitHub',      NULL, NULL, 60),
 
 -- ---- SEO ----
 ('seo_anahtar_kelimeler', '',     'seo', 'uzun_metin', 'Anahtar Kelimeler', 'Virgülle ayırın.', NULL, 10),
@@ -118,6 +118,7 @@ CREATE TABLE `kullanicilar` (
   `sifre`         VARCHAR(255) NOT NULL,
   `rol`           ENUM('admin','editor','uye') NOT NULL DEFAULT 'uye',
   `durum`         ENUM('aktif','pasif','askida') NOT NULL DEFAULT 'aktif',
+  `tema`          ENUM('acik','koyu') NOT NULL DEFAULT 'acik',
   `avatar`        VARCHAR(191) NOT NULL DEFAULT '',
   `telefon`       VARCHAR(30)  NOT NULL DEFAULT '',
   `hakkinda`      TEXT NULL,
@@ -136,11 +137,29 @@ CREATE TABLE `kullanicilar` (
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_turkish_ci;
 
+-- NOT: Bu şema zaten kurulu bir veritabanını GÜNCELLEMEZ (her şeyi
+-- baştan oluşturur). Mevcut bir kurulumu güncelliyorsanız "tema"
+-- sütununu elle ekleyin:
+--   ALTER TABLE kullanicilar ADD COLUMN tema ENUM('acik','koyu')
+--     NOT NULL DEFAULT 'acik' AFTER durum;
+
 -- NOT: Yönetici hesabı BİLEREK buraya eklenmedi; install/ sihirbazı
 -- son adımda oluşturur. Elle kurulumda kendiniz ekleyin:
 --   php -r "echo password_hash('parolaniz', PASSWORD_DEFAULT);"
 --   INSERT INTO kullanicilar (ad, soyad, kullanici_adi, eposta, sifre, rol)
 --   VALUES ('Ad', 'Soyad', 'admin', 'admin@ornek.com', '<uretilen_ozet>', 'admin');
+
+-- ---------------------------------------------------------------
+--  Örnek/demo kullanıcılar (kullanıcı listesini rol ve durum
+--  filtreleriyle birlikte test edebilmek için). Parolası hepsinde
+--  aynıdır: Demo1234!  — canlıya almadan önce SİLİN.
+-- ---------------------------------------------------------------
+INSERT INTO `kullanicilar`
+    (`ad`, `soyad`, `kullanici_adi`, `eposta`, `sifre`, `rol`, `durum`) VALUES
+('Elif',  'Demir',  'elif.editor', 'elif.demo@ornek.com',   '$2y$10$cm2Mn/e2yxT/xSGmiefaEuCZy/Vg8SOoVNMtR8i6NKVxLmAAbP79q', 'editor', 'aktif'),
+('Mehmet','Kaya',   'mehmet.uye',  'mehmet.demo@ornek.com', '$2y$10$cm2Mn/e2yxT/xSGmiefaEuCZy/Vg8SOoVNMtR8i6NKVxLmAAbP79q', 'uye',    'aktif'),
+('Ayşe',  'Şahin',  'ayse.pasif',  'ayse.demo@ornek.com',   '$2y$10$cm2Mn/e2yxT/xSGmiefaEuCZy/Vg8SOoVNMtR8i6NKVxLmAAbP79q', 'uye',    'pasif'),
+('Can',   'Yıldız', 'can.askida',  'can.demo@ornek.com',    '$2y$10$cm2Mn/e2yxT/xSGmiefaEuCZy/Vg8SOoVNMtR8i6NKVxLmAAbP79q', 'uye',    'askida');
 
 
 -- ===============================================================

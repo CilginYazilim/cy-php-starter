@@ -663,25 +663,45 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
     <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="../assets/css/cilginyazilim.css">
     <style>
-        body.cy-app { min-height: 100vh; display: flex; align-items: center; padding: 2rem 0; }
+        body.cy-app { min-height: 100vh; display: flex; align-items: center; padding: 2rem 0;
+            background:
+                radial-gradient(480px 260px at 15% 0%, var(--cy-brand-50), transparent 60%),
+                radial-gradient(420px 260px at 100% 100%, var(--cy-brand-100), transparent 55%); }
+
+        .kurulum-wizard { box-shadow: var(--cy-shadow-sm); }
+
+        .kurulum-wizard .cy-card__header {
+            background: var(--cy-gradient);
+            border-bottom: 0;
+            border-radius: var(--cy-radius-lg) var(--cy-radius-lg) 0 0;
+        }
+        .kurulum-wizard .cy-card__header img { background: #fff; border-radius: 8px; padding: 3px; }
+        .kurulum-wizard .cy-card__header strong { color: #fff; font-size: .95rem; }
+
         .kurulum-steps { display: flex; gap: .35rem; list-style: none; padding: 0; margin: 1rem 0 0; flex-wrap: wrap; }
         .kurulum-steps li { flex: 1 1 0; min-width: 90px; font-size: .74rem; font-weight: 600; letter-spacing: .03em;
-            text-transform: uppercase; color: rgba(255,255,255,.65); padding-top: .55rem; border-top: 3px solid rgba(255,255,255,.25); }
+            text-transform: uppercase; color: rgba(255,255,255,.65); padding-top: .55rem; border-top: 3px solid rgba(255,255,255,.25);
+            transition: color .2s, border-color .2s; }
         .kurulum-steps li.is-active,
         .kurulum-steps li.is-done { color: #fff; border-top-color: #fff; }
+
         .kurulum-summary { background: var(--cy-surface-soft); border: 1px solid var(--cy-border); border-radius: var(--cy-radius);
-            padding: 1rem; font-family: var(--cy-font-mono, monospace); font-size: .8125rem; }
+            padding: 1rem; font-family: var(--cy-font-mono, monospace); font-size: .8125rem; line-height: 1.8; }
+
+        @media (max-width: 575.98px) {
+            .kurulum-steps li { min-width: 72px; font-size: .65rem; }
+        }
     </style>
 </head>
 <body class="cy-app">
 <div class="container" style="max-width: 720px">
 
-    <div class="cy-card">
+    <div class="cy-card kurulum-wizard">
         <div class="cy-card__header">
             <div class="w-100">
                 <div class="d-flex align-items-center gap-2 mb-1">
-                    <img src="../assets/images/logo.png" alt="" style="width:32px;height:32px;background:#fff;border-radius:8px;padding:3px">
-                    <strong style="color:#fff">Kurulum Sihirbazı</strong>
+                    <img src="../assets/images/logo.png" alt="" style="width:32px;height:32px">
+                    <strong>Kurulum Sihirbazı</strong>
                 </div>
                 <ul class="kurulum-steps">
                     <?php foreach (ADIMLAR as $key => $label): ?>

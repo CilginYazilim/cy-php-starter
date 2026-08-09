@@ -17,7 +17,10 @@ $roles = $roles ?? [];
             <div class="modal-content">
 
                 <div class="modal-header">
-                    <h2 class="modal-title" id="userModalLabel">Yeni Kullanıcı</h2>
+                    <div class="cy-modal__heading">
+                        <h2 class="modal-title" id="userModalLabel">Yeni Kullanıcı</h2>
+                        <p class="cy-modal__subtitle" id="userModalSubtitle">Formu doldurup hesabı oluşturun.</p>
+                    </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
                 </div>
 
@@ -42,7 +45,10 @@ $roles = $roles ?? [];
                                 </div>
                             </div>
                         </div>
+                    </div>
 
+                    <p class="cy-form-section">Hesap Bilgileri</p>
+                    <div class="row g-3">
                         <div class="col-12 col-md-6">
                             <label class="form-label" for="ad">Ad <span class="text-danger">*</span></label>
                             <input type="text" name="ad" id="ad" class="form-control" maxlength="100" autocomplete="given-name">
@@ -86,31 +92,54 @@ $roles = $roles ?? [];
                             <div class="form-text" id="password_hint">En az 8 karakter; harf ve rakam içermelidir.</div>
                             <div class="invalid-feedback" data-error-for="sifre"></div>
                         </div>
+                    </div>
 
-                        <?php if (can('users.role')): ?>
-                            <div class="col-12 col-md-6">
-                                <label class="form-label" for="rol">Rol</label>
-                                <select name="rol" id="rol" class="form-select">
-                                    <?php foreach ($roles as $value => $label): ?>
-                                        <option value="<?= e($value) ?>"<?= $value === App\Models\Role::MEMBER ? ' selected' : '' ?>><?= e($label) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <div class="invalid-feedback" data-error-for="rol"></div>
-                            </div>
-                        <?php endif; ?>
+                    <?php if (can('users.role') || can('users.status')): ?>
+                        <p class="cy-form-section">Yetkilendirme</p>
+                        <div class="row g-3">
+                            <?php if (can('users.role')): ?>
+                                <div class="col-12 col-md-6">
+                                    <span class="form-label d-block">Rol</span>
+                                    <div class="cy-choice-group" id="rol_group">
+                                        <?php foreach ($roles as $value => $label): ?>
+                                            <input type="radio" class="cy-choice-group__input" name="rol"
+                                                   id="rol_<?= e($value) ?>" value="<?= e($value) ?>"
+                                                   <?= $value === App\Models\Role::MEMBER ? 'checked' : '' ?>>
+                                            <label class="cy-choice-group__pill cy-role cy-role--<?= e(App\Models\Role::variant($value)) ?>"
+                                                   for="rol_<?= e($value) ?>"><?= e($label) ?></label>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <div class="invalid-feedback d-block" data-error-for="rol"></div>
+                                </div>
+                            <?php endif; ?>
 
-                        <?php if (can('users.status')): ?>
-                            <div class="col-12 col-md-6">
-                                <label class="form-label" for="durum">Durum</label>
-                                <select name="durum" id="durum" class="form-select">
-                                    <option value="aktif" selected>Aktif</option>
-                                    <option value="pasif">Pasif</option>
-                                    <option value="askida">Askıda</option>
-                                </select>
-                                <div class="invalid-feedback" data-error-for="durum"></div>
-                            </div>
-                        <?php endif; ?>
+                            <?php if (can('users.status')): ?>
+                                <div class="col-12 col-md-6">
+                                    <span class="form-label d-block">Durum</span>
+                                    <div class="cy-choice-group" id="durum_group">
+                                        <input type="radio" class="cy-choice-group__input" name="durum" id="durum_aktif" value="aktif" checked>
+                                        <label class="cy-choice-group__pill cy-status is-active" for="durum_aktif">
+                                            <span class="cy-status__dot"></span>Aktif
+                                        </label>
 
+                                        <input type="radio" class="cy-choice-group__input" name="durum" id="durum_pasif" value="pasif">
+                                        <label class="cy-choice-group__pill cy-status is-passive" for="durum_pasif">
+                                            <span class="cy-status__dot"></span>Pasif
+                                        </label>
+
+                                        <input type="radio" class="cy-choice-group__input" name="durum" id="durum_askida" value="askida">
+                                        <label class="cy-choice-group__pill cy-status is-hold" for="durum_askida">
+                                            <span class="cy-status__dot"></span>Askıda
+                                        </label>
+                                    </div>
+                                    <div class="invalid-feedback d-block" data-error-for="durum"></div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <p class="cy-form-section">Ek Bilgiler</p>
+                    <div class="row g-3">
                         <div class="col-12">
                             <label class="form-label" for="hakkinda">Hakkında</label>
                             <textarea name="hakkinda" id="hakkinda" class="form-control" rows="2" maxlength="1000"></textarea>

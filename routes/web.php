@@ -77,6 +77,11 @@ $router->post('panel/hesabim/avatar-sil',  ProfileController::class, 'removeAvat
 /* ---------------------------------------------------------------------
  *  AJAX UÇ NOKTALARI (hepsi POST + CSRF)
  * ------------------------------------------------------------------ */
+
+// Tema tercihi: özel bir yetki gerektirmez, her giriş yapmış kullanıcı
+// kendi görünümünü değiştirebilmelidir.
+$router->post('api/tema', ProfileController::class, 'updateTheme', ['installed', 'auth', 'csrf']);
+
 $router->post('api/kullanicilar/list',   UserApiController::class, 'list',   ['installed', 'auth', 'csrf', 'can:users.view']);
 $router->post('api/kullanicilar/fetch',  UserApiController::class, 'fetch',  ['installed', 'auth', 'csrf', 'can:users.view']);
 $router->post('api/kullanicilar/save',   UserApiController::class, 'save',   ['installed', 'auth', 'csrf', 'can:users.create|users.update']);

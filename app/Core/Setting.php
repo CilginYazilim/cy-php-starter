@@ -154,12 +154,8 @@ final class Setting
     /** Site logosunun tarayıcı adresi; tanımlı değilse varsayılan logo. */
     public static function logoUrl(): string
     {
-        $logo = self::get('site_logo');
+        $url = Uploader::url(self::get('site_logo'));
 
-        if ($logo !== '' && is_file((string) Config::get('upload.dir') . basename($logo))) {
-            return (string) Config::get('upload.url') . rawurlencode($logo);
-        }
-
-        return 'assets/images/logo.png';
+        return $url !== '' ? $url : 'assets/images/logo.png';
     }
 }

@@ -23,6 +23,29 @@ if (!function_exists('e')) {
     }
 }
 
+if (!function_exists('resolve_theme')) {
+    /**
+     * Sayfanın hangi temayla ("dark"/"light"/"") üretileceğine karar
+     * verir. Giriş yapmış kullanıcı için VERİTABANI kesin kaynaktır —
+     * böylece hangi cihazdan/tarayıcıdan girerse girsin kendi seçtiği
+     * temayı görür. Konuk için tarayıcı çerezine bakılır; o da yoksa
+     * boş döner ve CSS "prefers-color-scheme" ile sistem tercihine
+     * uyar (varsayılan: açık tema).
+     */
+    function resolve_theme(): string
+    {
+        $user = Auth::user();
+
+        if ($user !== null) {
+            return $user->themeAttr();
+        }
+
+        $cookie = (string) ($_COOKIE['cy_theme'] ?? '');
+
+        return $cookie === 'dark' ? 'dark' : ($cookie === 'light' ? 'light' : '');
+    }
+}
+
 if (!function_exists('url')) {
     /**
      * Uygulama içi adres üretir.
@@ -44,7 +67,14 @@ if (!function_exists('url')) {
         $query = $path === '' ? [] : ['r' => $path];
         $query = array_merge($query, $params);
 
-        return $query === [] ? 'index.php' : 'index.php?' . http_build_query($query);
+        if ($query === []) {
+            return 'index.php';
+        }
+
+        // http_build_query() "/" karakterini %2F olarak kodlar; sorgu
+        // DEĞERLERİNDE "/" kodlanmak zorunda değildir (RFC 3986), bu
+        // yüzden adres çubuğunda okunaklı olsun diye geri çözüyoruz.
+        return 'index.php?' . str_replace('%2F', '/', http_build_query($query));
     }
 }
 
@@ -180,6 +210,7 @@ if (!function_exists('icon')) {
             'logout'    => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
             'plus'      => '<path d="M12 5v14M5 12h14"/>',
             'search'    => '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+            'filter'    => '<path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>',
             'eye'       => '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
             'edit'      => '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>',
             'trash'     => '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>',

@@ -279,25 +279,6 @@ body.is-sidebar-open .cy-backdrop { opacity: 1; visibility: visible; }
     .cy-topbar { background: var(--cy-surface); }
 }
 
-.cy-topbar__toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 38px;
-    height: 38px;
-    border: 1px solid var(--cy-border);
-    border-radius: var(--cy-radius-sm);
-    background: var(--cy-surface);
-    color: var(--cy-text-soft);
-    flex-shrink: 0;
-    transition: all var(--cy-transition);
-}
-.cy-topbar__toggle:hover { background: var(--cy-surface-hover); color: var(--cy-text); }
-
-/* Tema düğmesindeki ay/güneş ikonları (biri her zaman gizli) */
-.cy-theme-icon { display: inline-flex; }
-.cy-theme-icon.d-none { display: none !important; }
-
 .cy-topbar__heading { min-width: 0; flex: 1; }
 .cy-topbar__heading h1 {
     margin: 0;
@@ -567,8 +548,35 @@ body.is-sidebar-open .cy-backdrop { opacity: 1; visibility: visible; }
 }
 
 .cy-toolbar__search { flex: 1 1 240px; min-width: 0; max-width: 340px; }
-.cy-toolbar__filters { display: flex; gap: .5rem; flex-wrap: wrap; }
+.cy-toolbar__filters { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .cy-toolbar .form-select { min-width: 130px; font-size: .8125rem; }
+
+.cy-toolbar--filters { background: var(--cy-surface-soft); }
+
+.cy-toolbar__daterange { display: flex; align-items: center; gap: .35rem; }
+.cy-toolbar__daterange .form-control { min-width: 130px; font-size: .8125rem; }
+.cy-toolbar__daterange-sep { color: var(--cy-text-muted); font-size: .75rem; }
+
+/* Filtre paneli açma/kapama düğmesi */
+.cy-filter-toggle { margin-left: auto; }
+.cy-filter-toggle__chevron { transition: transform var(--cy-transition); }
+.cy-filter-toggle[aria-expanded="true"] .cy-filter-toggle__chevron { transform: rotate(180deg); }
+
+.cy-badge--count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.1rem;
+    height: 1.1rem;
+    padding: 0 .3rem;
+    margin-left: .25rem;
+    border-radius: 999px;
+    background: var(--cy-brand-600);
+    color: #fff;
+    font-size: .6875rem;
+    font-weight: 700;
+    line-height: 1;
+}
 
 /* Tablonun taşan kısmı KENDİ İÇİNDE kayar; sayfa yatay kaymaz. */
 .cy-table-wrap {
@@ -580,14 +588,8 @@ body.is-sidebar-open .cy-backdrop { opacity: 1; visibility: visible; }
 /* Yükleme/kaydetme sırasında formu kilitle */
 .cy-form-busy { pointer-events: none; opacity: .65; }
 
-/* DataTables'ın üst/alt kontrol şeritleri.
+/* DataTables'ın alt kontrol şeridi (sayfa boyutu + kayıt bilgisi + sayfalama).
    "dom" ayarıyla ürettiğimiz sarmalayıcılara hizalama veriyoruz. */
-.cy-dt-top {
-    display: flex;
-    justify-content: flex-end;
-    border-bottom: 1px solid var(--cy-border);
-}
-
 .cy-dt-bottom {
     display: flex;
     align-items: center;
@@ -597,7 +599,14 @@ body.is-sidebar-open .cy-backdrop { opacity: 1; visibility: visible; }
     border-top: 1px solid var(--cy-border);
 }
 
-.cy-dt-top .dataTables_length,
+.cy-dt-bottom__left {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .25rem 1rem;
+}
+
+.cy-dt-bottom .dataTables_length,
 .cy-dt-bottom .dataTables_info,
 .cy-dt-bottom .dataTables_paginate { padding: .65rem 1.25rem; }
 
@@ -725,27 +734,6 @@ body.is-sidebar-open .cy-backdrop { opacity: 1; visibility: visible; }
 .cy-demo__item strong { font-size: .8125rem; }
 .cy-demo__item code { font-family: var(--cy-font-mono); font-size: .75rem; color: var(--cy-text-muted); }
 
-/* Parola göster/gizle düğmesi */
-.cy-password { position: relative; }
-.cy-password .form-control { padding-right: 2.75rem; }
-.cy-password__toggle {
-    position: absolute;
-    top: 50%;
-    right: .35rem;
-    transform: translateY(-50%);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border: 0;
-    border-radius: var(--cy-radius-xs);
-    background: transparent;
-    color: var(--cy-text-muted);
-}
-.cy-password__toggle:hover { color: var(--cy-text); background: var(--cy-surface-hover); }
-
-
 /* ------------------------------------------------------------------
  *  9) HATA SAYFALARI
  * ------------------------------------------------------------------ */
@@ -862,8 +850,9 @@ body.is-sidebar-open .cy-backdrop { opacity: 1; visibility: visible; }
     /* Araç çubuğu: arama tam genişlik, filtreler yan yana */
     .cy-toolbar { padding: .75rem .85rem; }
     .cy-toolbar__search { flex: 1 1 100%; max-width: none; }
-    .cy-toolbar__filters { width: 100%; }
-    .cy-toolbar__filters .form-select { flex: 1; min-width: 0; }
+    .cy-toolbar--filters .form-select { flex: 1 1 100%; min-width: 0; }
+    .cy-toolbar__daterange { width: 100%; }
+    .cy-toolbar__daterange .form-control { flex: 1; min-width: 0; }
 
     /* --- TABLO: ikincil sütunları gizle ---
        Bilgi kaybolmaz; e-posta ad hücresinin altına düşer. */

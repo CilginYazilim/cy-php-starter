@@ -37,6 +37,8 @@ final class UserApiController extends Controller
             'search'       => $this->searchTerm($request),
             'role'         => $request->input('filter_role'),
             'status'       => $request->input('filter_status'),
+            'date_from'    => $request->input('filter_date_from'),
+            'date_to'      => $request->input('filter_date_to'),
             'order_column' => (int) ($order[0]['column'] ?? 0),
             'order_dir'    => (string) ($order[0]['dir'] ?? 'desc'),
             'start'        => (int) $request->raw('start', 0),
@@ -119,7 +121,6 @@ final class UserApiController extends Controller
             '<span class="cy-cell-muted">' . e($user->eposta) . '</span>',
             $roleBadge,
             $statusBadge,
-            '<span class="cy-nowrap cy-cell-muted">' . e(User::formatDate($user->createdAt)) . '</span>',
             $actions,
         ];
     }
@@ -211,7 +212,7 @@ final class UserApiController extends Controller
         if ($request->hasFile('avatar')) {
             try {
                 if ($validator->passes()) {
-                    $newAvatar = Uploader::image((array) $request->file('avatar'));
+                    $newAvatar = Uploader::avatar((array) $request->file('avatar'));
                 } else {
                     Uploader::validate((array) $request->file('avatar'));
                 }

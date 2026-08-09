@@ -219,8 +219,14 @@ window.CY = (function ($) {
          *  Tercih çereze yazılır; sunucu bir sonraki sayfayı doğrudan
          *  doğru temayla üretir. Böylece sayfa açılırken bir an yanlış
          *  temada görünmez ("flash of wrong theme").
+         *
+         *  Giriş yapmış kullanıcı için tercih AYRICA hesaba kaydedilir
+         *  (bkz. data-cy-auth); böylece başka bir cihazdan/tarayıcıdan
+         *  giriş yapıldığında da aynı tema uygulanır — yalnızca bu
+         *  tarayıcıya özgü bir çerez olarak kalmaz.
          * ======================================================= */
-        var $themeToggle = $('#cy_theme_toggle');
+        var $themeToggle  = $('#cy_theme_toggle');
+        var isAuthed      = document.body.getAttribute('data-cy-auth') === '1';
 
         function currentTheme() {
             var attr = document.documentElement.getAttribute('data-cy-theme');
@@ -243,6 +249,17 @@ window.CY = (function ($) {
             document.documentElement.setAttribute('data-cy-theme', next);
             CY.setCookie('cy_theme', next);
             paintThemeIcon(next);
+
+            if (isAuthed) {
+                $.ajax({
+                    url: CY.url('api/tema'), method: 'POST', dataType: 'json',
+                    data: { tema: next === 'dark' ? 'koyu' : 'acik', csrf_token: CY.token() }
+                }).fail(function () {
+                    // Sessizce yut: görsel değişim zaten uygulandı, tarayıcı
+                    // çerezi yedek olarak kalır. Bir sonraki başarılı istekte
+                    // tekrar denenir.
+                });
+            }
         });
 
         /* =========================================================

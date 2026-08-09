@@ -13,8 +13,7 @@ use App\Core\Flash;
 use App\Core\Setting;
 use App\Core\View;
 
-$theme   = ($_COOKIE['cy_theme'] ?? '') === 'dark' ? 'dark'
-         : ((($_COOKIE['cy_theme'] ?? '') === 'light') ? 'light' : '');
+$theme   = resolve_theme();
 $flashes = Flash::pull();
 
 $siteAdi = Setting::get('site_adi', $appName ?? 'Yeni Proje');
@@ -40,7 +39,7 @@ $pageTitle = ($title ?? '') !== '' ? ($title . ' · ' . $siteAdi) : $siteAdi;
     <link rel="stylesheet" href="<?= e(asset('css/cilginyazilim.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/site.css')) ?>">
 </head>
-<body class="cy-app cy-site">
+<body class="cy-app cy-site"<?= ($currentUser ?? null) !== null ? ' data-cy-auth="1"' : '' ?>>
 
     <?php View::partial('partials/site-nav'); ?>
 
