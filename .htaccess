@@ -1,0 +1,111 @@
+# =====================================================================
+#  APACHE AYARLARI – Çılgın Yazılım PHP Başlangıç Şablonu
+#  cilginyazilim.com
+# ---------------------------------------------------------------------
+#  Bu dosya sadece Apache sunucularında çalışır. Nginx kullanıyorsanız
+#  aynı kuralları sunucu yapılandırmanıza elle eklemeniz gerekir.
+#
+#  <IfModule> blokları neden var? İlgili modül sunucuda kurulu değilse
+#  Apache "Internal Server Error" verip siteyi tamamen kapatırdı.
+#  Bu bloklar sayesinde modül yoksa kural sessizce atlanır.
+# =====================================================================
+
+
+# ---------------------------------------------------------------------
+#  1) HATA SAYFALARI
+# ---------------------------------------------------------------------
+#  DİKKAT: ErrorDocument yolu sunucu KÖKÜNE göredir, bu dosyanın
+#  bulunduğu klasöre göre değil. Projenizi başka bir klasöre
+#  koyduysanız aşağıdaki yolu ona göre düzeltin:
+#      Site kökündeyse       →  ErrorDocument 404 /404.php
+#      /blog klasöründeyse   →  ErrorDocument 404 /blog/404.php
+ErrorDocument 404 /cy-php-starter/404.php
+
+
+# ---------------------------------------------------------------------
+#  2) DİZİN LİSTELEMEYİ KAPAT
+# ---------------------------------------------------------------------
+#  Kapalı olmazsa, index dosyası bulunmayan bir klasöre girildiğinde
+#  (örn. /upload/) Apache tüm dosyaları listeler. Bu, saldırgana
+#  projenizin haritasını çıkarır.
+Options -Indexes
+
+DirectoryIndex index.php index.html
+
+
+# ---------------------------------------------------------------------
+#  3) HASSAS DOSYALARI GİZLE
+# ---------------------------------------------------------------------
+#  .env dosyasında veritabanı parolanız durur. Sunucu yapılandırması
+#  bozulup PHP çalışmazsa, tarayıcıdan /.env istendiğinde dosya DÜZ
+#  METİN olarak indirilebilirdi. Bu kural onu engeller.
+<FilesMatch "^\.(env|git|htaccess)|\.(sql|log|md|json|lock)$">
+    Require all denied
+</FilesMatch>
+
+# Apache 2.2 kullanan eski sunucular için karşılığı:
+# <FilesMatch "...">
+#     Order allow,deny
+#     Deny from all
+# </FilesMatch>
+
+
+# ---------------------------------------------------------------------
+#  4) GÜVENLİK BAŞLIKLARI
+# ---------------------------------------------------------------------
+<IfModule mod_headers.c>
+    # Tarayıcı, dosyanın türünü "tahmin etmeye" çalışmasın.
+    # Aksi halde .txt olarak sunulan bir dosya HTML sanılıp çalıştırılabilir.
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Siteniz başka bir sayfanın içine <iframe> ile gömülemesin
+    # (tıklama hırsızlığı / clickjacking koruması).
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # Başka siteye geçerken tam adres yerine sadece alan adı gönderilsin.
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Kamera, mikrofon ve konum izinlerini baştan kapat.
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+</IfModule>
+
+
+# ---------------------------------------------------------------------
+#  5) SIKIŞTIRMA VE ÖNBELLEK
+# ---------------------------------------------------------------------
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/plain
+    AddOutputFilterByType DEFLATE application/javascript application/json
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # CSS/JS/görseller nadiren değişir; tarayıcı bir ay saklasın.
+    # DİKKAT: Dosyayı güncelleyince ziyaretçi eskisini görebilir.
+    # Çözüm: <link href="style.css?v=2"> gibi sürüm numarası ekleyin.
+    ExpiresByType text/css                "access plus 1 month"
+    ExpiresByType application/javascript  "access plus 1 month"
+    ExpiresByType image/png               "access plus 1 month"
+    ExpiresByType image/jpeg              "access plus 1 month"
+    ExpiresByType image/webp              "access plus 1 month"
+    ExpiresByType image/svg+xml           "access plus 1 month"
+
+    # HTML her zaman taze olsun.
+    ExpiresByType text/html               "access plus 0 seconds"
+</IfModule>
+
+
+# ---------------------------------------------------------------------
+#  6) HTTPS'E YÖNLENDİRME (canlıya alırken açın)
+# ---------------------------------------------------------------------
+#  SSL sertifikanız hazır olduğunda aşağıdaki satırların başındaki
+#  "#" işaretlerini kaldırın. Sertifika yokken açarsanız site erişilemez
+#  hale gelir — bu yüzden varsayılan olarak kapalıdır.
+#
+# <IfModule mod_rewrite.c>
+#     RewriteEngine On
+#     RewriteCond %{HTTPS} off
+#     RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# </IfModule>

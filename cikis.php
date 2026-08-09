@@ -21,7 +21,10 @@ $token = $_POST['csrf_token'] ?? $_GET['token'] ?? '';
 
 if (is_string($token) && !empty($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token)) {
     auth_logout();
+    header('Location: giris.php?cikis=tamam');
+    exit;
 }
 
-header('Location: giris.php');
+// Token geçersizse hiçbir şey yapmadan ana sayfaya döneriz.
+header('Location: index.php');
 exit;

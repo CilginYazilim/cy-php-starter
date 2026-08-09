@@ -22,10 +22,13 @@ Her yeni PHP örneği yazarken aynı şeyleri tekrar kurmak zorunda kalmayın di
 
 | Hazır gelen | Açıklama |
 |-------------|----------|
-| 🧙 **Adım adım kurulum sihirbazı** | `install.php` — 5 adımda veritabanını oluşturur, şemayı kurar, site ayarlarını ve **yönetici hesabını** yazar. Kod düzenlemeden kurulum. |
-| 🔑 **Oturum ve yetki sistemi** | Giriş/çıkış, `password_hash`, rol tabanlı yetki (`admin` / `editor` / `uye`), kaba kuvvet koruması |
+| 🧙 **Adım adım kurulum sihirbazı** | `kurulum/` — 5 adımda veritabanını oluşturur, şemayı kurar, site ayarlarını ve **yönetici hesabını** yazar. Bitince **kendi klasörünü siler**. |
+| 🔑 **Oturum ve yetki sistemi** | Giriş/çıkış/kayıt, `password_hash`, rol tabanlı yetki (`admin` / `editor` / `uye`), kaba kuvvet koruması |
+| 🖥️ **Hazır ön yüz (site)** | Ana sayfa, Hakkımızda, İletişim, Kayıt, Giriş, Hesabım ve 404 — hepsi oturum durumuna göre değişir |
 | ⚙️ **Ayarlar tablosu** | Site adı, iletişim, sosyal medya, SEO, bakım modu… `setting('site_adi')` ile okunur |
 | 🗂️ **Yönetim paneli** | Özet, ayarlar, kullanıcı yönetimi (CRUD), profil sayfaları hazır |
+| ✉️ **İletişim formu** | Mesajlar veritabanına düşer (SMTP gerekmez); bal küpü + hız sınırı ile spam koruması |
+| 🌗 **Açık / koyu tema** | Sistem ayarını izler, kullanıcı düğmeyle değiştirir, tercih tarayıcıda saklanır |
 | 🎨 **Tasarım kalıbı** | `cilginyazilim.css` — marka renkleri, kart, buton, tablo, modal, toast, koyu tema |
 | 🔒 **CSRF koruması** | Token üretimi ve `hash_equals` ile sabit zamanlı doğrulama |
 | 🛡️ **Güvenli PDO kurulumu** | `EMULATE_PREPARES=false`, exception modu, utf8mb4 + Türkçe sıralama |
@@ -42,11 +45,23 @@ Her yeni PHP örneği yazarken aynı şeyleri tekrar kurmak zorunda kalmayın di
 
 ## Ekran Görüntüleri
 
-### Şablon açılış ekranı
+### Ön yüz (site)
 
-Kurulumdan hemen sonra karşınıza çıkan sayfa: bağlantı testi butonu ve tasarım kalıbındaki hazır bileşenlerin galerisi. Yeni projeye başlarken galeriyi silip yerine kendi içeriğinizi yazarsınız.
+Kurulum biter bitmez çalışan, oturum durumuna göre değişen bir site: yapışkan üst menü, hero alanı, özellik kartları ve alt bilgi. Site adı, slogan, tema rengi, iletişim ve sosyal medya bağlantıları doğrudan `ayarlar` tablosundan gelir.
 
 ![Şablon açılış ekranı](docs/screenshots/01-sablon.png)
+
+Aynı sayfa, giriş yapılmış halde: karşılama metni kişiselleşir, sağ üstte kullanıcı menüsü çıkar, yetkisi varsa "Yönetim Paneli" bağlantısı görünür.
+
+![Ana sayfa — oturum açık](docs/screenshots/08-site-oturum.png)
+
+**Hesabım** sayfasında üye kendi bilgilerini düzenler, profil fotoğrafı yükler ve parolasını değiştirir. Rol ve durum alanları bilerek yoktur — kimse kendi yetkisini yükseltemesin diye.
+
+![Hesabım sayfası](docs/screenshots/09-hesabim.png)
+
+**İletişim** formundan gelen mesajlar `mesajlar` tablosuna düşer; e-posta sunucusu (SMTP) ayarlamanız gerekmez.
+
+![İletişim sayfası](docs/screenshots/10-iletisim.png)
 
 ### Kurulum sihirbazı (adım adım)
 
@@ -92,10 +107,16 @@ veritabanını oluşturur, `ayarlar` ve `kullanicilar` tablolarını kurar, site
 bilgilerinizi kaydeder ve **yönetici hesabınızı** açar. Ardından `giris.php`
 üzerinden panele girebilirsiniz.
 
-> **Elle kurulum tercih ederseniz:** `install.php`'yi hiç açmadan
-> `mysql -u root -p < database.sql` ile veritabanını kendiniz
+Son adımdaki **"Kurulum klasörünü sil"** butonuna basınca `kurulum/`
+klasörü içindeki her şeyle birlikte silinir; proje kökünde kuruluma ait
+tek bir dosya bile kalmaz.
+
+> **Elle kurulum tercih ederseniz:** sihirbazı hiç açmadan
+> `mysql -u root -p < kurulum/database.sql` ile veritabanını kendiniz
 > oluşturabilir, `.env.example` dosyasını `.env` olarak kopyalayıp
-> elle doldurabilirsiniz. İkisi de aynı sonuca gider.
+> elle doldurabilirsiniz. İkisi de aynı sonuca gider. (Bu durumda
+> yönetici hesabını da kendiniz eklemeniz gerekir — bkz. `database.sql`
+> dosyasının sonundaki not.)
 
 ---
 
@@ -103,17 +124,19 @@ bilgilerinizi kaydeder ve **yönetici hesabınızı** açar. Ardından `giris.ph
 
 Şablonu kopyaladıktan sonra sırayla:
 
-- [ ] **Kurulum sihirbazını çalıştırın** (`install.php`) — site adı, veritabanı ve yönetici hesabı burada belirlenir
-- [ ] **`database.sql`** → `ayarlar` ve `kullanicilar` tablolarını KORUYUN, kendi tablolarınızı bunların altına ekleyin
+- [ ] **Kurulum sihirbazını çalıştırın** (`kurulum/`) — site adı, veritabanı ve yönetici hesabı burada belirlenir
+- [ ] **`kurulum/database.sql`** → `ayarlar`, `kullanicilar` ve `mesajlar` tablolarını KORUYUN, kendi tablolarınızı bunların altına ekleyin
 - [ ] **Ayarlar** → projeye özel ayarları `ayarlar` tablosuna satır olarak ekleyin (panelde otomatik görünür)
-- [ ] **`index.php`** → "BİLEŞEN GALERİSİ" bölümünü silin, kendi içeriğinizi yazın
+- [ ] **`index.php`** → "TANITIM BÖLÜMLERİ" arasındaki kısmı silin, kendi içeriğinizi yazın (kabuk `_ust.php`/`_alt.php` kalsın)
+- [ ] **`_ust.php`** → `$siteMenu` dizisine kendi sayfalarınızı ekleyin
+- [ ] **`hakkimizda.php` / `iletisim.php`** → gerekmiyorsa silin, menüden de çıkarın
 - [ ] **`system/ajax.php`** → tam CRUD lazımsa dosyanın alt kısmındaki yorumlu `handle_list/save/fetch/delete` bloğunu açıp `items` yerine kendi tablonuzu yazın; farklı bir şey lazımsa kendi `case`'lerinizi ekleyin. `ping`'i sonunda silin
 - [ ] **`system/function.php`** → CRUD bloğunu açtıysanız oradaki `find_item()` örneğini de yorumdan çıkarın; farklı sorgular için "PROJEYE ÖZEL" bölümüne yazın
 - [ ] **`assets/css/style.css`** → projeye özel stiller (⚠️ `cilginyazilim.css`'e dokunmayın)
 - [ ] **`README.md`** → `docs/README-taslak.md` dosyasını buraya kopyalayıp doldurun
 - [ ] **`docs/screenshots/`** → ekran görüntülerini ekleyin
 - [ ] **`.gitignore`** → örnek görselleri paylaşacaksanız `upload/*` satırını yorumlayın
-- [ ] **Canlıya çıkmadan önce `install.php`'yi silin** (bkz. [Canlıya Alırken](#canlıya-alırken))
+- [ ] **Canlıya çıkmadan önce `kurulum/` klasörünü silin** — sihirbazın son adımındaki buton bunu tek tıkla yapar (bkz. [Canlıya Alırken](#canlıya-alırken))
 
 ---
 
@@ -121,15 +144,27 @@ bilgilerinizi kaydeder ve **yönetici hesabınızı** açar. Ardından `giris.ph
 
 ```
 .
-├── index.php                  # Ana sayfa (herkese açık) + bileşen galerisi
-├── install.php                # Kurulum sihirbazı (canlıya çıkmadan önce silin)
+├── _ust.php                   # SİTE KABUĞU: üst menü, oturum durumu, tema
+├── _alt.php                   # SİTE KABUĞU: alt bilgi + ortak JS (CY nesnesi)
+│
+├── index.php                  # Ana sayfa (herkese açık)
+├── hakkimizda.php             # Hakkımızda (metni ayarlardan gelir)
+├── iletisim.php               # İletişim + mesaj formu (AJAX)
+├── kayit.php                  # Kayıt ol (sistem_kayit_acik ayarına bağlı)
 ├── giris.php                  # Giriş sayfası
 ├── cikis.php                  # Çıkış (POST + CSRF korumalı)
-├── database.sql               # Şema: ayarlar + kullanicilar tabloları
+├── hesabim.php                # Üye profili: bilgiler, avatar, parola
+├── 404.php                    # Sayfa bulunamadı
+│
+├── .htaccess                  # Hata sayfası, güvenlik başlıkları, .env koruması
 ├── .env.example               # Elle kurulum için ortam değişkeni şablonu
 ├── README.md                  # Bu dosya (yeni projede değiştirin)
 ├── LICENSE                    # MIT
 ├── .gitignore                 # .env dahil, hassas dosyaları hariç tutar
+│
+├── kurulum/                   # KURULUM SİHİRBAZI (kurulum bitince silinir)
+│   ├── index.php              # 5 adımlı sihirbaz + klasörü silme butonu
+│   └── database.sql           # Şema: ayarlar + kullanicilar + mesajlar
 │
 ├── yonetim/                   # YÖNETİM PANELİ (giriş gerektirir)
 │   ├── _ust.php               # Ortak üst şablon: menü, yetki kontrolü
@@ -237,6 +272,59 @@ VALUES ('site_favicon', '', 'genel', 'metin', 'Favicon', 70);
 
 Desteklenen `tip` değerleri: `metin`, `uzun_metin`, `sayi`, `eposta`, `url`, `secim`, `onay`, `renk`.
 
+### Yeni bir site sayfası eklemek
+
+Ön yüzdeki tüm sayfalar aynı kabuğu kullanır: `_ust.php` (üst menü, oturum
+durumu, tema, SEO etiketleri) ve `_alt.php` (alt bilgi, ortak JavaScript).
+Yeni bir sayfa üç satırla hazırdır:
+
+```php
+<?php
+$sayfaBaslik   = 'Hizmetler';     // <title> ve sayfa başlığı
+$aktifSayfa    = 'hizmetler';     // menüde hangi öğe vurgulansın
+$sayfaAciklama = 'Neler yapıyoruz?';   // meta description (opsiyonel)
+
+require __DIR__ . '/_ust.php';
+?>
+
+<section class="cy-section container">
+    <h1 class="cy-section__title">Hizmetler</h1>
+</section>
+
+<?php require __DIR__ . '/_alt.php'; ?>
+```
+
+Menüde görünmesi için `_ust.php` içindeki `$siteMenu` dizisine bir satır ekleyin.
+`oturum` anahtarı görünürlüğü belirler:
+
+```php
+$siteMenu = [
+    ['anahtar' => 'hizmetler', 'baslik' => 'Hizmetler', 'url' => 'hizmetler.php', 'oturum' => null],
+    // null  → herkese görünür
+    // true  → sadece giriş yapmışlara
+    // false → sadece giriş yapmamışlara
+];
+```
+
+**Sayfaya özel JavaScript** yazacaksanız çıktı tamponu kullanın; kodunuz
+jQuery yüklendikten sonra, `</body>` etiketinden hemen önce basılır:
+
+```php
+<?php ob_start(); ?>
+<script>
+$(function () {
+    CY.post('benim_islemim', { id: 5 })      // CSRF anahtarı otomatik eklenir
+      .done(function (c) { CY.notify(c.description); })
+      .fail(function (x) { CY.notify('Hata', 'danger'); });
+});
+</script>
+<?php $sayfaScript = ob_get_clean(); ?>
+<?php require __DIR__ . '/_alt.php'; ?>
+```
+
+`CY` nesnesinin sunduğu yardımcılar: `CY.post()`, `CY.notify()`,
+`CY.clearErrors()`, `CY.showErrors()`, `CY.token`.
+
 ### Sayfaları korumak
 
 ```php
@@ -270,6 +358,11 @@ require_role_json('admin');   // 401 / 403 JSON döner
 - Parola değiştirirken mevcut parola sorulur
 - `duzenlenebilir = 0` olan ayarlar (örn. sürüm) formdan gönderilse bile yazılmaz
 - Kullanıcı listesinde parola özeti **hiçbir zaman** tarayıcıya gönderilmez
+- Kayıt formundan gelen `rol` alanı yok sayılır; yeni hesap **her zaman** `uye` olur
+- Kayıtlar kapalıyken `kayit.php`'ye POST atılsa bile hesap açılmaz
+- İletişim formu kapalıyken AJAX ucu da kapanır (sadece formu gizlemek yetmez)
+- İletişim formunda bal küpü (honeypot) + oturum başına 60 saniyelik hız sınırı
+- `kurulum/` klasörü ancak kurulum **gerçekten bitmişse** ve POST + CSRF ile silinebilir
 
 ### Hazır CRUD örneğini açmak (en hızlı yol)
 
@@ -298,7 +391,7 @@ Açmak için üç adım:
    ```
 
 Sonra `items` tablo adını ve `title`/`description` sütunlarını kendi
-şemanıza göre değiştirin (`database.sql`'de de aynı isimleri kullanın).
+şemanıza göre değiştirin (`kurulum/database.sql`'de de aynı isimleri kullanın).
 Görsel yükleme kullanmıyorsanız `handle_save()` içindeki `$hasNewImage`
 bloğunu silin.
 
@@ -381,7 +474,7 @@ Bu şablonla çalışırken asla atlamayın:
 
 ## Canlıya Alırken
 
-- [ ] **`install.php` dosyasını silin** (veya sunucu düzeyinde erişimini kısıtlayın) — çalışır durumda kalırsa herkes veritabanınızı yeniden yapılandırabilir
+- [ ] **`kurulum/` klasörünü silin** — sihirbazın son adımındaki **"Kurulum klasörünü sil"** butonu bunu sizin için yapar. Klasör sunucuda kalırsa (kilitli olsa bile) gereksiz bir saldırı yüzeyidir. Yönetim panelinin özet sayfası klasör hâlâ duruyorsa sizi uyarır.
 - [ ] `APP_DEBUG` → `false` (`.env` içinde `APP_DEBUG=false`)
 - [ ] `root` yerine sınırlı yetkili veritabanı kullanıcısı
 - [ ] Kimlik bilgileri ortam değişkeninden

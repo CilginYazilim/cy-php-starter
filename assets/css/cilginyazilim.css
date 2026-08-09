@@ -362,6 +362,10 @@ a.cy-brand:hover { color: inherit; opacity: .88; }
 
 .cy-avatar--lg { width: 120px; height: 120px; font-size: 2.4rem; }
 
+/* Profil sayfası ve kullanıcı menüsü gibi "kişi" bağlamlarında
+   yuvarlak avatar daha doğal durur. Tablolarda kare kalsın. */
+.cy-avatar--circle { border-radius: 50%; }
+
 
 /* ------------------------------------------------------------------
  *  8) TABLO (.cy-table)
@@ -626,4 +630,510 @@ a.cy-brand:hover { color: inherit; opacity: .88; }
         animation-duration: .01ms !important;
         transition-duration: .01ms !important;
     }
+}
+
+
+/* ==================================================================
+ *  17) SİTE (ÖN YÜZ) BİLEŞENLERİ
+ * ------------------------------------------------------------------
+ *  Buraya kadar olan bölümler yönetim paneli / tablo odaklıydı.
+ *  Aşağıdakiler ziyaretçiye görünen sayfalar içindir:
+ *  üst menü, hero (vitrin) alanı, özellik kartları, alt bilgi.
+ *
+ *  Hepsi yukarıdaki :root token listesinden beslenir; tema rengini
+ *  değiştirdiğinizde burası da otomatik uyar.
+ * ================================================================== */
+
+/* --- Sayfa iskeleti: alt bilgi her zaman en altta -----------------
+ * Kısa sayfalarda footer ekranın ortasında asılı kalmasın diye
+ * gövdeyi dikey flex yapıp ana içeriğe flex:1 veriyoruz. */
+body.cy-site {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+body.cy-site > main { flex: 1 0 auto; }
+
+
+/* ------------------------------------------------------------------
+ *  17.1) ÜST MENÜ (Navbar)
+ * ------------------------------------------------------------------ */
+.cy-nav {
+    position: sticky;          /* Sayfa kaydıkça üstte yapışık kalır */
+    top: 0;
+    z-index: 1030;
+    background: color-mix(in srgb, var(--cy-surface) 88%, transparent);
+    border-bottom: 1px solid var(--cy-border);
+    /* Arkasındaki içeriği bulanıklaştırır (buzlu cam etkisi).
+       Desteklemeyen tarayıcıda sadece yarı saydam görünür. */
+    backdrop-filter: saturate(180%) blur(12px);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
+}
+
+/* color-mix desteklemeyen eski tarayıcılar için yedek. */
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+    .cy-nav { background: var(--cy-surface); }
+}
+
+.cy-nav__inner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-height: 68px;
+    position: relative;
+}
+
+.cy-nav .cy-brand__title    { font-size: 1.05rem; color: var(--cy-text); }
+.cy-nav .cy-brand__subtitle { color: var(--cy-text-muted); font-size: .75rem; }
+.cy-nav .cy-brand__mark {
+    width: 40px;
+    height: 40px;
+    background: var(--cy-brand-100);
+    box-shadow: none;
+}
+
+/* Menü bağlantıları */
+.cy-nav__links {
+    display: flex;
+    align-items: center;
+    gap: .15rem;
+    margin-left: auto;
+    list-style: none;
+    padding: 0;
+    margin-bottom: 0;
+}
+
+.cy-nav__link {
+    display: inline-block;
+    padding: .5rem .85rem;
+    border-radius: var(--cy-radius-pill);
+    color: var(--cy-text-muted);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: .93rem;
+    white-space: nowrap;
+    transition: color var(--cy-transition), background var(--cy-transition);
+}
+.cy-nav__link:hover { color: var(--cy-brand-600); background: var(--cy-brand-100); }
+
+/* Bulunduğunuz sayfa vurgulanır */
+.cy-nav__link--aktif {
+    color: var(--cy-brand-600);
+    background: var(--cy-brand-100);
+}
+
+.cy-nav__actions {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-left: .35rem;
+}
+
+/* Tema (açık/koyu) düğmesi */
+.cy-theme-toggle {
+    width: 38px;
+    height: 38px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--cy-border);
+    background: var(--cy-surface);
+    color: var(--cy-text-muted);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: all var(--cy-transition);
+}
+.cy-theme-toggle:hover {
+    color: var(--cy-brand-600);
+    border-color: var(--cy-brand-400);
+}
+
+/* Kullanıcı menüsü (Bootstrap dropdown üzerine) */
+.cy-usermenu {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .3rem .75rem .3rem .3rem;
+    border-radius: var(--cy-radius-pill);
+    border: 1px solid var(--cy-border);
+    background: var(--cy-surface);
+    color: var(--cy-text);
+    font-weight: 600;
+    font-size: .9rem;
+    cursor: pointer;
+}
+.cy-usermenu:hover { border-color: var(--cy-brand-400); color: var(--cy-brand-600); }
+.cy-usermenu .cy-avatar { width: 30px; height: 30px; font-size: .8rem; }
+
+.cy-app .dropdown-menu {
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius);
+    box-shadow: var(--cy-shadow);
+    background: var(--cy-surface);
+    padding: .4rem;
+}
+.cy-app .dropdown-item {
+    border-radius: var(--cy-radius-sm);
+    color: var(--cy-text);
+    font-size: .92rem;
+    padding: .5rem .75rem;
+}
+.cy-app .dropdown-item:hover,
+.cy-app .dropdown-item:focus { background: var(--cy-brand-100); color: var(--cy-brand-600); }
+.cy-app .dropdown-divider { border-color: var(--cy-border); }
+.cy-app .dropdown-header {
+    color: var(--cy-text-muted);
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+/* Mobil açma düğmesi (hamburger) */
+.cy-nav__toggle {
+    display: none;
+    margin-left: auto;
+    width: 42px;
+    height: 42px;
+    border-radius: var(--cy-radius-sm);
+    border: 1px solid var(--cy-border);
+    background: var(--cy-surface);
+    color: var(--cy-text);
+    font-size: 1.15rem;
+    cursor: pointer;
+}
+
+
+/* ------------------------------------------------------------------
+ *  17.2) HERO (Vitrin alanı)
+ * ------------------------------------------------------------------ */
+.cy-hero {
+    position: relative;
+    overflow: hidden;
+    background: var(--cy-gradient);
+    color: #fff;
+    border-radius: var(--cy-radius-lg);
+    padding: clamp(2rem, 5vw, 4rem);
+    box-shadow: var(--cy-shadow-lg);
+}
+
+/* Dekoratif ışık lekeleri — sadece görseldir, ekran okuyucu görmez. */
+.cy-hero::before,
+.cy-hero::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+}
+.cy-hero::before {
+    width: 420px; height: 420px;
+    top: -160px; right: -120px;
+    background: radial-gradient(circle, rgba(255,255,255,.20), transparent 70%);
+}
+.cy-hero::after {
+    width: 320px; height: 320px;
+    bottom: -180px; left: -80px;
+    background: radial-gradient(circle, rgba(14,165,233,.35), transparent 70%);
+}
+
+.cy-hero > * { position: relative; z-index: 1; }
+
+.cy-hero__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    background: rgba(255, 255, 255, .16);
+    border: 1px solid rgba(255, 255, 255, .28);
+    color: #fff;
+    padding: .3rem .85rem;
+    border-radius: var(--cy-radius-pill);
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    margin-bottom: 1.1rem;
+}
+
+.cy-hero__title {
+    font-size: clamp(1.9rem, 4.5vw, 3.1rem);
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -.02em;
+    margin-bottom: .9rem;
+    max-width: 20ch;
+}
+
+.cy-hero__lead {
+    font-size: clamp(1rem, 1.6vw, 1.15rem);
+    color: rgba(255, 255, 255, .88);
+    max-width: 56ch;
+    margin-bottom: 1.8rem;
+}
+
+.cy-hero__actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+
+
+/* ------------------------------------------------------------------
+ *  17.3) BÖLÜM BAŞLIKLARI
+ * ------------------------------------------------------------------ */
+.cy-section { padding: clamp(2.5rem, 6vw, 4.5rem) 0; }
+
+.cy-eyebrow {
+    display: block;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--cy-brand-600);
+    margin-bottom: .5rem;
+}
+
+.cy-section__title {
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 700;
+    letter-spacing: -.01em;
+    margin-bottom: .6rem;
+}
+
+.cy-section__lead {
+    color: var(--cy-text-muted);
+    max-width: 62ch;
+    margin-bottom: 0;
+}
+
+
+/* ------------------------------------------------------------------
+ *  17.4) ÖZELLİK KARTLARI
+ * ------------------------------------------------------------------
+ *  auto-fit + minmax: kaç sütun olacağını tarayıcı kendi hesaplar.
+ *  Ekran daraldıkça sütun sayısı kendiliğinden azalır — ayrı bir
+ *  medya sorgusu yazmanız gerekmez.
+ * ------------------------------------------------------------------ */
+.cy-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
+}
+
+.cy-feature {
+    background: var(--cy-surface);
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius);
+    padding: 1.6rem 1.4rem;
+    box-shadow: var(--cy-shadow-sm);
+    height: 100%;
+    transition: transform var(--cy-transition),
+                box-shadow var(--cy-transition),
+                border-color var(--cy-transition);
+}
+.cy-feature:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--cy-shadow);
+    border-color: var(--cy-brand-400);
+}
+
+.cy-feature__icon {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: var(--cy-radius-sm);
+    background: var(--cy-brand-100);
+    color: var(--cy-brand-600);
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
+}
+
+.cy-feature__title { font-size: 1.05rem; font-weight: 700; margin-bottom: .4rem; }
+.cy-feature__text  { color: var(--cy-text-muted); font-size: .93rem; margin-bottom: 0; }
+
+
+/* ------------------------------------------------------------------
+ *  17.5) İSTATİSTİK ŞERİDİ
+ * ------------------------------------------------------------------ */
+.cy-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--cy-border);          /* Aralardaki ince çizgi */
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius);
+    overflow: hidden;
+}
+.cy-stat {
+    background: var(--cy-surface);
+    padding: 1.4rem 1rem;
+    text-align: center;
+}
+.cy-stat__value {
+    font-size: clamp(1.5rem, 3vw, 2.1rem);
+    font-weight: 800;
+    color: var(--cy-brand-600);
+    line-height: 1.1;
+}
+.cy-stat__label {
+    font-size: .82rem;
+    color: var(--cy-text-muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-top: .3rem;
+}
+
+
+/* ------------------------------------------------------------------
+ *  17.6) SAYFA BAŞLIĞI (iç sayfalar)
+ * ------------------------------------------------------------------ */
+.cy-page-head {
+    background: var(--cy-bg-alt);
+    border-bottom: 1px solid var(--cy-border);
+    padding: clamp(2rem, 5vw, 3.25rem) 0;
+}
+.cy-page-head h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+    font-weight: 800;
+    letter-spacing: -.02em;
+    margin-bottom: .5rem;
+}
+.cy-page-head p { color: var(--cy-text-muted); margin-bottom: 0; max-width: 62ch; }
+
+/* Kırıntı yolu (breadcrumb) */
+.cy-breadcrumb {
+    font-size: .85rem;
+    color: var(--cy-text-muted);
+    margin-bottom: .75rem;
+}
+.cy-breadcrumb a { color: var(--cy-brand-600); text-decoration: none; }
+.cy-breadcrumb a:hover { text-decoration: underline; }
+
+
+/* ------------------------------------------------------------------
+ *  17.7) ALT BİLGİ (Footer)
+ * ------------------------------------------------------------------ */
+.cy-site-footer {
+    background: var(--cy-brand-900);
+    color: rgba(255, 255, 255, .75);
+    padding: 3rem 0 1.5rem;
+    margin-top: auto;
+}
+.cy-site-footer h2 {
+    font-size: .82rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #fff;
+    margin-bottom: 1rem;
+}
+.cy-site-footer a {
+    color: rgba(255, 255, 255, .75);
+    text-decoration: none;
+    transition: color var(--cy-transition);
+}
+.cy-site-footer a:hover { color: #fff; }
+.cy-site-footer ul { list-style: none; padding: 0; margin: 0; }
+.cy-site-footer li { margin-bottom: .5rem; font-size: .92rem; }
+
+.cy-site-footer .cy-brand__title    { color: #fff; }
+.cy-site-footer .cy-brand__subtitle { color: rgba(255,255,255,.6); }
+.cy-site-footer .cy-brand__mark     { background: rgba(255,255,255,.1); }
+
+.cy-site-footer__bottom {
+    border-top: 1px solid rgba(255, 255, 255, .12);
+    margin-top: 2.5rem;
+    padding-top: 1.25rem;
+    font-size: .85rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 1.5rem;
+    justify-content: space-between;
+}
+
+/* Sosyal medya yuvarlakları */
+.cy-social {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+.cy-social a {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .1);
+    border: 1px solid rgba(255, 255, 255, .16);
+    font-size: .95rem;
+    transition: all var(--cy-transition);
+}
+.cy-social a:hover {
+    background: var(--cy-brand-600);
+    border-color: var(--cy-brand-400);
+    transform: translateY(-2px);
+}
+
+
+/* ------------------------------------------------------------------
+ *  17.8) GİRİŞ / KAYIT KARTI
+ * ------------------------------------------------------------------ */
+.cy-auth {
+    max-width: 460px;
+    margin: 0 auto;
+    padding: clamp(2rem, 6vw, 3.5rem) 0;
+}
+.cy-auth .cy-card__body { padding: 1.75rem; }
+
+/* İki yanında çizgi olan ayıraç metni */
+.cy-divider {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    color: var(--cy-text-muted);
+    font-size: .82rem;
+    margin: 1.25rem 0;
+}
+.cy-divider::before,
+.cy-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--cy-border);
+}
+
+
+/* ------------------------------------------------------------------
+ *  17.9) ÖN YÜZ MOBİL UYUMU
+ * ------------------------------------------------------------------ */
+@media (max-width: 991.98px) {
+    .cy-nav__toggle { display: inline-block; }
+
+    /* Menü, üst çubuğun altına açılan bir panele dönüşür. */
+    .cy-nav__links {
+        display: none;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: .15rem;
+        background: var(--cy-surface);
+        border-bottom: 1px solid var(--cy-border);
+        box-shadow: var(--cy-shadow);
+        padding: .75rem 1rem 1rem;
+        margin-left: 0;
+    }
+    .cy-nav__links.acik { display: flex; }
+
+    .cy-nav__link { padding: .7rem .9rem; border-radius: var(--cy-radius-sm); }
+
+    .cy-nav__actions {
+        margin-left: 0;
+        margin-top: .5rem;
+        padding-top: .75rem;
+        border-top: 1px solid var(--cy-border);
+    }
+}
+
+@media (max-width: 575.98px) {
+    .cy-hero { padding: 1.75rem 1.35rem; border-radius: var(--cy-radius); }
+    .cy-hero__actions .btn { width: 100%; }
 }

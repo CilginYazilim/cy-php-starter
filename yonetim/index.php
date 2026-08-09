@@ -99,11 +99,14 @@ $sonGirisler = $db->query(
 <?php endif; ?>
 
 <!-- ---------- Kurulum dosyası uyarısı ---------- -->
-<?php if (is_file(dirname(__DIR__) . '/install.php')): ?>
-    <div class="alert alert-danger" role="alert">
-        <strong>Güvenlik uyarısı:</strong> <code>install.php</code> dosyası hâlâ sunucuda.
-        Kurulum tamamlandığına göre bu dosyayı silin — sunucuda kalırsa
-        veritabanınızı sıfırlamak isteyen birine kapı açık kalır.
+<?php if (is_dir(dirname(__DIR__) . '/kurulum')): ?>
+    <div class="alert alert-danger d-flex flex-wrap align-items-center gap-2" role="alert">
+        <span class="flex-grow-1">
+            <strong>Güvenlik uyarısı:</strong> <code>kurulum/</code> klasörü hâlâ sunucuda.
+            Kurulum tamamlandığına göre bu klasörü silin — sunucuda kalırsa
+            veritabanınızı sıfırlamak isteyen birine kapı açık kalır.
+        </span>
+        <a href="../kurulum/" class="btn btn-danger cy-btn btn-sm">Klasörü sil →</a>
     </div>
 <?php endif; ?>
 

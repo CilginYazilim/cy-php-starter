@@ -2,20 +2,21 @@
 --  VERİTABANI ŞEMASI
 --  cilginyazilim.com – PHP Başlangıç Şablonu
 -- ---------------------------------------------------------------
---  İKİ TEMEL TABLO:
+--  ÜÇ TEMEL TABLO:
 --    ayarlar      → Site geneli ayarlar (anahtar/değer, tipli)
 --    kullanicilar → Kullanıcı hesapları, roller, oturum bilgisi
+--    mesajlar     → İletişim formundan gelen mesajlar
 --
---  ► EN KOLAY KURULUM: Tarayıcıda install.php dosyasını açın.
+--  ► EN KOLAY KURULUM: Tarayıcıda "kurulum/" adresini açın.
 --    Sihirbaz bu dosyayı çalıştırır, ayarları formdan aldığı
 --    değerlerle günceller ve yönetici hesabını oluşturur.
 --
 --  ► ELLE KURULUM:
---    Terminal   :  mysql -u root -p < database.sql
+--    Terminal   :  mysql -u root -p < kurulum/database.sql
 --    phpMyAdmin :  İçe Aktar > Dosya seç > database.sql > Başlat
 --    (Bu durumda yönetici hesabını kendiniz eklemeniz gerekir.)
 --
---  NOT: install.php bu dosyadaki CREATE DATABASE / USE satırlarını
+--  NOT: Sihirbaz bu dosyadaki CREATE DATABASE / USE satırlarını
 --  görmezden gelir; veritabanını zaten kendisi oluşturup seçer.
 -- ===============================================================
 
@@ -132,7 +133,7 @@ COLLATE=utf8mb4_turkish_ci;
 -- ---------------------------------------------------------------
 --  Varsayılan ayarlar
 -- ---------------------------------------------------------------
---  install.php bu satırları ekledikten SONRA, formdan aldığı
+--  Sihirbaz bu satırları ekledikten SONRA, formdan aldığı
 --  değerlerle site_adi / site_aciklama gibi anahtarları günceller.
 --  Yeni bir ayar eklemek isterseniz buraya bir satır ekleyin —
 --  yönetim panelinde otomatik görünür.
@@ -143,6 +144,7 @@ INSERT INTO `ayarlar`
 ('site_adi',        'Yeni Proje', 'genel', 'metin',      'Site Adı',        'Tarayıcı sekmesinde ve başlıkta görünür.', NULL, 10),
 ('site_aciklama',   'Çılgın Yazılım örnek uygulaması', 'genel', 'uzun_metin', 'Site Açıklaması', 'Arama motorları için kısa tanıtım.', NULL, 20),
 ('site_slogan',     '',           'genel', 'metin',      'Slogan',          'Başlığın altında görünecek kısa cümle.', NULL, 30),
+('site_hakkinda',   '',           'genel', 'uzun_metin', 'Hakkımızda Metni','"Hakkımızda" sayfasında görünür. Boş bırakırsanız örnek metin gösterilir.', NULL, 35),
 ('site_url',        '',           'genel', 'url',        'Site Adresi',     'Örn: https://ornek.com', NULL, 40),
 ('site_dil',        'tr',         'genel', 'secim',      'Dil',             'HTML lang özniteliği.', '["tr","en"]', 50),
 ('site_logo',       '',           'genel', 'metin',      'Logo Dosyası',    'upload/ klasöründeki dosya adı. Boşsa varsayılan logo kullanılır.', NULL, 60),
@@ -151,6 +153,7 @@ INSERT INTO `ayarlar`
 ('iletisim_eposta', '',           'iletisim', 'eposta',  'İletişim E-postası', 'Formlardan gelen mesajlar buraya gider.', NULL, 10),
 ('iletisim_telefon','',           'iletisim', 'metin',   'Telefon',            NULL, NULL, 20),
 ('iletisim_adres',  '',           'iletisim', 'uzun_metin', 'Adres',           NULL, NULL, 30),
+('iletisim_saatler','',           'iletisim', 'metin',   'Çalışma Saatleri',   'Örn: Hafta içi 09:00 – 18:00', NULL, 40),
 
 -- ---- SOSYAL MEDYA ----
 ('sosyal_facebook',  '',          'sosyal', 'url', 'Facebook',  NULL, NULL, 10),
@@ -168,6 +171,7 @@ INSERT INTO `ayarlar`
 -- ---- SİSTEM ----
 ('sistem_bakim_modu',     '0',    'sistem', 'onay',  'Bakım Modu',           'Açıkken siteyi sadece yöneticiler görebilir.', NULL, 10),
 ('sistem_kayit_acik',     '0',    'sistem', 'onay',  'Yeni Kayıtlara Açık',  'Ziyaretçiler kendi hesabını oluşturabilsin mi?', NULL, 20),
+('sistem_iletisim_formu', '1',    'sistem', 'onay',  'İletişim Formu Açık',  'Kapatırsanız iletişim sayfasında sadece bilgiler görünür.', NULL, 25),
 ('sistem_sayfa_basina',   '10',   'sistem', 'sayi',  'Sayfa Başına Kayıt',   'Listelerde varsayılan sayfa boyutu.', NULL, 30),
 ('sistem_zaman_dilimi',   'Europe/Istanbul', 'sistem', 'metin', 'Zaman Dilimi', 'Örn: Europe/Istanbul', NULL, 40),
 ('sistem_tema_rengi',     '#0b5cb5', 'sistem', 'renk', 'Tema Rengi',          'Arayüzdeki ana marka rengi.', NULL, 50),
@@ -257,7 +261,7 @@ COLLATE=utf8mb4_turkish_ci;
 --  gönderen herkesin aynı parolayla girilebilir bir hesap
 --  yayınlaması demek olurdu.
 --
---  Yönetici hesabını install.php sihirbazı oluşturur.
+--  Yönetici hesabını kurulum sihirbazı (kurulum/index.php) oluşturur.
 --  Elle kurulum yapıyorsanız şu satırı kendi bilgilerinizle
 --  çalıştırın (parola özetini PHP ile üretin):
 --
@@ -266,3 +270,49 @@ COLLATE=utf8mb4_turkish_ci;
 --    INSERT INTO kullanicilar (ad, soyad, kullanici_adi, eposta, sifre, rol)
 --    VALUES ('Ad', 'Soyad', 'admin', 'admin@ornek.com', '<uretilen_ozet>', 'admin');
 -- ---------------------------------------------------------------
+
+
+-- ===============================================================
+--  4) MESAJLAR TABLOSU (iletişim formu)
+-- ===============================================================
+--  Ziyaretçinin "İletişim" sayfasından gönderdiği mesajlar burada
+--  birikir; yönetici panelden okur. E-posta sunucusu ayarlamadan
+--  çalışan en basit ve en güvenilir yöntem budur.
+--
+--  GÜVENLİK NOTLARI:
+--    • Mesaj metni HAM haliyle saklanır; ekrana basılırken
+--      htmlspecialchars() ile kaçışlanır (XSS bu noktada durur).
+--    • "ip" ve "tarayici" alanları spam incelemesi içindir.
+--    • Kayıtlı kullanıcı gönderdiyse "kullanici_id" dolar; bu sütun
+--      hesap silinince NULL olur (ON DELETE SET NULL) — mesaj kaybolmaz.
+-- ---------------------------------------------------------------
+DROP TABLE IF EXISTS `mesajlar`;
+
+CREATE TABLE `mesajlar` (
+  `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+  `ad`           VARCHAR(150) NOT NULL,
+  `eposta`       VARCHAR(190) NOT NULL COLLATE utf8mb4_unicode_ci,
+  `konu`         VARCHAR(190) NOT NULL DEFAULT '',
+  `mesaj`        TEXT NOT NULL,
+
+  -- Panelde "okundu / okunmadı" ayrımı için.
+  `okundu`       TINYINT(1) NOT NULL DEFAULT 0,
+
+  `kullanici_id` INT UNSIGNED NULL DEFAULT NULL,
+  `ip`           VARCHAR(45)  NOT NULL DEFAULT '',
+  `tarayici`     VARCHAR(255) NOT NULL DEFAULT '',
+
+  `created_at`   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (`id`),
+  KEY `idx_mesajlar_okundu` (`okundu`),
+  KEY `idx_mesajlar_tarih`  (`created_at`),
+  KEY `idx_mesajlar_kullanici` (`kullanici_id`),
+
+  CONSTRAINT `fk_mesajlar_kullanici`
+    FOREIGN KEY (`kullanici_id`) REFERENCES `kullanicilar` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_turkish_ci;

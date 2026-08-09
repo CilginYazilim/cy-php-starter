@@ -81,6 +81,12 @@ try {
             handle_kullanici_sil($db);
             break;
 
+        /* --- İletişim formu (iletisim.php kullanır) ---
+         * Bu uç BİLEREK herkese açıktır; giriş gerektirmez. */
+        case 'mesaj_gonder':
+            handle_mesaj_gonder($db);
+            break;
+
         /* ---------------------------------------------------------
          *  ► KENDİ İŞLEMLERİNİZİ BURAYA EKLEYİN
          *
@@ -135,6 +141,109 @@ function handle_ping(PDO $db): void
         'database'  => DB_NAME,
         'server_at' => format_date((string) $now, 'd.m.Y H:i:s'),
     ]);
+}
+
+
+/* =====================================================================
+ *  İLETİŞİM FORMU – MESAJ GÖNDER
+ * =====================================================================
+ *  iletisim.php sayfasındaki formu karşılar ve mesajı "mesajlar"
+ *  tablosuna yazar.
+ *
+ *  BU UÇ HERKESE AÇIKTIR — giriş istemez. Açık uçlarda üç şeye
+ *  ayrıca dikkat etmek gerekir:
+ *
+ *    1. SPAM        → bal küpü (honeypot) alanı + hız sınırı
+ *    2. AŞIRI VERİ  → alan uzunlukları sunucuda da sınırlanır
+ *                     (maxlength yalnızca tarayıcıda geçerlidir,
+ *                      istek elle gönderilirse hiçbir işe yaramaz)
+ *    3. XSS         → mesaj HAM saklanır, EKRANA BASILIRKEN e() ile
+ *                     kaçışlanır. Kaydederken temizlemek yanlıştır;
+ *                     veriyi bozar ve tek bir unutulan yer açık bırakır.
+ * ------------------------------------------------------------------ */
+function handle_mesaj_gonder(PDO $db): void
+{
+    require_csrf();
+
+    // Yönetici formu kapattıysa uç da kapalı olmalıdır. Sadece sayfada
+    // formu gizlemek yetmez; ajax.php doğrudan çağrılabilir.
+    if (!setting_bool('sistem_iletisim_formu', true)) {
+        json_error('İletişim formu şu anda kapalı.', 403);
+    }
+
+    /* --- BAL KÜPÜ (honeypot) ---------------------------------------
+     * Ekranda görünmeyen "website" alanı doluysa gönderen bir bottur.
+     * Hata DÖNDÜRMÜYORUZ: bot, denemesinin başarısız olduğunu anlarsa
+     * formu inceleyip yöntemini değiştirir. Başarılı gibi davranıp
+     * mesajı sessizce çöpe atmak daha etkilidir. */
+    if (trim((string) ($_POST['website'] ?? '')) !== '') {
+        json_success('Mesajınız alındı. Teşekkür ederiz.');
+    }
+
+    /* --- HIZ SINIRI (rate limit) -----------------------------------
+     * Aynı oturumdan 60 saniye içinde ikinci mesaja izin vermiyoruz.
+     * Basit ama formu makineli tüfek gibi kullanmayı engeller.
+     * (Oturum çerezi olmayan bir istemci bunu aşabilir; ciddi trafikte
+     *  IP tabanlı bir sayaç veya CAPTCHA eklemek gerekir.) */
+    $sonGonderim = (int) ($_SESSION['son_mesaj_zamani'] ?? 0);
+    $bekleme     = 60;
+
+    if ($sonGonderim > 0 && (time() - $sonGonderim) < $bekleme) {
+        $kalan = $bekleme - (time() - $sonGonderim);
+        json_error('Çok hızlı gönderiyorsunuz. Lütfen ' . $kalan . ' saniye bekleyin.', 429);
+    }
+
+    /* --- DOĞRULAMA -------------------------------------------------- */
+    $errors = [];
+
+    [$ad, $adHata]         = validate_text($_POST['ad'] ?? '', 'Ad', 2, 150);
+    [$eposta, $epostaHata] = validate_email($_POST['eposta'] ?? '', 'E-posta');
+
+    if ($adHata !== null)     { $errors['ad'] = $adHata; }
+    if ($epostaHata !== null) { $errors['eposta'] = $epostaHata; }
+
+    // Konu isteğe bağlı; girilmişse uzunluğu sınırlanır.
+    $konu = trim((string) ($_POST['konu'] ?? ''));
+    if (mb_strlen($konu, 'UTF-8') > 190) {
+        $errors['konu'] = 'Konu en fazla 190 karakter olabilir.';
+    }
+
+    // Mesajda satır sonlarını KORUMAK istiyoruz, bu yüzden
+    // validate_text() kullanmıyoruz (o tüm boşlukları teke indirir).
+    $mesaj = trim((string) ($_POST['mesaj'] ?? ''));
+
+    if (!mb_check_encoding($mesaj, 'UTF-8')) {
+        $errors['mesaj'] = 'Mesaj geçersiz karakterler içeriyor.';
+    } elseif (mb_strlen($mesaj, 'UTF-8') < 10) {
+        $errors['mesaj'] = 'Mesajınız en az 10 karakter olmalı.';
+    } elseif (mb_strlen($mesaj, 'UTF-8') > 4000) {
+        $errors['mesaj'] = 'Mesajınız en fazla 4000 karakter olabilir.';
+    }
+
+    if ($errors !== []) {
+        // 422 = "Unprocessable Entity": istek anlaşıldı ama içeriği geçersiz.
+        json_error('Lütfen formdaki hataları düzeltin.', 422, ['errors' => $errors]);
+    }
+
+    /* --- KAYDET ----------------------------------------------------- */
+    $db->prepare(
+        'INSERT INTO mesajlar (ad, eposta, konu, mesaj, kullanici_id, ip, tarayici)
+         VALUES (:ad, :eposta, :konu, :mesaj, :kullanici_id, :ip, :tarayici)'
+    )->execute([
+        ':ad'           => $ad,
+        ':eposta'       => $eposta,
+        ':konu'         => $konu,
+        ':mesaj'        => $mesaj,
+        // Giriş yapmış biri gönderdiyse hesabıyla ilişkilendir.
+        ':kullanici_id' => auth_id(),
+        ':ip'           => client_ip(),
+        // User-Agent uzun olabilir; sütun sınırını aşmasın diye kırpıyoruz.
+        ':tarayici'     => mb_substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255, 'UTF-8'),
+    ]);
+
+    $_SESSION['son_mesaj_zamani'] = time();
+
+    json_success('Mesajınız bize ulaştı. En kısa sürede dönüş yapacağız.');
 }
 
 

@@ -417,6 +417,62 @@ function count_rows(PDO $db, string $table): int
     return (int) $db->query('SELECT COUNT(*) FROM `' . $table . '`')->fetchColumn();
 }
 
+/**
+ * Kullanıcının avatar adresini döndürür; avatarı yoksa boş dize.
+ *
+ * GÜVENLİK: Veritabanında sadece DOSYA ADI saklanır, tam yol değil.
+ * basename() ile "../../system/config.php" gibi bir değerin klasör
+ * dışına çıkmasını engelliyoruz (path traversal / dizin aşımı).
+ *
+ * @param string $basePath Alt klasördeki sayfalar için '../' verin.
+ */
+function avatar_url(?array $user, string $basePath = ''): string
+{
+    $file = trim((string) ($user['avatar'] ?? ''));
+
+    if ($file === '') {
+        return '';
+    }
+
+    $file = basename($file);
+
+    if (!is_file(UPLOAD_DIR . $file)) {
+        return '';
+    }
+
+    return $basePath . UPLOAD_URL . rawurlencode($file);
+}
+
+/**
+ * Avatarı olmayan kullanıcı için baş harfleri üretir ("Çılgın Yazılım" → "ÇY").
+ *
+ * mb_substr / mb_strtoupper kullanılır: normal strtoupper Türkçe
+ * harflerde ("ı", "ş") bozuk sonuç verir.
+ */
+function user_initials(?array $user): string
+{
+    $ad    = trim((string) ($user['ad'] ?? ''));
+    $soyad = trim((string) ($user['soyad'] ?? ''));
+
+    $harfler = mb_substr($ad, 0, 1, 'UTF-8') . mb_substr($soyad, 0, 1, 'UTF-8');
+    $harfler = trim($harfler);
+
+    return $harfler === '' ? '?' : mb_strtoupper($harfler, 'UTF-8');
+}
+
+/**
+ * İsteği yapan ziyaretçinin IP adresini döndürür.
+ *
+ * DİKKAT: X-Forwarded-For gibi başlıklar tarayıcı tarafından
+ * UYDURULABİLİR. Bu yüzden burada BİLEREK sadece REMOTE_ADDR
+ * okunur — yetkilendirme kararı vermek için kullanmayın; sadece
+ * kayıt/inceleme amaçlıdır.
+ */
+function client_ip(): string
+{
+    return substr((string) ($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45);
+}
+
 
 /* =====================================================================
  *  BÖLÜM 6 – PROJEYE ÖZEL FONKSİYONLAR

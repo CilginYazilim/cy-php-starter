@@ -38,7 +38,7 @@
 - {{Hedef kitle 1}}
 - {{Hedef kitle 2}}
 
-> **Klonla, `database.sql`'i içe aktar, çalıştır.** Composer yok, npm yok, internet bağlantısı bile gerekmiyor.
+> **Klonla, `kurulum/` adresini aç, çalıştır.** Composer yok, npm yok, internet bağlantısı bile gerekmiyor.
 
 ---
 
@@ -96,14 +96,14 @@ php -S 127.0.0.1:8000
 ```
 
 Tarayıcıda `http://127.0.0.1:8000/` adresini açın. Veritabanı henüz yoksa
-otomatik olarak kurulum sihirbazına (`install.php`) yönlendirilirsiniz —
+otomatik olarak kurulum sihirbazına (`kurulum/`) yönlendirilirsiniz —
 **"Kurulumu Başlat"** butonuna basmanız yeterli, veritabanı ve şema sizin
 için oluşturulur.
 
-<!-- ► install.php'yi projenizden kaldırdıysanız, bu bölümü aşağıdakiyle
+<!-- ► kurulum/ klasörünü projenizden kaldırdıysanız, bu bölümü aşağıdakiyle
      değiştirin:
 
-mysql -u root -p < database.sql
+mysql -u root -p < kurulum/database.sql
 
 sonra php -S 127.0.0.1:8000 çalıştırın.
 -->
@@ -112,13 +112,13 @@ XAMPP kullanıyorsanız projeyi `htdocs` altına koyup
 `http://localhost/{{REPO-ADI}}/` adresine gidin.
 
 > **Linux/macOS:** `upload/` klasörüne yazma izni gerekir → `chmod 755 upload`
-> **Canlıya alırken:** `install.php` dosyasını silmeyi unutmayın.
+> **Canlıya alırken:** `kurulum/` klasörünü silmeyi unutmayın (sihirbazın son adımındaki buton bunu yapar).
 
 ---
 
 ## Yapılandırma
 
-Ayarlar `install.php` sihirbazı tarafından otomatik `.env` dosyasına
+Ayarlar kurulum sihirbazı tarafından otomatik `.env` dosyasına
 yazılır (`.gitignore` içindedir, Git'e gönderilmez). Elle değiştirmek
 isterseniz `.env.example` dosyasını `.env` olarak kopyalayıp
 düzenleyin, ya da [system/config.php](system/config.php) içindeki
@@ -139,8 +139,9 @@ varsayılanları değiştirin.
 ```
 .
 ├── index.php              # Arayüz + JavaScript
-├── install.php            # Kurulum sihirbazı (canlıya çıkmadan önce silin)
-├── database.sql           # Veritabanı şeması
+├── kurulum/               # Kurulum sihirbazı (kurulum bitince silinir)
+│   ├── index.php          # 5 adımlı sihirbaz
+│   └── database.sql       # Veritabanı şeması
 ├── .env.example           # Elle kurulum için ortam değişkeni şablonu
 ├── system/
 │   ├── config.php         # .env'i okur, PDO bağlantısını kurar

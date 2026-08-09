@@ -213,7 +213,11 @@ try {
         || str_contains($e->getMessage(), 'Unknown database');
 
     if ($isUnknownDatabase) {
-        $installUrl = rtrim(str_replace(basename($_SERVER['SCRIPT_NAME'] ?? ''), '', $_SERVER['SCRIPT_NAME'] ?? ''), '/') . '/install.php';
+        // Betik "yonetim/" gibi bir alt klasörden çağrılmış olabilir;
+        // bu yüzden kurulum bağlantısını sabit değil göreli veriyoruz.
+        $inSubdir   = substr_count(trim(str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? ''), '/'), '/') > 0
+            && basename(dirname((string) ($_SERVER['SCRIPT_NAME'] ?? ''))) === 'yonetim';
+        $installUrl = ($inSubdir ? '../' : '') . 'kurulum/';
         echo '<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8">'
             . '<title>Kurulum gerekli</title>'
             . '<style>body{font-family:system-ui,sans-serif;background:#f2f7fd;color:#0f172a;'

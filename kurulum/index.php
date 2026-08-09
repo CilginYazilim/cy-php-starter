@@ -9,7 +9,13 @@
  *    2) Veritabanı     → bilgiler girilir ve BAĞLANTI HEMEN TEST EDİLİR
  *    3) Site Ayarları  → site adı, açıklama, adres
  *    4) Yönetici       → admin hesabı; bu adımda kurulum çalıştırılır
- *    5) Tamamlandı     → özet ve güvenlik uyarısı
+ *    5) Tamamlandı     → özet + KURULUM KLASÖRÜNÜ SİL butonu
+ *
+ *  NEDEN AYRI BİR KLASÖR?
+ *    Kurulumla ilgili HER ŞEY (bu dosya + database.sql) tek bir
+ *    "kurulum/" klasöründe durur. İş bittiğinde son adımdaki tek bir
+ *    butonla klasörün tamamı silinir; proje kökünde kuruluma ait hiçbir
+ *    dosya kalmaz. Tertemiz bir canlı ortam.
  *
  *  TASARIM NOTLARI:
  *
@@ -27,23 +33,27 @@
  *    sayfayı yenilediğinde "formu tekrar gönder" uyarısı almaz ve
  *    aynı işlem iki kez çalışmaz.
  *
- *  ► CANLI ORTAMA ÇIKARKEN BU DOSYAYI SİLİN. Kurulum tamamlandıysa
- *    dosya kendini otomatik kilitler, ama silmek en güvenlisidir.
+ *  ► CANLI ORTAMA ÇIKARKEN BU KLASÖRÜ SİLİN. Kurulum tamamlandıysa
+ *    sihirbaz kendini otomatik kilitler, ama silmek en güvenlisidir —
+ *    son adımdaki buton bunu sizin için yapar.
  * =====================================================================
  */
 
 declare(strict_types=1);
 
+// dirname(__DIR__) = proje kökü ("kurulum" klasörünün bir üstü).
 // Bu iki dosyanın üst düzey yan etkisi yoktur (sadece fonksiyon/sabit
 // tanımı içerirler), config.php olmadan güvenle yüklenebilirler.
-require_once __DIR__ . '/system/function.php';
-require_once __DIR__ . '/system/auth.php';
+require_once dirname(__DIR__) . '/system/function.php';
+require_once dirname(__DIR__) . '/system/auth.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-const ENV_PATH      = __DIR__ . '/.env';
+/** Proje kökü — .env ve upload/ burada. */
+const ROOT_PATH     = __DIR__ . '/..';
+const ENV_PATH      = __DIR__ . '/../.env';
 const SCHEMA_PATH   = __DIR__ . '/database.sql';
 const IDENTIFIER_RE = '/^[A-Za-z_][A-Za-z0-9_]*$/';
 
@@ -96,7 +106,7 @@ if ($existingEnv !== []) {
     }
 }
 
-// Bilerek yeniden kurmak isteyen geliştirici için: install.php?yeniden=1
+// Bilerek yeniden kurmak isteyen geliştirici için: index.php?yeniden=1
 $forceReinstall = isset($_GET['yeniden']);
 
 // Hangi adımdayız?
@@ -113,6 +123,45 @@ if (!array_key_exists($adim, ADIMLAR)) {
 $yeniBitti = ($adim === 'tamam' && !empty($_SESSION['kurulum_sonuc']));
 
 $kilitli = $alreadyInstalled && !$forceReinstall && !$yeniBitti;
+
+
+/* =====================================================================
+ *  TEMİZLİK: KURULUM KLASÖRÜNÜ SİL
+ * ---------------------------------------------------------------------
+ *  Bu blok BİLEREK normal form işlemenin ÜSTÜNDE duruyor: sihirbaz
+ *  kilitliyken de (kurulum çoktan bitmişken) klasörü silebilelim.
+ *
+ *  ÜÇ KATLI GÜVENLİK — üçü de sağlanmadan hiçbir şey silinmez:
+ *    1. İstek POST olmalı (link tıklamasıyla tetiklenemez)
+ *    2. CSRF anahtarı doğru olmalı (başka site tetikleyemez)
+ *    3. Kurulum GERÇEKTEN bitmiş olmalı (veritabanında admin var)
+ *       → Yarım kalmış bir kurulumda kimse şemayı silemez.
+ * ------------------------------------------------------------------ */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['islem'] ?? '') === 'temizle') {
+
+    $token = $_POST['csrf_token'] ?? '';
+    $tokenGecerli = is_string($token)
+        && !empty($_SESSION['csrf_token'])
+        && hash_equals($_SESSION['csrf_token'], $token);
+
+    if (!$tokenGecerli) {
+        $errors[] = 'Oturum doğrulaması başarısız. Sayfayı yenileyip tekrar deneyin.';
+    } elseif (!$alreadyInstalled && !$yeniBitti) {
+        $errors[] = 'Kurulum tamamlanmadan kurulum klasörü silinemez.';
+    } else {
+        // Oturumdaki kurulum verisini de temizle (artık gerekmiyor).
+        unset($_SESSION['kurulum'], $_SESSION['kurulum_sonuc']);
+
+        if (remove_directory(__DIR__)) {
+            // Klasör gitti; artık bu betik de yok. Siteye yönlendir.
+            header('Location: ../index.php?kurulum=temizlendi');
+            exit;
+        }
+
+        $errors[] = 'Klasör silinemedi. Dosya izinlerini kontrol edin veya '
+            . '"kurulum" klasörünü FTP/dosya yöneticisi ile elle silin.';
+    }
+}
 
 
 /* =====================================================================
@@ -136,18 +185,23 @@ $checks = [
     ],
     [
         'label' => 'Proje klasörüne yazma izni (.env için)',
-        'ok'    => is_writable(__DIR__),
-        'note'  => is_writable(__DIR__) ? '' : 'Klasör izinlerini kontrol edin.',
+        'ok'    => is_writable(ROOT_PATH),
+        'note'  => is_writable(ROOT_PATH) ? '' : 'Klasör izinlerini kontrol edin.',
     ],
     [
-        'label' => 'database.sql dosyası mevcut',
+        'label' => 'kurulum/database.sql dosyası mevcut',
         'ok'    => is_file(SCHEMA_PATH),
         'note'  => is_file(SCHEMA_PATH) ? '' : 'Şema dosyası bulunamadı.',
     ],
     [
         'label' => 'upload/ klasörü yazılabilir',
-        'ok'    => !is_dir(__DIR__ . '/upload') || is_writable(__DIR__ . '/upload'),
+        'ok'    => !is_dir(ROOT_PATH . '/upload') || is_writable(ROOT_PATH . '/upload'),
         'note'  => 'Avatar ve görsel yükleme için gerekli.',
+    ],
+    [
+        'label' => 'kurulum/ klasörü silinebilir',
+        'ok'    => is_writable(ROOT_PATH) && is_writable(__DIR__),
+        'note'  => 'Kurulum bitince klasörü tek tıkla silebilmek için gerekli.',
     ],
 ];
 $allChecksOk = !in_array(false, array_column($checks, 'ok'), true);
@@ -197,7 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli) {
 
             if ($errors === []) {
                 $kurulum['db'] = compact('db_host', 'db_name', 'db_user', 'db_pass');
-                header('Location: install.php?adim=site');
+                header('Location: index.php?adim=site');
                 exit;
             }
         }
@@ -214,7 +268,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli) {
 
             if ($errors === []) {
                 $kurulum['site'] = compact('site_adi', 'site_aciklama', 'site_url');
-                header('Location: install.php?adim=yonetici');
+                header('Location: index.php?adim=yonetici');
                 exit;
             }
         }
@@ -240,7 +294,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli) {
 
             // Önceki adımlar atlanmışsa (doğrudan URL ile gelinmişse) geri gönder.
             if (empty($kurulum['db']) || empty($kurulum['site'])) {
-                header('Location: install.php?adim=veritabani');
+                header('Location: index.php?adim=veritabani');
                 exit;
             }
 
@@ -307,7 +361,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli) {
                     ];
                     unset($_SESSION['kurulum']);
 
-                    header('Location: install.php?adim=tamam');
+                    header('Location: index.php?adim=tamam');
                     exit;
 
                 } catch (PDOException $e) {
@@ -483,7 +537,7 @@ function split_sql_statements(string $sql): array
 function write_env_file(string $path, array $values): void
 {
     $lines = [
-        '# Bu dosya install.php tarafından otomatik oluşturuldu.',
+        '# Bu dosya kurulum sihirbazı tarafından otomatik oluşturuldu.',
         '# system/config.php tarafından okunur. .gitignore içinde olduğu',
         '# için Git\'e gönderilmez — şifreniz burada güvende kalır.',
         '',
@@ -499,6 +553,102 @@ function write_env_file(string $path, array $values): void
     if (file_put_contents($path, implode("\n", $lines) . "\n") === false) {
         throw new RuntimeException('.env dosyası yazılamadı. Klasör izinlerini kontrol edin.');
     }
+}
+
+/**
+ * Silinecek dosyaların listesini (ekranda göstermek için) döndürür.
+ *
+ * @return string[] Proje köküne göreli yollar
+ */
+function cleanup_targets(): array
+{
+    $hedefler = [];
+
+    foreach (scandir(__DIR__) ?: [] as $ad) {
+        if ($ad === '.' || $ad === '..') {
+            continue;
+        }
+        $hedefler[] = 'kurulum/' . $ad;
+    }
+
+    sort($hedefler);
+    $hedefler[] = 'kurulum/  (klasörün kendisi)';
+
+    return $hedefler;
+}
+
+/**
+ * Bir klasörü içindekilerle birlikte siler (recursive / özyinelemeli).
+ *
+ * NASIL ÇALIŞIR?
+ *   Bir klasör, boşalmadan silinemez. Bu yüzden önce içeriği gezip
+ *   dosyaları tek tek sileriz; alt klasör görürsek fonksiyon KENDİNİ
+ *   çağırır (özyineleme) ve en sonda boşalan klasörü rmdir() ile
+ *   kaldırırız.
+ *
+ * GÜVENLİK: Sembolik bağlantıların (symlink) İÇİNE girmeyiz —
+ * is_link() kontrolü olmasaydı, klasöre yerleştirilmiş bir bağlantı
+ * sayesinde sunucudaki bambaşka bir dizin silinebilirdi.
+ *
+ * NOT: Çalışan betiğin kendisini (index.php) silmek sorun değildir;
+ * PHP dosyayı zaten belleğe almıştır ve sonuna kadar çalışmaya
+ * devam eder.
+ *
+ * WINDOWS AYRINTISI (XAMPP kullananlar için önemli):
+ * Windows'ta açık tutamağı olan bir dosya "silinmek üzere işaretlenir"
+ * ama tutamak kapanana kadar klasör listesinden düşmez. Şu anda
+ * çalışan index.php tam olarak bu durumdadır: unlink() başarılı döner,
+ * fakat dosya hâlâ görünür olduğu için rmdir() o an başarısız olur.
+ *
+ * Bu yüzden başarıyı "klasör boş mu" diye BAKARAK değil, silme
+ * çağrılarının SONUCUNA bakarak ölçüyoruz. Klasörün kendisini
+ * kaldıramazsak, son denemeyi betik bittikten sonra (shutdown)
+ * yapıyoruz. Güvenlik açısından önemli olan dosyaların gitmesidir;
+ * geride kalan boş bir klasör zarar vermez.
+ */
+function remove_directory(string $path): bool
+{
+    if (!is_dir($path)) {
+        return false;
+    }
+
+    $basarili = true;
+
+    foreach (scandir($path) ?: [] as $ad) {
+        if ($ad === '.' || $ad === '..') {
+            continue;
+        }
+
+        $tam = $path . DIRECTORY_SEPARATOR . $ad;
+
+        if (is_dir($tam) && !is_link($tam)) {
+            if (!remove_directory($tam)) {
+                $basarili = false;
+            }
+            continue;
+        }
+
+        if (!@unlink($tam)) {
+            $basarili = false;
+        }
+    }
+
+    // Tek bir dosya bile silinemediyse dürüstçe hata verelim.
+    if (!$basarili) {
+        return false;
+    }
+
+    if (@rmdir($path)) {
+        return true;
+    }
+
+    // İçerik gitti ama klasör şu an kaldırılamadı (bkz. Windows notu).
+    // Dosya tutamakları kapandıktan sonra tekrar dene.
+    register_shutdown_function(static function () use ($path): void {
+        @rmdir($path);
+    });
+
+    return true;
 }
 
 /** Formda önceki değeri göstermek için: POST > oturum > varsayılan. */
@@ -520,9 +670,9 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <title>Kurulum Sihirbazı | Çılgın Yazılım</title>
-    <link rel="icon" type="image/png" href="assets/images/logo.png">
-    <link rel="stylesheet" href="assets/css/bootstrap.min.css">
-    <link rel="stylesheet" href="assets/css/cilginyazilim.css">
+    <link rel="icon" type="image/png" href="../assets/images/logo.png">
+    <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../assets/css/cilginyazilim.css">
     <style>
         /* Adım göstergesi — sihirbaza özel, tasarım kalıbını kirletmesin
            diye burada duruyor. */
@@ -553,6 +703,14 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
             min-width: 1.25rem;
             opacity: .8;
         }
+        /* Silinecek dosya listesi kutusu */
+        .cy-temizlik {
+            background: var(--cy-surface-soft);
+            border: 1px dashed var(--cy-border);
+            border-radius: var(--cy-radius-sm);
+            padding: .85rem 1rem;
+        }
+        .cy-temizlik ul { padding-left: 1.1rem; }
     </style>
 </head>
 <body class="cy-app">
@@ -564,7 +722,7 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
             <div class="cy-card__header">
                 <div class="cy-brand">
                     <span class="cy-brand__mark">
-                        <img src="assets/images/logo.png" alt="Çılgın Yazılım logosu">
+                        <img src="../assets/images/logo.png" alt="Çılgın Yazılım logosu">
                     </span>
                     <div>
                         <h1 class="cy-brand__title">Kurulum Sihirbazı</h1>
@@ -591,6 +749,16 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
 
             <div class="cy-card__body">
 
+            <?php if ($errors !== []): ?>
+                <div class="alert alert-danger" role="alert">
+                    <ul class="mb-0 ps-3">
+                        <?php foreach ($errors as $error): ?>
+                            <li><?= e($error) ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            <?php endif; ?>
+
             <?php if ($kilitli): ?>
                 <!-- ============ KİLİTLİ ============ -->
                 <div class="alert alert-success" role="alert">
@@ -599,27 +767,28 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                 </div>
                 <div class="alert alert-warning" role="alert">
                     Güvenliğiniz için kurulum sihirbazı kilitlendi.
-                    <strong>Bu dosyayı (<code>install.php</code>) silmenizi öneririz.</strong>
+                    <strong>Bu klasörü (<code>kurulum/</code>) silmenizi öneririz.</strong>
                 </div>
+
+                <!-- Klasörü silme formu: kurulum bittiği doğrulandığı için burada da sunuluyor. -->
+                <form method="post" action="index.php" class="mb-3"
+                      onsubmit="return confirm('kurulum/ klasörü kalıcı olarak silinecek. Onaylıyor musunuz?');">
+                    <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                    <input type="hidden" name="islem" value="temizle">
+                    <button type="submit" class="btn btn-danger cy-btn">
+                        🧹 Kurulum klasörünü şimdi sil
+                    </button>
+                </form>
+
                 <div class="d-flex flex-wrap gap-2">
-                    <a href="giris.php" class="btn cy-btn cy-btn--primary">Giriş Yap</a>
-                    <a href="index.php" class="btn btn-outline-secondary cy-btn">Siteyi Gör</a>
-                    <a href="install.php?yeniden=1&adim=gereksinimler" class="btn btn-outline-danger cy-btn btn-sm ms-auto">
+                    <a href="../giris.php" class="btn cy-btn cy-btn--primary">Giriş Yap</a>
+                    <a href="../index.php" class="btn btn-outline-secondary cy-btn">Siteyi Gör</a>
+                    <a href="index.php?yeniden=1&adim=gereksinimler" class="btn btn-outline-danger cy-btn btn-sm ms-auto">
                         Yine de yeniden kur
                     </a>
                 </div>
 
             <?php else: ?>
-
-                <?php if ($errors !== []): ?>
-                    <div class="alert alert-danger" role="alert">
-                        <ul class="mb-0 ps-3">
-                            <?php foreach ($errors as $error): ?>
-                                <li><?= e($error) ?></li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </div>
-                <?php endif; ?>
 
                 <?php if ($forceReinstall && $alreadyInstalled && $adim !== 'tamam'): ?>
                     <div class="alert alert-danger" role="alert">
@@ -656,7 +825,7 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                     </ul>
 
                     <?php if ($allChecksOk): ?>
-                        <a href="install.php?adim=veritabani<?= $forceReinstall ? '&yeniden=1' : '' ?>"
+                        <a href="index.php?adim=veritabani<?= $forceReinstall ? '&yeniden=1' : '' ?>"
                            class="btn cy-btn cy-btn--primary">Kuruluma Başla →</a>
                     <?php else: ?>
                         <div class="alert alert-danger mb-3" role="alert">
@@ -673,7 +842,7 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                         <strong>Devam etmeden önce bağlantı test edilir.</strong>
                     </p>
 
-                    <form method="post" action="install.php?adim=veritabani<?= $forceReinstall ? '&yeniden=1' : '' ?>" novalidate>
+                    <form method="post" action="index.php?adim=veritabani<?= $forceReinstall ? '&yeniden=1' : '' ?>" novalidate>
                         <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
 
                         <div class="row g-3 mb-4">
@@ -703,7 +872,7 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                         </div>
 
                         <div class="d-flex justify-content-between">
-                            <a href="install.php?adim=gereksinimler<?= $forceReinstall ? '&yeniden=1' : '' ?>"
+                            <a href="index.php?adim=gereksinimler<?= $forceReinstall ? '&yeniden=1' : '' ?>"
                                class="btn btn-outline-secondary cy-btn">← Geri</a>
                             <button type="submit" class="btn cy-btn cy-btn--primary">Bağlantıyı Test Et ve Devam →</button>
                         </div>
@@ -725,7 +894,7 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                         bakım modu…) kurulumdan sonra yönetim panelinden düzenleyebilirsiniz.
                     </p>
 
-                    <form method="post" action="install.php?adim=site<?= $forceReinstall ? '&yeniden=1' : '' ?>" novalidate>
+                    <form method="post" action="index.php?adim=site<?= $forceReinstall ? '&yeniden=1' : '' ?>" novalidate>
                         <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
 
                         <div class="mb-3">
@@ -749,7 +918,7 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                         </div>
 
                         <div class="d-flex justify-content-between">
-                            <a href="install.php?adim=veritabani<?= $forceReinstall ? '&yeniden=1' : '' ?>"
+                            <a href="index.php?adim=veritabani<?= $forceReinstall ? '&yeniden=1' : '' ?>"
                                class="btn btn-outline-secondary cy-btn">← Geri</a>
                             <button type="submit" class="btn cy-btn cy-btn--primary">Devam →</button>
                         </div>
@@ -763,7 +932,7 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                         ayarları ve diğer kullanıcıları yönetebilir.
                     </p>
 
-                    <form method="post" action="install.php?adim=yonetici<?= $forceReinstall ? '&yeniden=1' : '' ?>" novalidate>
+                    <form method="post" action="index.php?adim=yonetici<?= $forceReinstall ? '&yeniden=1' : '' ?>" novalidate>
                         <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
 
                         <div class="row g-3 mb-4">
@@ -797,7 +966,7 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                         </div>
 
                         <div class="d-flex justify-content-between">
-                            <a href="install.php?adim=site<?= $forceReinstall ? '&yeniden=1' : '' ?>"
+                            <a href="index.php?adim=site<?= $forceReinstall ? '&yeniden=1' : '' ?>"
                                class="btn btn-outline-secondary cy-btn">← Geri</a>
                             <button type="submit" class="btn cy-btn cy-btn--primary">Kurulumu Tamamla ✓</button>
                         </div>
@@ -824,16 +993,39 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                         <dd>Kurulumda belirlediğiniz parola</dd>
                     </dl>
 
+                    <!-- ---------- TEMİZLİK ---------- -->
                     <div class="alert alert-danger" role="alert">
-                        <strong>Son adım — güvenlik:</strong> Bu dosyayı
-                        (<code>install.php</code>) şimdi silin. Sunucuda kalırsa,
+                        <strong>Son adım — güvenlik:</strong> Kuruluma ait dosyaların
+                        tamamı <code>kurulum/</code> klasöründe. Sunucuda kalırsa,
                         veritabanınızı sıfırlayıp kendini yönetici yapmak isteyen
-                        birine kapı açık kalır.
+                        birine kapı açık kalır. Aşağıdaki buton klasörü tamamen siler.
                     </div>
 
+                    <div class="cy-temizlik mb-4">
+                        <p class="mb-2 fw-semibold">Silinecekler:</p>
+                        <ul class="mb-0 small cy-muted">
+                            <?php foreach (cleanup_targets() as $hedef): ?>
+                                <li><code><?= e($hedef) ?></code></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+
+                    <form method="post" action="index.php" class="mb-4"
+                          onsubmit="return confirm('kurulum/ klasörü ve içindeki tüm dosyalar kalıcı olarak silinecek. Onaylıyor musunuz?');">
+                        <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                        <input type="hidden" name="islem" value="temizle">
+                        <button type="submit" class="btn btn-danger cy-btn">
+                            🧹 Kurulum klasörünü sil ve siteye git
+                        </button>
+                        <div class="form-text mt-2">
+                            Şema dosyasını saklamak isterseniz önce
+                            <code>kurulum/database.sql</code> dosyasının bir kopyasını alın.
+                        </div>
+                    </form>
+
                     <div class="d-flex flex-wrap gap-2">
-                        <a href="giris.php" class="btn cy-btn cy-btn--primary">Giriş Yap →</a>
-                        <a href="index.php" class="btn btn-outline-secondary cy-btn">Siteyi Gör</a>
+                        <a href="../giris.php" class="btn cy-btn cy-btn--primary">Giriş Yap →</a>
+                        <a href="../index.php" class="btn btn-outline-secondary cy-btn">Siteyi Gör</a>
                     </div>
                 <?php endif; ?>
 
