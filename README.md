@@ -167,12 +167,14 @@ tek bir dosya bile kalmaz.
 │   └── database.sql           # Şema: ayarlar + kullanicilar + mesajlar
 │
 ├── yonetim/                   # YÖNETİM PANELİ (giriş gerektirir)
-│   ├── _ust.php               # Ortak üst şablon: menü, yetki kontrolü
-│   ├── _alt.php               # Ortak alt şablon: JS yardımcıları (CY nesnesi)
-│   ├── index.php              # Özet / gösterge paneli
+│   ├── _ust.php               # Panel kabuğu: kenar çubuğu, üst çubuk, yetki
+│   ├── _alt.php               # Panel kabuğu: JS yardımcıları (CY nesnesi)
+│   ├── index.php              # Kontrol paneli: kutular, grafik, son hareketler
+│   ├── kullanicilar.php       # Kullanıcı CRUD (DataTables + süzgeç + modal)
+│   ├── mesajlar.php           # Gelen kutusu (okundu/toplu işlem/silme)
 │   ├── ayarlar.php            # Ayar formu (tablodan otomatik üretilir)
-│   ├── kullanicilar.php       # Kullanıcı CRUD (DataTables + modal)
-│   └── profil.php             # Kendi profilini düzenleme
+│   ├── sistem.php             # Sistem bilgisi + sağlık kontrolü
+│   └── profil.php             # Kendi profilini düzenleme + avatar
 │
 ├── docs/
 │   ├── README-taslak.md       # Yeni proje için README taslağı
@@ -183,6 +185,7 @@ tek bir dosya bile kalmaz.
 │   ├── function.php           # Yardımcı fonksiyonlar (CSRF, doğrulama, JSON)
 │   ├── settings.php           # setting(), settings_save() — ayar yönetimi
 │   ├── auth.php               # auth_login(), require_role() — oturum/yetki
+│   ├── panel.php              # Panel yardımcıları: ikonlar, menü, istatistik
 │   └── ajax.php               # AJAX yönlendirici
 │
 ├── assets/
@@ -190,6 +193,7 @@ tek bir dosya bile kalmaz.
 │   │   ├── bootstrap.min.css
 │   │   ├── dataTables.bootstrap5.min.css
 │   │   ├── cilginyazilim.css  # ⚠️ MARKA KALIBI — değiştirmeyin
+│   │   ├── cy-admin.css       # Panel teması (AdminLTE düzeni) — sadece yonetim/
 │   │   └── style.css          # ◄ Projeye özel stiller buraya
 │   ├── js/
 │   │   ├── jquery-3.7.0.js
@@ -206,7 +210,8 @@ tek bir dosya bile kalmaz.
 **Yükleme sırası önemlidir:**
 
 ```
-CSS:  bootstrap → dataTables → cilginyazilim → style
+CSS (site):  bootstrap → dataTables → cilginyazilim → style
+CSS (panel): bootstrap → dataTables → cilginyazilim → cy-admin → style
 JS:   jQuery → bootstrap.bundle → dataTables → dataTables.bootstrap5
 ```
 

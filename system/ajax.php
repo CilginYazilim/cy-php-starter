@@ -32,6 +32,10 @@ declare(strict_types=1);
 // config.php; function.php, settings.php ve auth.php'yi de yükler.
 require __DIR__ . '/config.php';
 
+/* Panel yardımcıları (time_ago, table_exists, panel_icon ...).
+ * Yönetim paneli istekleri bunları kullandığı için burada da gerekli. */
+require_once __DIR__ . '/panel.php';
+
 /* ---------------------------------------------------------------------
  *  GÜVENLİK KONTROLÜ 1: Sadece POST kabul edilir.
  * ---------------------------------------------------------------------
@@ -79,6 +83,45 @@ try {
 
         case 'kullanici_sil':
             handle_kullanici_sil($db);
+            break;
+
+        case 'kullanici_durum':
+            handle_kullanici_durum($db);
+            break;
+
+        /* --- Mesaj yönetimi (yonetim/mesajlar.php kullanır) ---
+         * Hepsi require_role_json('admin') ile korunur. */
+        case 'mesaj_list':
+            handle_mesaj_list($db);
+            break;
+
+        case 'mesaj_getir':
+            handle_mesaj_getir($db);
+            break;
+
+        case 'mesaj_okundu':
+            handle_mesaj_okundu($db);
+            break;
+
+        case 'mesaj_sil':
+            handle_mesaj_sil($db);
+            break;
+
+        case 'mesaj_toplu':
+            handle_mesaj_toplu($db);
+            break;
+
+        /* --- Görsel yükleme (profil avatarı / site logosu) --- */
+        case 'avatar_yukle':
+            handle_avatar_yukle($db);
+            break;
+
+        case 'avatar_sil':
+            handle_avatar_sil($db);
+            break;
+
+        case 'logo_yukle':
+            handle_logo_yukle($db);
             break;
 
         /* --- İletişim formu (iletisim.php kullanır) ---
@@ -290,23 +333,41 @@ function handle_kullanici_list(PDO $db): void
     $orderBy  = $sortableColumns[$orderColumn] ?? 'id';
     $orderDir = ($orderDir === 'asc') ? 'ASC' : 'DESC';
 
-    $where  = '';
-    $params = [];
+    $kosullar = [];
+    $params   = [];
+
+    /* Ekstra süzgeçler: sayfadaki rol ve durum açılır menüleri.
+     * Değerler beyaz listeden geçirilir; listede yoksa süzgeç
+     * yokmuş gibi davranılır (hatalı istekte tüm kayıtları
+     * sızdırmak yerine sessizce yok saymak yeterlidir). */
+    $filtreRol = (string) ($_POST['filtre_rol'] ?? '');
+    if (array_key_exists($filtreRol, auth_role_labels())) {
+        $kosullar[]        = 'rol = :f_rol';
+        $params[':f_rol']  = $filtreRol;
+    }
+
+    $filtreDurum = (string) ($_POST['filtre_durum'] ?? '');
+    if (array_key_exists($filtreDurum, auth_status_labels())) {
+        $kosullar[]          = 'durum = :f_durum';
+        $params[':f_durum']  = $filtreDurum;
+    }
 
     if ($search !== '') {
         // NOT: EMULATE_PREPARES kapalıyken aynı yer tutucu birden fazla
         // kez kullanılamaz; her biri için ayrı isim veriyoruz.
-        $where = ' WHERE ad LIKE :s1 OR soyad LIKE :s2 OR eposta LIKE :s3 OR kullanici_adi LIKE :s4';
+        $kosullar[] = '(ad LIKE :s1 OR soyad LIKE :s2 OR eposta LIKE :s3 OR kullanici_adi LIKE :s4)';
         $desen = '%' . escape_like($search) . '%';
-        $params = [':s1' => $desen, ':s2' => $desen, ':s3' => $desen, ':s4' => $desen];
+        $params += [':s1' => $desen, ':s2' => $desen, ':s3' => $desen, ':s4' => $desen];
     }
+
+    $where = $kosullar === [] ? '' : ' WHERE ' . implode(' AND ', $kosullar);
 
     // Filtrelenmiş toplam (sayfalama bunu kullanır).
     $countStmt = $db->prepare('SELECT COUNT(*) FROM kullanicilar' . $where);
     $countStmt->execute($params);
     $filtered = (int) $countStmt->fetchColumn();
 
-    $sql = 'SELECT id, ad, soyad, kullanici_adi, eposta, rol, durum, son_giris
+    $sql = 'SELECT id, ad, soyad, kullanici_adi, eposta, avatar, rol, durum, son_giris
               FROM kullanicilar' . $where
         . sprintf(' ORDER BY `%s` %s', $orderBy, $orderDir);
 
@@ -344,18 +405,43 @@ function handle_kullanici_list(PDO $db): void
             : '<button type="button" class="cy-btn-icon cy-btn-icon--delete js-sil" data-id="' . $id . '"'
                 . ' data-label="' . e($tamAd) . '" title="Sil">&#128465;</button>';
 
+        /* Hızlı durum düğmesi: aktifse pasife alır, değilse aktive eder.
+         * Kendi hesabınızda kapalıdır (kendinizi kilitleyemezsiniz). */
+        $hedefDurum = ($row['durum'] === 'aktif') ? 'pasif' : 'aktif';
+        $durumButonu = $kendisi
+            ? '<button type="button" class="cy-btn-icon" disabled title="Kendi durumunuzu değiştiremezsiniz">&#9210;</button>'
+            : '<button type="button" class="cy-btn-icon cy-btn-icon--view js-durum" data-id="' . $id . '"'
+                . ' data-durum="' . $hedefDurum . '"'
+                . ' title="' . ($row['durum'] === 'aktif' ? 'Pasife al' : 'Aktifleştir') . '">'
+                . ($row['durum'] === 'aktif' ? '&#10005;' : '&#10003;') . '</button>';
+
+        // Avatar: panel "yonetim/" klasöründen çağrıldığı için '../' öneki.
+        $avatar = avatar_url($row, '../');
+        $avatarHtml = $avatar !== ''
+            ? '<img src="' . e($avatar) . '" class="cy-avatar" alt="" style="width:36px;height:36px">'
+            : '<span class="cy-avatar cy-avatar--initial" style="width:36px;height:36px;font-size:.85rem">'
+                . e(user_initials($row)) . '</span>';
+
+        $sonGiris = $row['son_giris'] !== null
+            ? '<br><small class="cy-muted">Son giriş: ' . e(time_ago($row['son_giris'])) . '</small>'
+            : '<br><small class="cy-muted">Hiç giriş yapmadı</small>';
+
         $data[] = [
             $id,
-            '<span class="cy-name">' . e($tamAd) . '</span>'
-                . ' <small class="cy-muted">@' . e((string) $row['kullanici_adi']) . '</small>'
-                . ($kendisi ? ' <span class="cy-badge cy-badge--soft" style="font-size:.7rem">siz</span>' : ''),
+            '<div class="d-flex align-items-center gap-2">' . $avatarHtml . '<div>'
+                . '<span class="cy-name">' . e($tamAd) . '</span>'
+                . ($kendisi ? ' <span class="cy-badge cy-badge--soft" style="font-size:.7rem">siz</span>' : '')
+                . '<br><small class="cy-muted">@' . e((string) $row['kullanici_adi']) . '</small>'
+                . '</div></div>',
             e((string) $row['eposta']),
             '<span class="cy-badge cy-badge--soft">'
                 . e($rolEtiketleri[$row['rol']] ?? (string) $row['rol']) . '</span>',
             '<span class="cy-badge" style="' . $durumRengi . '">'
-                . e($durumEtiketleri[$row['durum']] ?? (string) $row['durum']) . '</span>',
+                . e($durumEtiketleri[$row['durum']] ?? (string) $row['durum']) . '</span>'
+                . $sonGiris,
             '<div class="cy-actions">'
                 . '<button type="button" class="cy-btn-icon cy-btn-icon--edit js-duzenle" data-id="' . $id . '" title="Düzenle">&#9998;</button>'
+                . $durumButonu
                 . $silButonu
             . '</div>',
         ];
@@ -578,6 +664,458 @@ function handle_kullanici_sil(PDO $db): void
     }
 
     json_success('Kullanıcı silindi.', ['id' => $id]);
+}
+
+
+/**
+ * Kullanıcının durumunu tek tıkla değiştirir (aktif ↔ pasif).
+ *
+ * Liste ekranında her seferinde düzenleme penceresini açmak yerine
+ * hızlı bir anahtar sunmak içindir. Kurallar handle_kullanici_kaydet()
+ * ile AYNIDIR: kimse kendi hesabını kapatamaz.
+ */
+function handle_kullanici_durum(PDO $db): void
+{
+    require_csrf();
+    require_role_json('admin');
+
+    $id = post_id('id');
+    if ($id === null) {
+        json_error('Geçersiz kullanıcı numarası.');
+    }
+
+    $durum = (string) ($_POST['durum'] ?? '');
+    if (!array_key_exists($durum, auth_status_labels())) {
+        json_error('Geçersiz durum.', 422);
+    }
+
+    if ($id === auth_id() && $durum !== 'aktif') {
+        json_error('Kendi hesabınızı pasife alamazsınız.', 422);
+    }
+
+    $user = find_user($db, $id);
+    if ($user === null) {
+        json_error('Kullanıcı bulunamadı.', 404);
+    }
+
+    // Son aktif yöneticiyi pasife almak, yönetilemeyen bir site bırakır.
+    if ($user['rol'] === 'admin' && $durum !== 'aktif' && admin_count($db) <= 1) {
+        json_error('Sistemdeki son yöneticiyi pasife alamazsınız.', 422);
+    }
+
+    $db->prepare('UPDATE kullanicilar SET durum = :durum WHERE id = :id')
+       ->execute([':durum' => $durum, ':id' => $id]);
+
+    json_success('Durum güncellendi.', ['id' => $id, 'durum' => $durum]);
+}
+
+
+/* =====================================================================
+ *  MESAJ YÖNETİMİ
+ * =====================================================================
+ *  yonetim/mesajlar.php sayfasını besler. İletişim formundan gelen
+ *  mesajlar okunur, okundu işaretlenir ve silinir.
+ *
+ *  XSS NOTU: Mesaj metni veritabanında HAM saklanır (kaydederken
+ *  temizlemek veriyi bozar). Bu yüzden EKRANA BASILIRKEN kaçışlamak
+ *  ZORUNLUDUR. Liste sunucudan hazır HTML döndürdüğü için burada
+ *  e(), tek mesaj görüntülemede ise JavaScript tarafında .text()
+ *  kullanılır — ikisi de aynı korumayı sağlar.
+ * ------------------------------------------------------------------ */
+
+/**
+ * DataTables için mesaj listesi.
+ */
+function handle_mesaj_list(PDO $db): void
+{
+    require_csrf();
+    require_role_json('admin');
+
+    // Sıralanabilir sütunlar beyaz listesi (SQL Injection koruması).
+    // 0 = onay kutusu, 5 = işlem butonları → sıralanamaz.
+    $sortableColumns = [
+        1 => 'ad',
+        2 => 'konu',
+        3 => 'okundu',
+        4 => 'created_at',
+    ];
+
+    $draw   = (int) ($_POST['draw'] ?? 1);
+    $start  = max(0, (int) ($_POST['start'] ?? 0));
+    $length = (int) ($_POST['length'] ?? 10);
+    $search = trim((string) ($_POST['search']['value'] ?? ''));
+
+    $orderColumn = (int) ($_POST['order'][0]['column'] ?? 4);
+    $orderDir    = strtolower((string) ($_POST['order'][0]['dir'] ?? 'desc'));
+
+    $orderBy  = $sortableColumns[$orderColumn] ?? 'created_at';
+    $orderDir = ($orderDir === 'asc') ? 'ASC' : 'DESC';
+
+    /* Ekstra filtre: sayfadaki "Tümü / Okunmamış / Okunmuş" seçimi.
+     * Değeri doğrudan sorguya koymuyoruz; sadece hangi SABİT koşulun
+     * ekleneceğini belirliyor. */
+    $filtre  = (string) ($_POST['filtre'] ?? '');
+    $kosullar = [];
+    $params   = [];
+
+    if ($filtre === 'okunmamis') {
+        $kosullar[] = 'okundu = 0';
+    } elseif ($filtre === 'okunmus') {
+        $kosullar[] = 'okundu = 1';
+    }
+
+    if ($search !== '') {
+        // EMULATE_PREPARES kapalıyken aynı yer tutucu iki kez kullanılamaz.
+        $kosullar[] = '(ad LIKE :s1 OR eposta LIKE :s2 OR konu LIKE :s3 OR mesaj LIKE :s4)';
+        $desen = '%' . escape_like($search) . '%';
+        $params += [':s1' => $desen, ':s2' => $desen, ':s3' => $desen, ':s4' => $desen];
+    }
+
+    $where = $kosullar === [] ? '' : ' WHERE ' . implode(' AND ', $kosullar);
+
+    $countStmt = $db->prepare('SELECT COUNT(*) FROM mesajlar' . $where);
+    $countStmt->execute($params);
+    $filtered = (int) $countStmt->fetchColumn();
+
+    $sql = 'SELECT id, ad, eposta, konu, mesaj, okundu, created_at
+              FROM mesajlar' . $where
+        . sprintf(' ORDER BY `%s` %s, id DESC', $orderBy, $orderDir);
+
+    if ($length > 0) {
+        $sql .= sprintf(' LIMIT %d OFFSET %d', min($length, 500), $start);
+    }
+
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+
+    $data = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $id      = (int) $row['id'];
+        $okundu  = ((int) $row['okundu']) === 1;
+        $konu    = trim((string) $row['konu']);
+        $onizleme = mb_substr(trim((string) $row['mesaj']), 0, 70, 'UTF-8');
+
+        $data[] = [
+            '<input type="checkbox" class="form-check-input js-sec" value="' . $id . '"'
+                . ' aria-label="Mesaj ' . $id . ' seç">',
+
+            '<span class="cy-name">' . e((string) $row['ad']) . '</span>'
+                . '<br><small class="cy-muted">' . e((string) $row['eposta']) . '</small>',
+
+            '<span class="' . ($okundu ? '' : 'fw-bold') . '">'
+                . e($konu !== '' ? $konu : '(konusuz)') . '</span>'
+                . '<br><small class="cy-muted">' . e($onizleme) . '…</small>',
+
+            $okundu
+                ? '<span class="cy-badge cy-badge--soft">Okundu</span>'
+                : '<span class="cy-badge" style="background:#fee2e2;color:#991b1b">Yeni</span>',
+
+            '<span class="cy-nowrap" title="' . e(format_date($row['created_at'])) . '">'
+                . e(time_ago($row['created_at'])) . '</span>',
+
+            '<div class="cy-actions">'
+                . '<button type="button" class="cy-btn-icon cy-btn-icon--view js-goster" data-id="' . $id . '" title="Görüntüle">&#128065;</button>'
+                . '<button type="button" class="cy-btn-icon cy-btn-icon--edit js-okundu" data-id="' . $id . '"'
+                    . ' data-deger="' . ($okundu ? '0' : '1') . '"'
+                    . ' title="' . ($okundu ? 'Okunmadı işaretle' : 'Okundu işaretle') . '">'
+                    . ($okundu ? '&#9711;' : '&#10003;') . '</button>'
+                . '<button type="button" class="cy-btn-icon cy-btn-icon--delete js-sil" data-id="' . $id . '"'
+                    . ' data-label="' . e($konu !== '' ? $konu : 'Mesaj #' . $id) . '" title="Sil">&#128465;</button>'
+            . '</div>',
+        ];
+    }
+
+    json_response([
+        'draw'            => $draw,
+        'recordsTotal'    => count_rows($db, 'mesajlar'),
+        'recordsFiltered' => $filtered,
+        'data'            => $data,
+        // Menüdeki rozeti tazelemek için: her listelemede güncel sayı gider.
+        'okunmamis'       => (int) $db->query('SELECT COUNT(*) FROM mesajlar WHERE okundu = 0')->fetchColumn(),
+    ]);
+}
+
+/**
+ * Tek mesajı getirir ve OKUNDU olarak işaretler.
+ *
+ * Ham veri döndürülür; ekrana JavaScript .text() ile basılır.
+ * Sunucudan hazır HTML göndermediğimiz için burada kaçışlama yoktur.
+ */
+function handle_mesaj_getir(PDO $db): void
+{
+    require_csrf();
+    require_role_json('admin');
+
+    $id = post_id('id');
+    if ($id === null) {
+        json_error('Geçersiz mesaj numarası.');
+    }
+
+    $stmt = $db->prepare(
+        'SELECT m.*, k.kullanici_adi
+           FROM mesajlar m
+      LEFT JOIN kullanicilar k ON k.id = m.kullanici_id
+          WHERE m.id = :id
+          LIMIT 1'
+    );
+    $stmt->execute([':id' => $id]);
+    $mesaj = $stmt->fetch();
+
+    if ($mesaj === false) {
+        json_error('Mesaj bulunamadı.', 404);
+    }
+
+    // Görüntülenen mesaj otomatik olarak okundu sayılır.
+    if (((int) $mesaj['okundu']) === 0) {
+        $db->prepare('UPDATE mesajlar SET okundu = 1 WHERE id = :id')->execute([':id' => $id]);
+    }
+
+    json_response([
+        'success'    => true,
+        'id'         => (int) $mesaj['id'],
+        'ad'         => $mesaj['ad'],
+        'eposta'     => $mesaj['eposta'],
+        'konu'       => (string) $mesaj['konu'],
+        'mesaj'      => (string) $mesaj['mesaj'],
+        'ip'         => (string) $mesaj['ip'],
+        'tarayici'   => (string) $mesaj['tarayici'],
+        'uye'        => $mesaj['kullanici_adi'] !== null ? '@' . $mesaj['kullanici_adi'] : '',
+        'tarih'      => format_date($mesaj['created_at']),
+        'okunmamis'  => (int) $db->query('SELECT COUNT(*) FROM mesajlar WHERE okundu = 0')->fetchColumn(),
+    ]);
+}
+
+/** Mesajı okundu / okunmadı işaretler. */
+function handle_mesaj_okundu(PDO $db): void
+{
+    require_csrf();
+    require_role_json('admin');
+
+    $id = post_id('id');
+    if ($id === null) {
+        json_error('Geçersiz mesaj numarası.');
+    }
+
+    // Gelen değeri 1 veya 0'a zorluyoruz; başka bir şey kabul etmiyoruz.
+    $deger = ((string) ($_POST['deger'] ?? '1')) === '1' ? 1 : 0;
+
+    $stmt = $db->prepare('UPDATE mesajlar SET okundu = :okundu WHERE id = :id');
+    $stmt->execute([':okundu' => $deger, ':id' => $id]);
+
+    if ($stmt->rowCount() === 0 && !mesaj_var_mi($db, $id)) {
+        json_error('Mesaj bulunamadı.', 404);
+    }
+
+    json_success($deger === 1 ? 'Okundu işaretlendi.' : 'Okunmadı işaretlendi.', [
+        'id'        => $id,
+        'okunmamis' => (int) $db->query('SELECT COUNT(*) FROM mesajlar WHERE okundu = 0')->fetchColumn(),
+    ]);
+}
+
+/** Bir mesajın var olup olmadığını söyler (yardımcı). */
+function mesaj_var_mi(PDO $db, int $id): bool
+{
+    $stmt = $db->prepare('SELECT 1 FROM mesajlar WHERE id = :id LIMIT 1');
+    $stmt->execute([':id' => $id]);
+
+    return $stmt->fetchColumn() !== false;
+}
+
+/** Mesajı siler. */
+function handle_mesaj_sil(PDO $db): void
+{
+    require_csrf();
+    require_role_json('admin');
+
+    $id = post_id('id');
+    if ($id === null) {
+        json_error('Geçersiz mesaj numarası.');
+    }
+
+    $stmt = $db->prepare('DELETE FROM mesajlar WHERE id = :id');
+    $stmt->execute([':id' => $id]);
+
+    if ($stmt->rowCount() === 0) {
+        json_error('Silinecek mesaj bulunamadı.', 404);
+    }
+
+    json_success('Mesaj silindi.', [
+        'id'        => $id,
+        'okunmamis' => (int) $db->query('SELECT COUNT(*) FROM mesajlar WHERE okundu = 0')->fetchColumn(),
+    ]);
+}
+
+/**
+ * Seçili mesajlara toplu işlem uygular.
+ *
+ * DİKKAT – DİNAMİK "IN (...)" LİSTESİ:
+ * Gelen ID'leri doğrudan sorguya yazmak klasik bir SQL Injection
+ * açığıdır. Doğru yol: her ID için AYRI bir yer tutucu üretmek
+ * (:id0, :id1, ...) ve değerleri bind etmek. Ayrıca ID'ler önce
+ * tam sayıya çevrilip 1'den küçük olanlar atılır.
+ */
+function handle_mesaj_toplu(PDO $db): void
+{
+    require_csrf();
+    require_role_json('admin');
+
+    $islem = (string) ($_POST['islem'] ?? '');
+    if (!in_array($islem, ['okundu', 'okunmadi', 'sil'], true)) {
+        json_error('Geçersiz toplu işlem.', 422);
+    }
+
+    $gelen = (array) ($_POST['ids'] ?? []);
+    $ids   = [];
+
+    foreach ($gelen as $deger) {
+        $sayi = filter_var($deger, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($sayi !== false) {
+            $ids[] = (int) $sayi;
+        }
+    }
+
+    $ids = array_values(array_unique($ids));
+
+    if ($ids === []) {
+        json_error('Hiç mesaj seçilmedi.', 422);
+    }
+
+    // Tek istekte işlenecek kayıt sayısını sınırla (kaza ve kötüye kullanım).
+    if (count($ids) > 500) {
+        json_error('Tek seferde en fazla 500 mesaj işlenebilir.', 422);
+    }
+
+    $yerTutucular = [];
+    $params       = [];
+
+    foreach ($ids as $i => $id) {
+        $yerTutucular[]      = ':id' . $i;
+        $params[':id' . $i]  = $id;
+    }
+
+    $liste = implode(', ', $yerTutucular);
+
+    if ($islem === 'sil') {
+        $stmt = $db->prepare('DELETE FROM mesajlar WHERE id IN (' . $liste . ')');
+        $stmt->execute($params);
+        $mesajMetni = $stmt->rowCount() . ' mesaj silindi.';
+    } else {
+        $params[':okundu'] = ($islem === 'okundu') ? 1 : 0;
+        $stmt = $db->prepare('UPDATE mesajlar SET okundu = :okundu WHERE id IN (' . $liste . ')');
+        $stmt->execute($params);
+        $mesajMetni = count($ids) . ' mesaj güncellendi.';
+    }
+
+    json_success($mesajMetni, [
+        'okunmamis' => (int) $db->query('SELECT COUNT(*) FROM mesajlar WHERE okundu = 0')->fetchColumn(),
+    ]);
+}
+
+
+/* =====================================================================
+ *  GÖRSEL YÜKLEME (avatar / logo)
+ * =====================================================================
+ *  Asıl güvenlik işini system/function.php içindeki upload_image()
+ *  yapar: dosyanın gerçekten görsel olduğunu İÇERİĞİNDEN doğrular,
+ *  adını ve uzantısını kendisi belirler. Buradaki fonksiyonlar
+ *  yalnızca "kimin neyi değiştirebileceğine" karar verir.
+ * ------------------------------------------------------------------ */
+
+/** Giriş yapan kullanıcının kendi avatarını değiştirir. */
+function handle_avatar_yukle(PDO $db): void
+{
+    require_csrf();
+    require_login_json();
+
+    $kullanici = auth_user($db);
+    if ($kullanici === null) {
+        json_error('Oturum bulunamadı.', 401);
+    }
+
+    if (!isset($_FILES['avatar']) || !is_array($_FILES['avatar'])) {
+        json_error('Dosya seçilmedi.', 422);
+    }
+
+    try {
+        $yeniDosya = upload_image($_FILES['avatar']);
+    } catch (RuntimeException $e) {
+        json_error($e->getMessage(), 422);
+    }
+
+    $eski = (string) $kullanici['avatar'];
+
+    $db->prepare('UPDATE kullanicilar SET avatar = :avatar WHERE id = :id')
+       ->execute([':avatar' => $yeniDosya, ':id' => $kullanici['id']]);
+
+    // Veritabanı güncellendikten SONRA eskisini sil: sıra ters olsaydı
+    // güncelleme hata verdiğinde kullanıcı avatarsız kalırdı.
+    if ($eski !== '' && $eski !== $yeniDosya) {
+        delete_upload($eski);
+    }
+
+    json_success('Profil fotoğrafı güncellendi.', [
+        'url' => UPLOAD_URL . rawurlencode($yeniDosya),
+    ]);
+}
+
+/** Giriş yapan kullanıcının avatarını kaldırır. */
+function handle_avatar_sil(PDO $db): void
+{
+    require_csrf();
+    require_login_json();
+
+    $kullanici = auth_user($db);
+    if ($kullanici === null) {
+        json_error('Oturum bulunamadı.', 401);
+    }
+
+    $eski = (string) $kullanici['avatar'];
+
+    if ($eski === '') {
+        json_error('Kaldırılacak profil fotoğrafı yok.', 422);
+    }
+
+    $db->prepare("UPDATE kullanicilar SET avatar = '' WHERE id = :id")
+       ->execute([':id' => $kullanici['id']]);
+
+    delete_upload($eski);
+
+    json_success('Profil fotoğrafı kaldırıldı.');
+}
+
+/**
+ * Site logosunu yükler ve "site_logo" ayarına yazar.
+ *
+ * Ayarlar sayfasında logo dosya adını ELLE yazmak zorunda kalmamak
+ * içindir: yönetici dosyayı seçer, gerisini burası halleder.
+ */
+function handle_logo_yukle(PDO $db): void
+{
+    require_csrf();
+    require_role_json('admin');
+
+    if (!isset($_FILES['logo']) || !is_array($_FILES['logo'])) {
+        json_error('Dosya seçilmedi.', 422);
+    }
+
+    try {
+        $yeniDosya = upload_image($_FILES['logo']);
+    } catch (RuntimeException $e) {
+        json_error($e->getMessage(), 422);
+    }
+
+    $eski = (string) setting('site_logo', '');
+
+    setting_set($db, 'site_logo', $yeniDosya);
+
+    if ($eski !== '' && $eski !== $yeniDosya) {
+        delete_upload($eski);
+    }
+
+    json_success('Logo güncellendi.', [
+        'url'   => UPLOAD_URL . rawurlencode($yeniDosya),
+        'dosya' => $yeniDosya,
+    ]);
 }
 
 

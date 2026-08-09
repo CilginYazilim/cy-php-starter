@@ -1,0 +1,826 @@
+/* ==================================================================
+ *  ÇILGIN YAZILIM – YÖNETİM PANELİ TEMASI (AdminLTE tarzı)
+ *  cilginyazilim.com
+ * ------------------------------------------------------------------
+ *  Bu dosya SADECE yonetim/ klasöründeki sayfalarda yüklenir.
+ *  Ön yüzü (ziyaretçi sayfalarını) hiç etkilemez.
+ *
+ *  YÜKLEME SIRASI:
+ *    bootstrap.min.css → dataTables.bootstrap5.min.css
+ *    → cilginyazilim.css → cy-admin.css → style.css
+ *
+ *  TASARIM: AdminLTE'nin bilinen düzeni (koyu sabit kenar çubuğu +
+ *  açık içerik alanı + "small-box" istatistik kutuları) burada
+ *  cilginyazilim.css'teki --cy-* token'larıyla yeniden üretildi.
+ *  Böylece tek bir CSS bağımlılığı eklemeden, koyu tema da
+ *  otomatik çalışacak şekilde AdminLTE görünümü elde edilir.
+ *
+ *  ÖLÇÜLER TEK YERDE (aşağıdaki :root bloğu). Kenar çubuğu
+ *  genişliğini değiştirmek isterseniz sadece --adm-sidebar
+ *  değerini değiştirin; içerik alanı kendiliğinden uyar.
+ * ================================================================== */
+
+:root {
+    --adm-sidebar:        264px;  /* Açık kenar çubuğu genişliği */
+    --adm-sidebar-mini:   74px;   /* Daraltılmış (sadece ikon) hâli */
+    --adm-navbar:         62px;   /* Üst çubuk yüksekliği */
+
+    /* Kenar çubuğu her iki temada da KOYU kalır (AdminLTE davranışı).
+       Bu yüzden token'ları ayrı tanımlıyoruz. */
+    --adm-side-bg:        #0b1a2d;
+    --adm-side-bg-soft:   #122844;
+    --adm-side-text:      #b9c7d9;
+    --adm-side-text-dim:  #7d8fa6;
+    --adm-side-border:    rgba(255, 255, 255, .07);
+
+    --adm-content-bg:     var(--cy-bg);
+}
+
+
+/* ==================================================================
+ *  1) SAYFA İSKELETİ
+ * ================================================================== */
+
+body.adm {
+    min-height: 100vh;
+    margin: 0;
+    background: var(--adm-content-bg);
+    background-image: none;               /* cilginyazilim.css'teki lekeleri kaldır */
+    font-family: var(--cy-font);
+    color: var(--cy-text);
+    /* Kenar çubuğu açılıp kapanırken içerik yumuşak kaysın. */
+    transition: padding-left .2s ease;
+    padding-left: var(--adm-sidebar);
+    overflow-x: hidden;
+}
+
+/* Daraltılmış mod (kullanıcı üst çubuktaki ☰ düğmesine bastı) */
+body.adm.adm--mini { padding-left: var(--adm-sidebar-mini); }
+
+
+/* ==================================================================
+ *  2) KENAR ÇUBUĞU (Sidebar)
+ * ================================================================== */
+
+.adm-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;                 /* top:0 right:auto bottom:0 left:0 */
+    width: var(--adm-sidebar);
+    z-index: 1040;
+    display: flex;
+    flex-direction: column;
+    background: var(--adm-side-bg);
+    /* Üstten alta hafif bir marka ışıması: düz koyu zeminden daha canlı. */
+    background-image:
+        radial-gradient(420px 220px at 0% 0%, rgba(11, 92, 181, .38), transparent 70%),
+        radial-gradient(380px 260px at 100% 100%, rgba(14, 165, 233, .16), transparent 70%);
+    border-right: 1px solid var(--adm-side-border);
+    transition: width .2s ease, transform .2s ease;
+}
+
+body.adm.adm--mini .adm-sidebar { width: var(--adm-sidebar-mini); }
+
+/* ---- Kenar çubuğu markası ---- */
+.adm-sidebar__brand {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    height: var(--adm-navbar);
+    flex-shrink: 0;
+    padding: 0 1rem;
+    border-bottom: 1px solid var(--adm-side-border);
+    color: #fff;
+    text-decoration: none;
+    overflow: hidden;
+}
+.adm-sidebar__brand:hover { color: #fff; }
+
+.adm-sidebar__logo {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    padding: 5px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .35);
+}
+.adm-sidebar__logo img { width: 100%; height: 100%; object-fit: contain; }
+
+.adm-sidebar__name {
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.adm-sidebar__tag {
+    display: block;
+    font-size: .7rem;
+    font-weight: 500;
+    color: var(--adm-side-text-dim);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+/* ---- Kullanıcı kartı ---- */
+.adm-sidebar__user {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    padding: .9rem 1rem;
+    margin: 0;
+    border-bottom: 1px solid var(--adm-side-border);
+    overflow: hidden;
+}
+.adm-sidebar__user .cy-avatar { width: 38px; height: 38px; font-size: .9rem; flex-shrink: 0; }
+.adm-sidebar__user-name {
+    color: #fff;
+    font-weight: 600;
+    font-size: .9rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.adm-sidebar__user-role {
+    display: block;
+    font-size: .74rem;
+    color: var(--adm-side-text-dim);
+}
+
+/* ---- Menü ---- */
+.adm-menu {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: .6rem .55rem 1.5rem;
+    list-style: none;
+    margin: 0;
+    /* İnce kaydırma çubuğu (Firefox + WebKit) */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, .18) transparent;
+}
+.adm-menu::-webkit-scrollbar { width: 6px; }
+.adm-menu::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, .18);
+    border-radius: 999px;
+}
+
+.adm-menu__header {
+    color: var(--adm-side-text-dim);
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    padding: 1.1rem .85rem .45rem;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.adm-menu__link {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .62rem .85rem;
+    margin-bottom: .15rem;
+    border-radius: var(--cy-radius-sm);
+    color: var(--adm-side-text);
+    text-decoration: none;
+    font-size: .93rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: background var(--cy-transition), color var(--cy-transition);
+}
+.adm-menu__link:hover {
+    background: var(--adm-side-bg-soft);
+    color: #fff;
+}
+.adm-menu__link--aktif {
+    background: var(--cy-gradient);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 6px 18px rgba(11, 92, 181, .35);
+}
+
+/* İkon kutusu: metin gizlendiğinde bile aynı yerde kalsın diye
+   sabit genişlikte. Daraltılmış modun düzgün görünmesi buna bağlı. */
+.adm-menu__icon {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+}
+.adm-menu__icon svg { width: 18px; height: 18px; }
+
+.adm-menu__text {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Menüdeki sayaç rozeti (örn. okunmamış mesaj) */
+.adm-menu__badge {
+    flex-shrink: 0;
+    min-width: 22px;
+    padding: .15rem .45rem;
+    border-radius: 999px;
+    background: var(--cy-danger);
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.4;
+}
+
+/* ---- Daraltılmış mod: yazıları gizle, ikonları ortala ---- */
+body.adm.adm--mini .adm-menu__text,
+body.adm.adm--mini .adm-menu__badge,
+body.adm.adm--mini .adm-sidebar__name,
+body.adm.adm--mini .adm-sidebar__user > div,
+body.adm.adm--mini .adm-menu__header { display: none; }
+
+body.adm.adm--mini .adm-menu__link,
+body.adm.adm--mini .adm-sidebar__brand,
+body.adm.adm--mini .adm-sidebar__user { justify-content: center; padding-inline: .5rem; }
+
+/* Daraltılmışken üzerine gelince adı ipucu olarak göster.
+   (title özniteliği yerine CSS: anında görünür, gecikmesiz.) */
+body.adm.adm--mini .adm-menu__link { position: relative; }
+body.adm.adm--mini .adm-menu__link:hover::after {
+    content: attr(data-baslik);
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--adm-side-bg);
+    color: #fff;
+    padding: .35rem .7rem;
+    border-radius: var(--cy-radius-sm);
+    border: 1px solid var(--adm-side-border);
+    box-shadow: var(--cy-shadow);
+    font-size: .82rem;
+    white-space: nowrap;
+    z-index: 5;
+}
+
+
+/* ==================================================================
+ *  3) ÜST ÇUBUK (Navbar)
+ * ================================================================== */
+
+.adm-navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    height: var(--adm-navbar);
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: 0 1.1rem;
+    background: color-mix(in srgb, var(--cy-surface) 90%, transparent);
+    backdrop-filter: saturate(180%) blur(10px);
+    -webkit-backdrop-filter: saturate(180%) blur(10px);
+    border-bottom: 1px solid var(--cy-border);
+}
+
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+    .adm-navbar { background: var(--cy-surface); }
+}
+
+.adm-navbar__btn {
+    width: 40px;
+    height: 40px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: var(--cy-radius-sm);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--cy-text-muted);
+    cursor: pointer;
+    transition: all var(--cy-transition);
+    position: relative;
+}
+.adm-navbar__btn:hover {
+    background: var(--cy-brand-100);
+    color: var(--cy-brand-600);
+}
+.adm-navbar__btn svg { width: 20px; height: 20px; }
+
+/* Zil ikonunun üzerindeki küçük sayaç */
+.adm-navbar__count {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--cy-danger);
+    color: #fff;
+    font-size: .64rem;
+    font-weight: 700;
+    line-height: 17px;
+    text-align: center;
+}
+
+.adm-navbar__spacer { flex: 1 1 auto; }
+
+.adm-navbar__title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+/* ==================================================================
+ *  4) İÇERİK ALANI
+ * ================================================================== */
+
+.adm-content { padding: 1.25rem 1.25rem 2.5rem; }
+
+/* Sayfa başlığı + kırıntı yolu şeridi */
+.adm-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem 1rem;
+    margin-bottom: 1.15rem;
+}
+.adm-head__title {
+    font-size: 1.45rem;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    margin: 0;
+}
+.adm-head__sub {
+    color: var(--cy-text-muted);
+    font-size: .88rem;
+    margin: .2rem 0 0;
+}
+
+.adm-breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: .84rem;
+    color: var(--cy-text-muted);
+}
+.adm-breadcrumb a { color: var(--cy-brand-600); text-decoration: none; }
+.adm-breadcrumb a:hover { text-decoration: underline; }
+.adm-breadcrumb li + li::before { content: "/"; margin-right: .4rem; opacity: .5; }
+
+
+/* ==================================================================
+ *  5) KART (AdminLTE .card karşılığı)
+ * ================================================================== */
+
+.adm-card {
+    background: var(--cy-surface);
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius);
+    box-shadow: var(--cy-shadow-sm);
+    margin-bottom: 1.25rem;
+    overflow: hidden;
+}
+
+/* AdminLTE'nin imzası: kartın üstündeki renkli ince şerit */
+.adm-card--brand  { border-top: 3px solid var(--cy-brand-600); }
+.adm-card--info   { border-top: 3px solid var(--cy-info); }
+.adm-card--ok     { border-top: 3px solid var(--cy-success); }
+.adm-card--warn   { border-top: 3px solid var(--cy-warning); }
+.adm-card--danger { border-top: 3px solid var(--cy-danger); }
+
+.adm-card__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem .75rem;
+    padding: .85rem 1.15rem;
+    border-bottom: 1px solid var(--cy-border);
+    background: var(--cy-surface);
+}
+.adm-card__title {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .95rem;
+    font-weight: 700;
+    margin: 0;
+}
+.adm-card__title svg { width: 17px; height: 17px; color: var(--cy-brand-600); }
+
+.adm-card__body   { padding: 1.15rem; }
+.adm-card__body--flush { padding: 0; }
+.adm-card__footer {
+    padding: .7rem 1.15rem;
+    border-top: 1px solid var(--cy-border);
+    background: var(--cy-surface-soft);
+    font-size: .85rem;
+    color: var(--cy-text-muted);
+}
+
+
+/* ==================================================================
+ *  6) İSTATİSTİK KUTULARI
+ * ================================================================== */
+
+/* ---- small-box: dolgu renkli, büyük rakamlı kutu ---- */
+.small-box {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--cy-radius);
+    color: #fff;
+    box-shadow: var(--cy-shadow-sm);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    transition: transform var(--cy-transition), box-shadow var(--cy-transition);
+}
+.small-box:hover { transform: translateY(-3px); box-shadow: var(--cy-shadow); }
+
+.small-box__inner { padding: 1.1rem 1.2rem .9rem; position: relative; z-index: 1; }
+.small-box__value { font-size: 2.1rem; font-weight: 800; line-height: 1.05; }
+.small-box__label { font-size: .9rem; opacity: .92; margin-top: .15rem; }
+
+/* Dekoratif büyük ikon: sağ altta, yarı saydam */
+.small-box__icon {
+    position: absolute;
+    right: .55rem;
+    top: 50%;
+    transform: translateY(-58%);
+    opacity: .22;
+    z-index: 0;
+    pointer-events: none;
+}
+.small-box__icon svg { width: 76px; height: 76px; }
+
+.small-box__link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    margin-top: auto;
+    padding: .45rem;
+    background: rgba(0, 0, 0, .16);
+    color: rgba(255, 255, 255, .92);
+    font-size: .8rem;
+    font-weight: 600;
+    text-decoration: none;
+    position: relative;
+    z-index: 1;
+    transition: background var(--cy-transition);
+}
+.small-box__link:hover { background: rgba(0, 0, 0, .28); color: #fff; }
+.small-box__link svg { width: 14px; height: 14px; }
+
+.small-box--brand  { background: linear-gradient(135deg, #0a3d73, #1268c9); }
+.small-box--info   { background: linear-gradient(135deg, #0369a1, #0ea5e9); }
+.small-box--ok     { background: linear-gradient(135deg, #047857, #10b981); }
+.small-box--warn   { background: linear-gradient(135deg, #b45309, #f59e0b); }
+.small-box--danger { background: linear-gradient(135deg, #b91c1c, #ef4444); }
+
+/* ---- info-box: beyaz zeminli, renkli ikon kareli kutu ---- */
+.info-box {
+    display: flex;
+    align-items: center;
+    gap: .9rem;
+    height: 100%;
+    padding: .9rem 1rem;
+    background: var(--cy-surface);
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius);
+    box-shadow: var(--cy-shadow-sm);
+}
+.info-box__icon {
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border-radius: var(--cy-radius-sm);
+    color: #fff;
+}
+.info-box__icon svg { width: 24px; height: 24px; }
+.info-box__label {
+    font-size: .76rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--cy-text-muted);
+}
+.info-box__value { font-size: 1.25rem; font-weight: 700; line-height: 1.2; }
+.info-box__note  { font-size: .78rem; color: var(--cy-text-muted); }
+
+.info-box__icon--brand  { background: var(--cy-brand-600); }
+.info-box__icon--info   { background: var(--cy-info); }
+.info-box__icon--ok     { background: var(--cy-success); }
+.info-box__icon--warn   { background: var(--cy-warning); }
+.info-box__icon--danger { background: var(--cy-danger); }
+
+
+/* ==================================================================
+ *  7) BASİT SÜTUN GRAFİĞİ
+ * ------------------------------------------------------------------
+ *  Grafik kütüphanesi (Chart.js vb.) EKLENMEDİ: şablonun tek bir dış
+ *  bağımlılığı bile olmasın istedik. Sütunlar sadece yüksekliği
+ *  yüzdeyle ayarlanan <div>'lerdir — 30 satır CSS ile aynı iş görür.
+ * ================================================================== */
+
+.adm-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 150px;
+    padding-top: .5rem;
+}
+.adm-chart__col {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    height: 100%;
+    position: relative;
+}
+.adm-chart__bar {
+    width: 100%;
+    min-height: 3px;
+    border-radius: 4px 4px 2px 2px;
+    background: var(--cy-gradient);
+    opacity: .85;
+    transition: opacity var(--cy-transition);
+}
+.adm-chart__col:hover .adm-chart__bar { opacity: 1; }
+
+/* Sütunun üzerine gelince değeri gösteren balon */
+.adm-chart__col:hover::after {
+    content: attr(data-bilgi);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--cy-text);
+    color: var(--cy-surface);
+    padding: .25rem .55rem;
+    border-radius: var(--cy-radius-sm);
+    font-size: .72rem;
+    white-space: nowrap;
+    z-index: 3;
+}
+
+.adm-chart__axis {
+    display: flex;
+    gap: 4px;
+    margin-top: .4rem;
+    font-size: .65rem;
+    color: var(--cy-text-muted);
+}
+.adm-chart__axis span { flex: 1 1 0; text-align: center; }
+
+
+/* ==================================================================
+ *  8) LİSTELER (son işlemler, son mesajlar)
+ * ================================================================== */
+
+.adm-list { list-style: none; margin: 0; padding: 0; }
+
+.adm-list__item {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .7rem 1.15rem;
+    border-bottom: 1px solid var(--cy-border);
+    transition: background var(--cy-transition);
+}
+.adm-list__item:last-child { border-bottom: 0; }
+.adm-list__item:hover { background: var(--cy-surface-soft); }
+
+.adm-list__body  { flex: 1 1 auto; min-width: 0; }
+.adm-list__title {
+    font-weight: 600;
+    font-size: .92rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.adm-list__meta {
+    font-size: .79rem;
+    color: var(--cy-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.adm-list__time { font-size: .75rem; color: var(--cy-text-muted); white-space: nowrap; }
+
+/* Okunmamış mesaj satırı: solunda renkli şerit */
+.adm-list__item--yeni {
+    border-left: 3px solid var(--cy-brand-600);
+    background: var(--cy-brand-100);
+}
+
+
+/* ==================================================================
+ *  9) AYARLAR SAYFASI – DİKEY SEKMELER
+ * ================================================================== */
+
+.adm-tabs { display: flex; flex-direction: column; gap: .2rem; }
+.adm-tabs .nav-link {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    border: 0;
+    border-radius: var(--cy-radius-sm);
+    color: var(--cy-text);
+    font-weight: 600;
+    font-size: .9rem;
+    padding: .6rem .8rem;
+    text-align: left;
+}
+.adm-tabs .nav-link:hover { background: var(--cy-surface-soft); }
+.adm-tabs .nav-link.active { background: var(--cy-gradient); color: #fff; }
+.adm-tabs .nav-link svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+/* Ayar satırı: etiket solda, alan sağda */
+.adm-setting {
+    padding: .95rem 0;
+    border-bottom: 1px dashed var(--cy-border);
+}
+.adm-setting:last-child { border-bottom: 0; }
+.adm-setting__key {
+    display: inline-block;
+    margin-top: .35rem;
+    font-size: .72rem;
+    color: var(--cy-text-muted);
+    background: var(--cy-surface-soft);
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius-sm);
+    padding: .1rem .4rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+
+/* ==================================================================
+ *  10) YARDIMCI PARÇALAR
+ * ================================================================== */
+
+/* Kaydetme çubuğu: uzun formlarda ekranın altına yapışır */
+.adm-savebar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-top: 1.25rem;
+    padding: .85rem 1.15rem;
+    background: color-mix(in srgb, var(--cy-surface) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius);
+    box-shadow: var(--cy-shadow);
+}
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+    .adm-savebar { background: var(--cy-surface); }
+}
+
+/* Profil sayfasındaki avatar düzenleme kutusu */
+.adm-avatar-edit {
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+    flex-wrap: wrap;
+}
+.adm-avatar-edit .cy-avatar { width: 96px; height: 96px; font-size: 2rem; border-radius: var(--cy-radius); }
+
+/* Anahtar/değer bilgi satırları (sistem bilgisi kartı) */
+.adm-kv {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .5rem 0;
+    border-bottom: 1px dashed var(--cy-border);
+    font-size: .88rem;
+}
+.adm-kv:last-child { border-bottom: 0; }
+.adm-kv__k { color: var(--cy-text-muted); }
+.adm-kv__v { font-weight: 600; text-align: right; word-break: break-word; }
+
+/* Durum noktası (yeşil/sarı/kırmızı) */
+.adm-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: .35rem;
+    vertical-align: middle;
+}
+.adm-dot--ok    { background: var(--cy-success); }
+.adm-dot--warn  { background: var(--cy-warning); }
+.adm-dot--down  { background: var(--cy-danger); }
+
+/* Mobil kenar çubuğu açıkken arkayı karartan perde */
+.adm-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1035;
+    background: rgba(6, 19, 33, .5);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .2s ease, visibility .2s ease;
+}
+body.adm--acik .adm-backdrop { opacity: 1; visibility: visible; }
+
+/* Uzun metinleri tek satırda kesen yardımcı */
+.adm-truncate {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+/* ==================================================================
+ *  11) DATATABLES İNCE AYAR (panel içi)
+ * ================================================================== */
+
+.adm-card .dataTables_wrapper { padding: 1rem 1.15rem; }
+.adm-card .dataTables_wrapper .cy-table { margin-top: .75rem; }
+
+/* Tablo üstündeki filtre satırı */
+.adm-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .6rem;
+}
+.adm-filters .form-select,
+.adm-filters .form-control { min-width: 150px; width: auto; }
+
+
+/* ==================================================================
+ *  12) MOBİL UYUM
+ * ================================================================== */
+
+@media (max-width: 991.98px) {
+    /* Kenar çubuğu ekrandan çıkar; ☰ ile üstüne kayarak gelir. */
+    body.adm,
+    body.adm.adm--mini { padding-left: 0; }
+
+    .adm-sidebar,
+    body.adm.adm--mini .adm-sidebar {
+        width: var(--adm-sidebar);
+        transform: translateX(-100%);
+        box-shadow: none;
+    }
+    body.adm.adm--acik .adm-sidebar {
+        transform: translateX(0);
+        box-shadow: var(--cy-shadow-lg);
+    }
+
+    /* Mobilde daraltma yerine tam menü gösterilir. */
+    body.adm.adm--mini .adm-menu__text,
+    body.adm.adm--mini .adm-menu__badge,
+    body.adm.adm--mini .adm-sidebar__name,
+    body.adm.adm--mini .adm-sidebar__user > div,
+    body.adm.adm--mini .adm-menu__header { display: block; }
+
+    body.adm.adm--mini .adm-menu__link,
+    body.adm.adm--mini .adm-sidebar__brand,
+    body.adm.adm--mini .adm-sidebar__user {
+        justify-content: flex-start;
+        padding-inline: .85rem;
+    }
+    body.adm.adm--mini .adm-menu__link { display: flex; }
+    body.adm.adm--mini .adm-menu__link:hover::after { content: none; }
+
+    .adm-content { padding: 1rem .85rem 2.5rem; }
+    .adm-head__title { font-size: 1.2rem; }
+    .small-box__icon svg { width: 58px; height: 58px; }
+}
+
+@media (min-width: 992px) {
+    /* Masaüstünde perde hiç görünmez. */
+    .adm-backdrop { display: none; }
+}
+
+/* Yazdırma: kenar çubuğu ve üst çubuk kağıda basılmasın. */
+@media print {
+    body.adm { padding-left: 0; }
+    .adm-sidebar, .adm-navbar, .adm-backdrop, .adm-savebar { display: none !important; }
+    .adm-card { box-shadow: none; border: 1px solid #ddd; }
+}
