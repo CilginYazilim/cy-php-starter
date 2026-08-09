@@ -1,0 +1,113 @@
+/* ==================================================================
+ *  ÇILGIN YAZILIM – ÖN YÜZ (SİTE) STİLLERİ
+ * ------------------------------------------------------------------
+ *  Genel tasarım token'ları "cilginyazilim.css" dosyasındadır.
+ *  Bu dosya SADECE ziyaretçi sayfalarına (ana sayfa, hakkımızda,
+ *  iletişim, giriş, kayıt) özgü yerleşim ve bileşenleri tanımlar.
+ *
+ *  Yükleme sırası: bootstrap.min.css → cilginyazilim.css → site.css
+ * ================================================================== */
+
+body.cy-site { background: var(--cy-bg); }
+
+/* ------------------------------------------------------------------
+ *  ÜST MENÜ
+ * ------------------------------------------------------------------ */
+.cy-site-nav {
+    background: var(--cy-surface);
+    border-bottom: 1px solid var(--cy-border);
+    padding: .75rem 0;
+}
+
+.cy-site-nav__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: .6rem;
+    font-weight: 700;
+    color: var(--cy-text);
+    text-decoration: none;
+}
+
+.cy-site-nav__brand img { width: 34px; height: 34px; object-fit: contain; }
+
+.cy-site-nav .nav-link {
+    color: var(--cy-text-soft);
+    font-weight: 500;
+    font-size: .875rem;
+}
+.cy-site-nav .nav-link.active { color: var(--cy-brand-600); font-weight: 700; }
+.cy-site-nav .navbar-toggler { border: 1px solid var(--cy-border); border-radius: var(--cy-radius-sm); padding: .35rem; }
+.cy-site-nav .navbar-toggler .cy-icon { width: 22px; height: 22px; color: var(--cy-text-soft); }
+
+/* ------------------------------------------------------------------
+ *  HERO (ana sayfa üst bölüm)
+ * ------------------------------------------------------------------ */
+.cy-hero {
+    background: linear-gradient(180deg, var(--cy-brand-50), var(--cy-bg));
+    border-bottom: 1px solid var(--cy-border);
+}
+
+.cy-hero__title {
+    font-size: clamp(1.75rem, 4vw, 2.75rem);
+    font-weight: 800;
+    letter-spacing: -.03em;
+    line-height: 1.15;
+    margin-bottom: 1rem;
+}
+
+.cy-hero__lead { font-size: 1.0625rem; color: var(--cy-text-soft); max-width: 46ch; }
+.cy-hero__logo { width: 180px; max-width: 60%; object-fit: contain; }
+
+.cy-section__title { font-size: 1.5rem; font-weight: 700; letter-spacing: -.02em; }
+.cy-section__lead   { color: var(--cy-text-muted); max-width: 56ch; }
+
+/* ------------------------------------------------------------------
+ *  METİN İÇERİK (Hakkımızda vb.)
+ * ------------------------------------------------------------------ */
+.cy-prose { color: var(--cy-text-soft); line-height: 1.75; font-size: .95rem; }
+
+/* ------------------------------------------------------------------
+ *  ALT BİLGİ
+ * ------------------------------------------------------------------ */
+.cy-site-footer {
+    background: var(--cy-surface);
+    border-top: 1px solid var(--cy-border);
+    padding: 3rem 0 1.75rem;
+    margin-top: 3rem;
+}
+
+/* ------------------------------------------------------------------
+ *  BAKIM MODU
+ * ------------------------------------------------------------------ */
+.cy-maintenance {
+    display: grid;
+    place-items: center;
+    min-height: 70vh;
+    padding: 2rem;
+}
+
+.cy-maintenance__box { text-align: center; max-width: 32rem; }
+.cy-maintenance__box .cy-icon { color: var(--cy-brand-600); margin-bottom: 1rem; }
+
+/* ------------------------------------------------------------------
+ *  AYARLAR SAYFASI SEKMELERİ (Bootstrap nav-pills'i yumuşatır)
+ * ------------------------------------------------------------------ */
+.cy-card__header--tabs { padding-bottom: 0; border-bottom: 0; }
+
+.cy-tabnav .nav-link {
+    color: var(--cy-text-muted);
+    font-size: .8125rem;
+    font-weight: 600;
+    padding: .5rem .85rem;
+    border-radius: var(--cy-radius-sm) var(--cy-radius-sm) 0 0;
+}
+.cy-tabnav .nav-link.active { color: var(--cy-brand-600); background: var(--cy-brand-100); }
+
+/* ------------------------------------------------------------------
+ *  MOBİL UYUM
+ * ------------------------------------------------------------------ */
+@media (max-width: 767.98px) {
+    .cy-hero__title { font-size: 1.75rem; }
+    .cy-hero__logo { display: none; }
+    .cy-site-footer { padding: 2rem 0 1.25rem; }
+}

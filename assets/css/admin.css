@@ -1,0 +1,960 @@
+/* ==================================================================
+ *  CY ADMIN – PANEL YERLEŞİMİ
+ *  cilginyazilim.com
+ * ------------------------------------------------------------------
+ *  Genel tasarım token'ları ve bileşenler "cilginyazilim.css"
+ *  dosyasındadır. Bu dosya SADECE yönetim panelinin iskeletini
+ *  (sol menü, üst çubuk, içerik alanı) ve panele özgü bileşenleri
+ *  tanımlar.
+ *
+ *  Yükleme sırası:
+ *      bootstrap.min.css → cilginyazilim.css → admin.css
+ *
+ *  İÇİNDEKİLER
+ *     1. İskelet (shell)
+ *     2. Sol menü
+ *     3. Üst çubuk
+ *     4. İçerik alanı
+ *     5. Kontrol paneli bileşenleri
+ *     6. Kullanıcı sayfası
+ *     7. Profil sayfası
+ *     8. Giriş ekranı
+ *     9. Hata sayfaları
+ *    10. MOBİL UYUM  ← en kritik bölüm
+ * ================================================================== */
+
+
+/* ------------------------------------------------------------------
+ *  1) İSKELET
+ * ------------------------------------------------------------------
+ *  Sol menü SABİT (fixed) konumlandırılır, içerik alanı ise sol
+ *  boşluk (margin) ile kenara yaslanır. Bu yapı, uzun sayfalarda
+ *  menünün kaymadan yerinde kalmasını sağlar.
+ * ------------------------------------------------------------------ */
+.cy-shell { min-height: 100vh; }
+
+.cy-main {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-width: 0;                 /* Taşan tabloların düzeni bozmasını önler */
+    margin-left: var(--cy-sidebar-w);
+    transition: margin-left var(--cy-transition);
+}
+
+/* Menü daraltıldığında içerik alanı da sola kayar. */
+body.is-collapsed .cy-main { margin-left: var(--cy-sidebar-w-collapsed); }
+
+
+/* ------------------------------------------------------------------
+ *  2) SOL MENÜ
+ * ------------------------------------------------------------------ */
+.cy-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1045;
+    width: var(--cy-sidebar-w);
+    display: flex;
+    flex-direction: column;
+    background: var(--cy-sidebar);
+    border-right: 1px solid var(--cy-border);
+    transition: width var(--cy-transition), transform var(--cy-transition);
+}
+
+/* --- Menü başlığı: logo + marka --- */
+.cy-sidebar__brand {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    height: var(--cy-topbar-h);
+    padding: 0 1rem;
+    border-bottom: 1px solid var(--cy-border);
+    text-decoration: none;
+    color: inherit;
+    flex-shrink: 0;
+}
+
+.cy-sidebar__logo {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 5px;
+    border-radius: var(--cy-radius-sm);
+    background: var(--cy-gradient);
+    flex-shrink: 0;
+}
+
+.cy-sidebar__logo img { width: 100%; height: 100%; object-fit: contain; filter: brightness(0) invert(1); }
+
+.cy-sidebar__title {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+    overflow: hidden;
+}
+.cy-sidebar__title strong { font-size: .95rem; letter-spacing: -.01em; }
+.cy-sidebar__title span   { font-size: .7rem; color: var(--cy-text-muted); }
+
+/* --- Menü gövdesi --- */
+.cy-sidebar__nav {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;  /* Menüde kaydırırken sayfa kaymasın */
+    padding: .85rem .65rem 1rem;
+}
+
+.cy-nav-group { margin-bottom: 1.15rem; }
+.cy-nav-group:last-child { margin-bottom: 0; }
+
+.cy-nav-group__label {
+    display: block;
+    padding: 0 .6rem .4rem;
+    font-size: .6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    color: var(--cy-text-muted);
+}
+
+.cy-nav-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    padding: .6rem .65rem;
+    margin-bottom: .15rem;
+    border-radius: var(--cy-radius-sm);
+    color: var(--cy-text-soft);
+    text-decoration: none;
+    font-size: .875rem;
+    font-weight: 500;
+    transition: background-color var(--cy-transition), color var(--cy-transition);
+}
+
+.cy-nav-link:hover { background: var(--cy-surface-hover); color: var(--cy-text); }
+
+.cy-nav-link .cy-icon { color: var(--cy-text-muted); transition: color var(--cy-transition); }
+.cy-nav-link:hover .cy-icon { color: var(--cy-text-soft); }
+
+/* Aktif sayfa: yumuşak marka zemini + sol kenarda ince gösterge.
+   Yalnızca renkle değil, kalın yazı ve çubukla da belirtilir —
+   renk körlüğü olan kullanıcılar için önemlidir. */
+.cy-nav-link.is-active {
+    background: var(--cy-brand-100);
+    color: var(--cy-brand-600);
+    font-weight: 600;
+}
+.cy-nav-link.is-active .cy-icon { color: var(--cy-brand-600); }
+
+.cy-nav-link.is-active::before {
+    content: "";
+    position: absolute;
+    left: -.65rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 22px;
+    border-radius: 0 3px 3px 0;
+    background: var(--cy-brand-600);
+}
+
+.cy-nav-link__text { flex: 1; min-width: 0; }
+
+/* Menüdeki sayaç rozeti (örn. toplam kullanıcı) */
+.cy-nav-link__badge {
+    padding: .1rem .4rem;
+    border-radius: var(--cy-radius-pill);
+    background: var(--cy-surface-hover);
+    color: var(--cy-text-muted);
+    font-size: .6875rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.cy-nav-link.is-active .cy-nav-link__badge { background: var(--cy-brand-200); color: var(--cy-brand-700); }
+
+/* --- Menü altı: kullanıcı kartı --- */
+.cy-sidebar__footer {
+    padding: .65rem;
+    border-top: 1px solid var(--cy-border);
+    flex-shrink: 0;
+}
+
+.cy-side-user {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .5rem;
+    border-radius: var(--cy-radius-sm);
+    background: var(--cy-surface-soft);
+}
+
+.cy-side-user__info { min-width: 0; flex: 1; line-height: 1.25; }
+.cy-side-user__name {
+    display: block;
+    font-size: .8125rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cy-side-user__role { font-size: .6875rem; color: var(--cy-text-muted); }
+
+/* --- DARALTILMIŞ MENÜ (yalnızca ikonlar) ---
+   Geniş ekranda içerik alanına yer açmak isteyen kullanıcılar için.
+   Tercih localStorage'da saklanır, sonraki ziyarette hatırlanır. */
+body.is-collapsed .cy-sidebar { width: var(--cy-sidebar-w-collapsed); }
+
+body.is-collapsed .cy-sidebar__title,
+body.is-collapsed .cy-nav-group__label,
+body.is-collapsed .cy-nav-link__text,
+body.is-collapsed .cy-nav-link__badge,
+body.is-collapsed .cy-side-user__info { display: none; }
+
+body.is-collapsed .cy-sidebar__brand { justify-content: center; padding: 0; }
+body.is-collapsed .cy-nav-link { justify-content: center; padding: .65rem; }
+body.is-collapsed .cy-nav-link.is-active::before { display: none; }
+body.is-collapsed .cy-side-user { justify-content: center; }
+
+/* Daraltılmış menüde etiketi ipucu (tooltip) olarak göster */
+body.is-collapsed .cy-nav-link { position: relative; }
+body.is-collapsed .cy-nav-link::after {
+    content: attr(data-title);
+    position: absolute;
+    left: calc(100% + .5rem);
+    top: 50%;
+    transform: translateY(-50%);
+    padding: .3rem .55rem;
+    border-radius: var(--cy-radius-xs);
+    background: var(--cy-text);
+    color: var(--cy-surface);
+    font-size: .75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--cy-transition);
+    z-index: 10;
+}
+body.is-collapsed .cy-nav-link:hover::after { opacity: 1; }
+
+/* --- Mobil menü arka planı (karartma) --- */
+.cy-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+    background: rgba(15, 23, 42, .5);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--cy-transition), visibility var(--cy-transition);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+}
+
+body.is-sidebar-open .cy-backdrop { opacity: 1; visibility: visible; }
+
+
+/* ------------------------------------------------------------------
+ *  3) ÜST ÇUBUK
+ * ------------------------------------------------------------------ */
+.cy-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    height: var(--cy-topbar-h);
+    padding: 0 1.25rem;
+    background: color-mix(in srgb, var(--cy-surface) 88%, transparent);
+    border-bottom: 1px solid var(--cy-border);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
+    backdrop-filter: saturate(180%) blur(12px);
+}
+
+/* color-mix desteklemeyen tarayıcılar için düz zemin */
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+    .cy-topbar { background: var(--cy-surface); }
+}
+
+.cy-topbar__toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius-sm);
+    background: var(--cy-surface);
+    color: var(--cy-text-soft);
+    flex-shrink: 0;
+    transition: all var(--cy-transition);
+}
+.cy-topbar__toggle:hover { background: var(--cy-surface-hover); color: var(--cy-text); }
+
+/* Tema düğmesindeki ay/güneş ikonları (biri her zaman gizli) */
+.cy-theme-icon { display: inline-flex; }
+.cy-theme-icon.d-none { display: none !important; }
+
+.cy-topbar__heading { min-width: 0; flex: 1; }
+.cy-topbar__heading h1 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cy-topbar__heading p {
+    margin: 0;
+    font-size: .75rem;
+    color: var(--cy-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cy-topbar__actions { display: flex; align-items: center; gap: .4rem; flex-shrink: 0; }
+
+/* --- Kullanıcı açılır menüsü --- */
+.cy-usermenu {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .25rem .5rem .25rem .25rem;
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius-pill);
+    background: var(--cy-surface);
+    color: var(--cy-text);
+    transition: all var(--cy-transition);
+}
+.cy-usermenu:hover { background: var(--cy-surface-hover); }
+.cy-usermenu__name { font-size: .8125rem; font-weight: 600; }
+
+.cy-dropdown {
+    min-width: 220px;
+    padding: .4rem;
+    background: var(--cy-surface);
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius);
+    box-shadow: var(--cy-shadow-lg);
+}
+
+.cy-dropdown__header {
+    padding: .55rem .6rem;
+    border-bottom: 1px solid var(--cy-border);
+    margin-bottom: .3rem;
+}
+.cy-dropdown__header strong { display: block; font-size: .8125rem; }
+.cy-dropdown__header span   { font-size: .75rem; color: var(--cy-text-muted); word-break: break-all; }
+
+.cy-dropdown .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    padding: .5rem .6rem;
+    border-radius: var(--cy-radius-xs);
+    color: var(--cy-text-soft);
+    font-size: .8125rem;
+    font-weight: 500;
+}
+.cy-dropdown .dropdown-item:hover { background: var(--cy-surface-hover); color: var(--cy-text); }
+.cy-dropdown .dropdown-item--danger { color: var(--cy-danger); }
+.cy-dropdown .dropdown-item--danger:hover { background: var(--cy-danger-soft); color: var(--cy-danger); }
+
+
+/* ------------------------------------------------------------------
+ *  4) İÇERİK ALANI
+ * ------------------------------------------------------------------ */
+.cy-content {
+    flex: 1;
+    width: 100%;
+    max-width: 1360px;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 2.5rem;
+}
+
+.cy-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+}
+
+.cy-page-head__actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+.cy-footer {
+    padding: 1rem 1.25rem 1.5rem;
+    text-align: center;
+    font-size: .75rem;
+    color: var(--cy-text-muted);
+}
+.cy-footer a { color: var(--cy-text-soft); text-decoration: none; font-weight: 600; }
+.cy-footer a:hover { color: var(--cy-brand-600); }
+
+
+/* ------------------------------------------------------------------
+ *  5) KONTROL PANELİ BİLEŞENLERİ
+ * ------------------------------------------------------------------ */
+
+/* --- Sayısal özet kartları --- */
+.cy-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: .85rem;
+    margin-bottom: 1.25rem;
+}
+
+.cy-stat {
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+    padding: 1rem 1.1rem;
+    background: var(--cy-surface);
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius-lg);
+    box-shadow: var(--cy-shadow-xs);
+}
+
+.cy-stat__icon {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border-radius: var(--cy-radius);
+    flex-shrink: 0;
+}
+
+.cy-stat__icon--brand   { background: var(--cy-brand-100);   color: var(--cy-brand-600); }
+.cy-stat__icon--success { background: var(--cy-success-soft); color: var(--cy-success); }
+.cy-stat__icon--warning { background: var(--cy-warning-soft); color: var(--cy-warning); }
+.cy-stat__icon--danger  { background: var(--cy-danger-soft);  color: var(--cy-danger); }
+
+.cy-stat__label {
+    display: block;
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--cy-text-muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+.cy-stat__value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.cy-stat__hint { font-size: .75rem; color: var(--cy-text-muted); }
+
+/* --- Mini sütun grafik ---
+   Harici bir grafik kütüphanesi kullanmıyoruz: 14 çubuk için
+   50 KB'lık bir dosya indirmek gereksizdir. Saf CSS ile çiziyoruz. */
+.cy-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: .35rem;
+    height: 130px;
+    padding: .5rem .25rem 0;
+}
+
+.cy-chart__bar {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    height: 100%;
+    gap: .35rem;
+    min-width: 0;
+}
+
+.cy-chart__fill {
+    width: 100%;
+    max-width: 26px;
+    border-radius: var(--cy-radius-xs) var(--cy-radius-xs) 0 0;
+    background: linear-gradient(180deg, var(--cy-brand-400), var(--cy-brand-600));
+    transition: opacity var(--cy-transition);
+    min-height: 3px;
+}
+
+.cy-chart__bar:hover .cy-chart__fill { opacity: .75; }
+
+.cy-chart__label {
+    font-size: .625rem;
+    color: var(--cy-text-muted);
+    white-space: nowrap;
+}
+
+/* --- İşlem günlüğü listesi --- */
+.cy-timeline { display: flex; flex-direction: column; }
+
+.cy-timeline__item {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    padding: .75rem 1.25rem;
+    border-bottom: 1px solid var(--cy-border);
+}
+.cy-timeline__item:last-child { border-bottom: 0; }
+
+.cy-timeline__icon {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--cy-surface-soft);
+    color: var(--cy-text-muted);
+    flex-shrink: 0;
+}
+
+.cy-timeline__icon--success { background: var(--cy-success-soft); color: var(--cy-success); }
+.cy-timeline__icon--danger  { background: var(--cy-danger-soft);  color: var(--cy-danger); }
+.cy-timeline__icon--warning { background: var(--cy-warning-soft); color: var(--cy-warning); }
+.cy-timeline__icon--info    { background: var(--cy-info-soft);    color: var(--cy-info); }
+
+.cy-timeline__body { min-width: 0; flex: 1; }
+.cy-timeline__text { font-size: .8125rem; margin: 0; word-break: break-word; }
+.cy-timeline__meta { font-size: .6875rem; color: var(--cy-text-muted); }
+
+/* --- Basit liste (son eklenen kullanıcılar) --- */
+.cy-list { display: flex; flex-direction: column; }
+
+.cy-list__item {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    padding: .65rem 1.25rem;
+    border-bottom: 1px solid var(--cy-border);
+    text-decoration: none;
+    color: inherit;
+    transition: background-color var(--cy-transition);
+}
+.cy-list__item:last-child { border-bottom: 0; }
+.cy-list__item:hover { background: var(--cy-surface-soft); }
+.cy-list__body { min-width: 0; flex: 1; }
+.cy-list__title {
+    display: block;
+    font-size: .8125rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cy-list__meta { font-size: .6875rem; color: var(--cy-text-muted); }
+
+
+/* ------------------------------------------------------------------
+ *  6) KULLANICI SAYFASI
+ * ------------------------------------------------------------------ */
+.cy-toolbar {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+    padding: .85rem 1.25rem;
+    border-bottom: 1px solid var(--cy-border);
+    background: var(--cy-surface);
+}
+
+.cy-toolbar__search { flex: 1 1 240px; min-width: 0; max-width: 340px; }
+.cy-toolbar__filters { display: flex; gap: .5rem; flex-wrap: wrap; }
+.cy-toolbar .form-select { min-width: 130px; font-size: .8125rem; }
+
+/* Tablonun taşan kısmı KENDİ İÇİNDE kayar; sayfa yatay kaymaz. */
+.cy-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Yükleme/kaydetme sırasında formu kilitle */
+.cy-form-busy { pointer-events: none; opacity: .65; }
+
+/* DataTables'ın üst/alt kontrol şeritleri.
+   "dom" ayarıyla ürettiğimiz sarmalayıcılara hizalama veriyoruz. */
+.cy-dt-top {
+    display: flex;
+    justify-content: flex-end;
+    border-bottom: 1px solid var(--cy-border);
+}
+
+.cy-dt-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .5rem;
+    border-top: 1px solid var(--cy-border);
+}
+
+.cy-dt-top .dataTables_length,
+.cy-dt-bottom .dataTables_info,
+.cy-dt-bottom .dataTables_paginate { padding: .65rem 1.25rem; }
+
+
+/* ------------------------------------------------------------------
+ *  7) PROFİL SAYFASI
+ * ------------------------------------------------------------------ */
+.cy-profile-grid {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 1.15rem;
+    align-items: start;
+}
+
+.cy-profile-card { text-align: center; padding: 1.75rem 1.25rem; }
+.cy-profile-card__name { margin: .85rem 0 .15rem; font-size: 1.1rem; font-weight: 700; }
+.cy-profile-card__mail { font-size: .8125rem; color: var(--cy-text-muted); word-break: break-all; }
+
+.cy-meta-list { display: flex; flex-direction: column; gap: .1rem; margin-top: 1.25rem; text-align: left; }
+.cy-meta-list__row {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .5rem 0;
+    border-top: 1px solid var(--cy-border);
+    font-size: .8125rem;
+}
+.cy-meta-list__row .cy-icon { color: var(--cy-text-muted); }
+.cy-meta-list__row span { color: var(--cy-text-soft); word-break: break-word; }
+
+
+/* ------------------------------------------------------------------
+ *  8) GİRİŞ EKRANI
+ * ------------------------------------------------------------------ */
+.cy-auth {
+    display: grid;
+    grid-template-columns: 1.05fr .95fr;
+    min-height: 100vh;
+}
+
+/* Sol taraf: marka tanıtım paneli (yalnızca geniş ekranda) */
+.cy-auth__aside {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 3rem;
+    background: var(--cy-gradient);
+    color: #fff;
+    overflow: hidden;
+}
+
+.cy-auth__aside::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(700px 340px at 85% 8%, rgba(255, 255, 255, .16), transparent 62%),
+        radial-gradient(520px 320px at 5% 95%, rgba(14, 165, 233, .28), transparent 60%);
+    pointer-events: none;
+}
+
+.cy-auth__aside > * { position: relative; z-index: 1; }
+
+.cy-auth__brand { display: flex; align-items: center; gap: .75rem; }
+.cy-auth__brand img { width: 40px; height: 40px; object-fit: contain; }
+.cy-auth__brand strong { font-size: 1.05rem; }
+
+.cy-auth__pitch h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -.025em;
+    line-height: 1.2;
+    margin-bottom: .85rem;
+    max-width: 15ch;
+}
+.cy-auth__pitch p { opacity: .85; max-width: 42ch; font-size: .9375rem; }
+
+.cy-auth__features { display: flex; flex-direction: column; gap: .6rem; margin-top: 1.75rem; }
+.cy-auth__feature { display: flex; align-items: center; gap: .6rem; font-size: .875rem; opacity: .92; }
+.cy-auth__feature .cy-icon { flex-shrink: 0; opacity: .8; }
+
+.cy-auth__note { font-size: .75rem; opacity: .7; }
+
+/* Sağ taraf: form */
+.cy-auth__panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    background: var(--cy-bg);
+}
+
+.cy-auth__form { width: 100%; max-width: 380px; }
+
+.cy-auth__logo-mobile {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: .6rem;
+    margin-bottom: 1.5rem;
+}
+.cy-auth__logo-mobile img { width: 38px; height: 38px; }
+
+/* Demo hesap kartları – tıklayınca formu doldurur */
+.cy-demo { margin-top: 1.5rem; }
+
+.cy-demo__grid { display: grid; gap: .4rem; margin-top: .5rem; }
+
+.cy-demo__item {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    width: 100%;
+    padding: .55rem .7rem;
+    background: var(--cy-surface);
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius-sm);
+    text-align: left;
+    font-size: .8125rem;
+    color: var(--cy-text-soft);
+    transition: all var(--cy-transition);
+}
+.cy-demo__item:hover { border-color: var(--cy-brand-400); background: var(--cy-brand-50); color: var(--cy-text); }
+.cy-demo__item strong { font-size: .8125rem; }
+.cy-demo__item code { font-family: var(--cy-font-mono); font-size: .75rem; color: var(--cy-text-muted); }
+
+/* Parola göster/gizle düğmesi */
+.cy-password { position: relative; }
+.cy-password .form-control { padding-right: 2.75rem; }
+.cy-password__toggle {
+    position: absolute;
+    top: 50%;
+    right: .35rem;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: var(--cy-radius-xs);
+    background: transparent;
+    color: var(--cy-text-muted);
+}
+.cy-password__toggle:hover { color: var(--cy-text); background: var(--cy-surface-hover); }
+
+
+/* ------------------------------------------------------------------
+ *  9) HATA SAYFALARI
+ * ------------------------------------------------------------------ */
+.cy-error {
+    display: grid;
+    place-items: center;
+    min-height: 70vh;
+    padding: 2rem 1.25rem;
+    text-align: center;
+}
+
+.cy-error__code {
+    font-size: 4.5rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -.04em;
+    background: var(--cy-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.cy-error__title { margin: .75rem 0 .35rem; font-size: 1.25rem; font-weight: 700; }
+.cy-error__text  { color: var(--cy-text-muted); font-size: .875rem; max-width: 44ch; margin: 0 auto 1.5rem; }
+
+
+/* ==================================================================
+ * 10) MOBİL UYUM
+ * ------------------------------------------------------------------
+ *  Panel "mobil öncelikli" düşünülmüştür. Dar ekranda:
+ *    - Sol menü çekmeceye (off-canvas) dönüşür
+ *    - Dokunma hedefleri 44px'e çıkar (Apple/Google erişilebilirlik önerisi)
+ *    - Tabloda ikincil sütunlar gizlenir, bilgi ad hücresine taşınır
+ *    - Modallar alttan açılan "sayfa" gibi tam genişlik kaplar
+ *    - iOS'ta form alanına dokununca sayfanın zoom yapması engellenir
+ * ================================================================== */
+
+/* --- 1200px altı: içerik boşluklarını daralt --- */
+@media (max-width: 1199.98px) {
+    .cy-content { padding: 1.25rem 1rem 2rem; }
+    .cy-profile-grid { grid-template-columns: 280px 1fr; }
+}
+
+/* --- 992px altı: TABLET ve MOBİL – menü çekmeceye dönüşür --- */
+@media (max-width: 991.98px) {
+    .cy-main { margin-left: 0 !important; }
+
+    /* Menü ekran dışına kayar; açılınca içeri girer. */
+    .cy-sidebar {
+        transform: translateX(-100%);
+        box-shadow: none;
+        width: min(var(--cy-sidebar-w), 82vw);
+    }
+
+    body.is-sidebar-open .cy-sidebar {
+        transform: translateX(0);
+        box-shadow: var(--cy-shadow-lg);
+    }
+
+    /* Menü açıkken arka planın kaymasını engelle */
+    body.is-sidebar-open { overflow: hidden; }
+
+    /* Daraltma özelliği mobilde anlamsızdır; kapatıyoruz. */
+    body.is-collapsed .cy-sidebar { width: min(var(--cy-sidebar-w), 82vw); }
+    body.is-collapsed .cy-sidebar__title,
+    body.is-collapsed .cy-nav-group__label,
+    body.is-collapsed .cy-nav-link__text,
+    body.is-collapsed .cy-nav-link__badge,
+    body.is-collapsed .cy-side-user__info { display: revert; }
+    body.is-collapsed .cy-nav-link { justify-content: flex-start; padding: .6rem .65rem; }
+    body.is-collapsed .cy-nav-link::after { display: none; }
+    body.is-collapsed .cy-sidebar__brand { justify-content: flex-start; padding: 0 1rem; }
+    body.is-collapsed .cy-side-user { justify-content: flex-start; }
+
+    /* Menüdeki bağlantılar parmakla rahat seçilsin */
+    .cy-nav-link { padding: .75rem .7rem; font-size: .9375rem; }
+
+    .cy-profile-grid { grid-template-columns: 1fr; }
+
+    /* Giriş ekranında tanıtım paneli gizlenir, form tam ekran olur */
+    .cy-auth { grid-template-columns: 1fr; }
+    .cy-auth__aside { display: none; }
+    .cy-auth__logo-mobile { display: flex; }
+}
+
+/* --- 768px altı: MOBİL --- */
+@media (max-width: 767.98px) {
+    .cy-content { padding: 1rem .85rem 2rem; }
+    .cy-topbar  { padding: 0 .85rem; gap: .45rem; }
+
+    /* Sayfa başlığı üst çubukta yer kaplamasın; alt satır gizlenir. */
+    .cy-topbar__heading p { display: none; }
+    .cy-usermenu__name    { display: none; }
+    .cy-usermenu          { padding: .2rem; }
+
+    .cy-title { font-size: 1.15rem; }
+
+    /* DOKUNMA HEDEFLERİ: 44x44px, parmakla ıskalamamak için. */
+    .cy-btn        { min-height: 44px; padding: .6rem 1rem; }
+    .cy-btn--sm    { min-height: 38px; }
+    .cy-btn-icon   { width: 40px; height: 40px; }
+    .cy-topbar__toggle { width: 42px; height: 42px; }
+
+    /* Sayfa başlığındaki eylem butonları tam genişlik alsın */
+    .cy-page-head { flex-direction: column; align-items: stretch; }
+    .cy-page-head__actions .cy-btn { flex: 1; }
+
+    /* Özet kartlar iki sütun; dar ekranda tek sütun aşırı uzun olur. */
+    .cy-stats { grid-template-columns: repeat(2, 1fr); gap: .6rem; }
+    .cy-stat  { padding: .8rem; gap: .6rem; flex-direction: column; align-items: flex-start; }
+    .cy-stat__value { font-size: 1.25rem; }
+    .cy-stat__label { font-size: .6875rem; }
+
+    /* Araç çubuğu: arama tam genişlik, filtreler yan yana */
+    .cy-toolbar { padding: .75rem .85rem; }
+    .cy-toolbar__search { flex: 1 1 100%; max-width: none; }
+    .cy-toolbar__filters { width: 100%; }
+    .cy-toolbar__filters .form-select { flex: 1; min-width: 0; }
+
+    /* --- TABLO: ikincil sütunları gizle ---
+       Bilgi kaybolmaz; e-posta ad hücresinin altına düşer. */
+    .cy-hide-sm { display: none !important; }
+    .cy-user-cell__meta { display: block; }
+
+    .cy-table > thead > tr > th,
+    .cy-table > tbody > tr > td { padding: .65rem .6rem; }
+
+    .cy-timeline__item,
+    .cy-list__item { padding: .7rem .85rem; }
+
+    /* DataTables kontrolleri alt alta ve ortalanmış */
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter,
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate {
+        width: 100%;
+        text-align: center;
+        padding: .5rem .85rem;
+    }
+    .dataTables_wrapper .dataTables_filter { order: -1; }
+    .dataTables_wrapper .dataTables_filter input { width: 100%; margin: .35rem 0 0; }
+    .dataTables_wrapper .dataTables_filter label { width: 100%; }
+    .dataTables_wrapper .dataTables_paginate .pagination { justify-content: center; margin: 0; }
+    .dataTables_wrapper .page-link { min-width: 40px; min-height: 40px; line-height: 26px; }
+
+    /* --- MODALLAR: alttan açılan sayfa görünümü ---
+       Küçük ekranda ortada duran kutu yerine, ekranın altına yapışan
+       geniş bir panel parmakla kullanmaya çok daha uygundur. */
+    .cy-modal .modal-dialog {
+        margin: 0;
+        min-height: 100%;
+        align-items: flex-end;
+        max-width: 100%;
+    }
+    .cy-modal .modal-content {
+        border-radius: var(--cy-radius-lg) var(--cy-radius-lg) 0 0;
+        border-bottom: 0;
+    }
+    .cy-modal .modal-body {
+        max-height: 68vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .cy-modal .modal-footer { padding-bottom: calc(.85rem + env(safe-area-inset-bottom)); }
+    .cy-modal .modal-footer .cy-btn { flex: 1; }
+
+    .cy-detail { grid-template-columns: 1fr; gap: .15rem; }
+    .cy-detail dd { margin-bottom: .65rem; }
+
+    /* Bildirimler üstte, tam genişlikte */
+    .cy-toast-container { left: .5rem; right: .5rem; top: .5rem; }
+    .cy-toast { max-width: none; width: 100%; }
+
+    /* iOS ZOOM SORUNU: Yazı tipi 16px'ten küçük bir alana dokunulunca
+       Safari sayfayı otomatik yakınlaştırır ve düzen bozulur.
+       16px vererek bunu engelliyoruz. */
+    .cy-app .form-control,
+    .cy-app .form-select,
+    .dataTables_wrapper .dataTables_filter input,
+    .dataTables_wrapper .dataTables_length select { font-size: 16px; }
+
+    .cy-chart { height: 96px; gap: .2rem; }
+    .cy-chart__label { font-size: .5625rem; }
+}
+
+/* --- 400px altı: çok dar telefonlar --- */
+@media (max-width: 399.98px) {
+    .cy-stats { grid-template-columns: 1fr; }
+    .cy-hide-xs { display: none !important; }
+    .cy-auth__panel { padding: 1.5rem 1rem; }
+}
+
+/* --- Yatay (landscape) mobil: dikey alan azdır, boşlukları küçült --- */
+@media (max-height: 520px) and (max-width: 991.98px) {
+    .cy-auth__panel { padding: 1rem; align-items: flex-start; }
+    .cy-modal .modal-body { max-height: 55vh; }
+}
+
+/* --- Çentikli ekranlar (iPhone) için güvenli alan --- */
+@supports (padding: max(0px)) {
+    .cy-topbar  { padding-left: max(1.25rem, env(safe-area-inset-left)); }
+    .cy-content { padding-bottom: max(2.5rem, env(safe-area-inset-bottom)); }
+    .cy-sidebar { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* --- Yazdırma: menü ve butonlar kâğıda basılmasın --- */
+@media print {
+    .cy-sidebar, .cy-topbar, .cy-backdrop, .cy-actions, .cy-page-head__actions { display: none !important; }
+    .cy-main { margin-left: 0 !important; }
+    .cy-card { border: 1px solid #ccc; box-shadow: none; }
+    body.cy-app { background: #fff; }
+}

@@ -9,8 +9,11 @@ upload/*
 !upload/.htaccess
 
 # --- Yerel ortam ayarları (şifre içerebilir, ASLA paylaşmayın) ------
+#  ".env.example" dosyası repoda kalır; ".env" ASLA gönderilmez.
 .env
-system/config.local.php
+.env.*
+!.env.example
+config/config.local.php
 
 # --- Editör ve işletim sistemi artıkları ----------------------------
 .vscode/
