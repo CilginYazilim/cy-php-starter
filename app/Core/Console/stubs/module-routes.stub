@@ -1,0 +1,28 @@
+<?php
+/**
+ * =====================================================================
+ *  {{AD}} MODÜLÜ – Rotaları
+ * ---------------------------------------------------------------------
+ *  Bu dosya, modül AÇIKKEN çekirdek rotalarından SONRA yüklenir.
+ *  $router değişkeni hazır gelir.
+ *
+ *  Yetki adlarını (kendi modülünüze özel) app/Models/Role.php içindeki
+ *  ilgili rollere eklemeyi unutmayın; yoksa kimse erişemez.
+ * =====================================================================
+ */
+
+declare(strict_types=1);
+
+use App\Core\Router;
+use Modules\{{AD}}\Controllers\{{AD}}Controller;
+
+/** @var Router $router */
+
+$router->get('panel/{{SLUG}}', {{AD}}Controller::class, 'index',
+    ['installed', 'auth', 'can:{{TABLO}}.view']);
+
+$router->post('panel/{{SLUG}}/kaydet', {{AD}}Controller::class, 'store',
+    ['installed', 'auth', 'csrf', 'can:{{TABLO}}.manage']);
+
+$router->post('panel/{{SLUG}}/sil/{id}', {{AD}}Controller::class, 'destroy',
+    ['installed', 'auth', 'csrf', 'can:{{TABLO}}.manage']);

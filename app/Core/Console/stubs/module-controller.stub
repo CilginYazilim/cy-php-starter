@@ -1,0 +1,69 @@
+<?php
+/**
+ * =====================================================================
+ *  {{AD}}Controller – {{AD}} modülünün panel ekranı
+ * ---------------------------------------------------------------------
+ *  Görünüm "{{AD}}::index" biçiminde çağrılır; bu, modülün kendi
+ *  views/ klasörüne işaret eder (çekirdeğin views/ klasörü kirlenmez).
+ * =====================================================================
+ */
+
+declare(strict_types=1);
+
+namespace Modules\{{AD}}\Controllers;
+
+use App\Core\Database;
+use App\Core\Flash;
+use App\Core\Request;
+use App\Core\Response;
+use App\Core\Validator;
+use App\Http\Controller;
+use Modules\{{AD}}\Repositories\{{AD}}Repository;
+
+final class {{AD}}Controller extends Controller
+{
+    private {{AD}}Repository $kayitlar;
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        $this->kayitlar = new {{AD}}Repository(Database::connection());
+    }
+
+    public function index(Request $request): void
+    {
+        $this->view('{{AD}}::index', [
+            'title'    => '{{AD}}',
+            'subtitle' => '{{AD}} modülünün örnek listeleme ekranı.',
+            'kayitlar' => $this->kayitlar->all(),
+            'errors'   => Flash::errors(),
+            'old'      => Flash::old(),
+        ]);
+    }
+
+    public function store(Request $request): void
+    {
+        $validator = new Validator($_POST);
+        $validator->text('baslik', 'Başlık', 2, 150, true);
+
+        if ($validator->fails()) {
+            Flash::withInput($validator->errors(), $_POST);
+            Response::redirect(url('panel/{{SLUG}}'));
+        }
+
+        $this->kayitlar->create((string) $validator->validated()['baslik']);
+
+        Flash::success('Kayıt eklendi.');
+        Response::redirect(url('panel/{{SLUG}}'));
+    }
+
+    /** Rotadaki {id} bu metoda argüman olarak gelir. */
+    public function destroy(Request $request, string $id): void
+    {
+        $this->kayitlar->delete((int) $id);
+
+        Flash::success('Kayıt silindi.');
+        Response::redirect(url('panel/{{SLUG}}'));
+    }
+}

@@ -1,0 +1,31 @@
+<?php
+/**
+ * =====================================================================
+ *  {{AD}} – AJAX uç noktaları
+ * ---------------------------------------------------------------------
+ *  Rotasını routes/web.php içine eklemeyi unutmayın. VERİ DEĞİŞTİREN
+ *  her uç nokta POST olmalı ve 'csrf' ara katmanını taşımalıdır:
+ *
+ *      $router->post('api/{{GORUNUM}}/list', {{AD}}::class, 'list',
+ *          ['installed', 'auth', 'csrf', 'can:{{GORUNUM}}.view']);
+ * =====================================================================
+ */
+
+declare(strict_types=1);
+
+namespace {{NAMESPACE}};
+
+use App\Core\Request;
+use App\Core\Response;
+use App\Http\Controller;
+
+final class {{AD}} extends Controller
+{
+    public function list(Request $request): void
+    {
+        Response::json([
+            'success' => true,
+            'data'    => [],
+        ]);
+    }
+}

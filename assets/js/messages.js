@@ -27,26 +27,21 @@ jQuery(function ($) {
         if (typeof count === 'number') { $('#unread_count').text(count); }
     }
 
-    var table = $('#message_table').DataTable({
-        processing: true,
-        serverSide: true,
+    var table = CY.table('#message_table', {
+        isim:  'mesaj',
         order: [[4, 'desc']],
-        pageLength: 10,
-        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-        dom: 'rt<"cy-dt-bottom"<"cy-dt-bottom__left"li>p>',
 
         ajax: {
             url: API.list,
-            type: 'POST',
             data: function (d) {
-                d.csrf_token = CY.token();
-                d.filter     = $('#filter_status').val() || '';
+                d.filter = $('#filter_status').val() || '';
             },
+            // Sunucu okunmamış sayısını her yanıtta gönderir; rozeti
+            // satırları basmadan önce tazeliyoruz.
             dataSrc: function (json) {
                 updateUnread(json.unread);
                 return json.data;
-            },
-            error: function (xhr) { CY.ajaxError(xhr, 'Mesajlar yüklenirken bir hata oluştu.'); }
+            }
         },
 
         columnDefs: [
@@ -54,22 +49,7 @@ jQuery(function ($) {
             { targets: 5, orderable: false, searchable: false, className: 'text-center' }
         ],
 
-        drawCallback: function (settings) {
-            $('#total_records').text(settings.json ? settings.json.recordsTotal : 0);
-            updateBulkButtons();
-        },
-
-        language: {
-            emptyTable: 'Henüz mesaj bulunmuyor.',
-            info: '_TOTAL_ kayıttan _START_ – _END_ arası',
-            infoEmpty: 'Gösterilecek kayıt yok',
-            infoFiltered: '(toplam _MAX_ kayıt içinden filtrelendi)',
-            lengthMenu: 'Sayfada _MENU_ kayıt',
-            loadingRecords: 'Yükleniyor…',
-            processing: 'İşleniyor…',
-            zeroRecords: 'Aramanızla eşleşen mesaj bulunamadı.',
-            paginate: { first: 'İlk', last: 'Son', next: 'Sonraki', previous: 'Önceki' }
-        }
+        drawCallback: function () { updateBulkButtons(); }
     });
 
     function reload(resetPaging) { table.ajax.reload(null, resetPaging === true); }
@@ -111,6 +91,24 @@ jQuery(function ($) {
                 $('#msg_ip').text(response.ip || '—');
                 $('#msg_metin').text(response.mesaj);
                 $('#msg_reply').attr('href', 'mailto:' + response.eposta);
+
+                // Panelden yanıtlama: alıcı ve konu, e-posta merkezinin
+                // formuna adres satırından taşınır (bkz. MailController).
+                var $panelReply = $('#msg_reply_panel');
+
+                if ($panelReply.length) {
+                    var konu = response.konu ? 'Re: ' + response.konu : 'Mesajınız hakkında';
+                    var base = CY.url('panel/eposta');
+
+                    // "Temiz adres" ayarı açıkken adreste henüz "?" yoktur,
+                    // kapalıyken "index.php?r=..." zaten sorgu taşır.
+                    var sep = base.indexOf('?') === -1 ? '?' : '&';
+
+                    $panelReply.attr('href',
+                        base + sep
+                        + 'adres=' + encodeURIComponent(response.eposta)
+                        + '&konu=' + encodeURIComponent(konu));
+                }
                 updateUnread(response.unread);
                 messageModal.show();
                 reload(false);

@@ -16,7 +16,9 @@ DirectoryIndex index.php
 # ---------------------------------------------------------------------
 #  .env dosyası veritabanı şifrenizi içerir. Tarayıcıdan okunabilirse
 #  sunucunuz ele geçirilir.
-<FilesMatch "^\.env|^\.env\..*|composer\.(json|lock)$|\.(sql|md|log|ini|sh|bak|swp|dist)$">
+#  "cy" konsol betiğinin uzantısı yoktur; Apache onu PHP olarak
+#  çalıştırmaz, DÜZ METİN olarak servis ederdi. Erişimi kapatıyoruz.
+<FilesMatch "^\.env|^\.env\..*|^cy$|composer\.(json|lock)$|\.(sql|md|log|ini|sh|bak|swp|dist|stub)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>
@@ -37,24 +39,33 @@ DirectoryIndex index.php
 </FilesMatch>
 
 # ---------------------------------------------------------------------
-#  2) TEMİZ ADRESLER (isteğe bağlı)
+#  2) TEMİZ ADRESLER (SEO uyumlu)
 # ---------------------------------------------------------------------
-#  Varsayılan olarak DEVRE DIŞIDIR; uygulama "index.php?r=panel"
-#  biçimini kullanır ve hiçbir sunucu ayarı gerektirmez.
+#  /panel/ayarlar          ✔  temiz
+#  /index.php?r=panel/... ✘  eski biçim
 #
-#  Temiz adres istiyorsanız:
-#    1) Aşağıdaki RewriteRule satırının başındaki # işaretini kaldırın
-#    2) .env dosyasında APP_PRETTY_URLS=true yapın
-#    3) Apache'de mod_rewrite ve AllowOverride All açık olmalıdır
+#  Kural AÇIKTIR. mod_rewrite yoksa ya da AllowOverride kapalıysa
+#  uygulama kendini otomatik olarak eski biçime düşürür — hiçbir şey
+#  bozulmaz (bkz. app/Support/helpers.php → url()).
+#
+#  Alt klasörde çalışıyorsanız (ör. /cy-php-starter/) RewriteBase'i
+#  açmanız GEREKMEZ: kural göreli çalışır ve uygulama kendi taban
+#  yolunu SCRIPT_NAME üzerinden bulur.
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # "kurulum/" ve gerçek dosya/klasörlere dokunma.
-    RewriteCond %{REQUEST_URI} !^/kurulum
+    # Sondaki bölü işaretini temizle: /panel/ayarlar/ → /panel/ayarlar
+    # (aynı içeriğin iki adresi olması SEO'da yinelenen içerik sayılır)
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.+)/$ $1 [R=301,L]
+
+    # Kurulum sihirbazı kendi başına çalışır.
+    RewriteCond %{REQUEST_URI} !kurulum/
+    # Gerçek dosya ve klasörlere dokunma (assets/, upload/ …).
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
 
-    # RewriteRule ^(.*)$ index.php?r=$1 [QSA,L]
+    RewriteRule ^(.*)$ index.php [QSA,L]
 </IfModule>
 
 # ---------------------------------------------------------------------

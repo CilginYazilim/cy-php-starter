@@ -1,0 +1,33 @@
+<?php
+/**
+ * =====================================================================
+ *  PARÇA: PWA künyesi (<head> içine)
+ * ---------------------------------------------------------------------
+ *  "Uygulama Modu" ayarı (Ayarlar → Sistem) açıkken site telefona
+ *  "ana ekrana ekle" ile kurulabilir ve çevrimdışı açılır.
+ *
+ *  Ayar KAPALIYKEN tek bir etiket bile basılmaz: manifest istenmez,
+ *  servis çalışanı kaydedilmez. Böylece özelliği kullanmayan bir
+ *  proje onun varlığını hiç hissetmez.
+ *
+ *  Bu blok panel ve ön yüz düzenlerinde birebir aynıydı; iki yerde
+ *  düzeltmemek için buraya alındı. Servis çalışanını kaydeden
+ *  pwa.js ise düzenlerin script bölümünde yüklenir.
+ * =====================================================================
+ */
+
+use App\Core\Setting;
+use App\Core\Theme;
+use App\Core\Url;
+
+if (!Setting::bool('pwa_aktif', false)) {
+    return;
+}
+?>
+<link rel="manifest" href="<?= e(url('manifest.webmanifest')) ?>">
+<meta name="theme-color" content="<?= e(Theme::brand()) ?>">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="<?= e(Setting::logoUrl()) ?>">
+<meta name="cy-sw" content="<?= e(Url::base() . '/sw.js') ?>">

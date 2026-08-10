@@ -14,6 +14,10 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Core\Events\Events;
+use App\Core\Log\Logger;
+use App\Events\UserLoggedIn;
+use App\Events\UserLoggedOut;
 use App\Models\User;
 use App\Repositories\UserRepository;
 
@@ -85,6 +89,12 @@ final class Auth
         $lockedFor = $limiter->lockedFor($key);
 
         if ($lockedFor > 0) {
+            Logger::security('Kilitli hesaba giriş denemesi', [
+                'kimlik' => mb_substr(trim($identifier), 0, 60),
+                'ip'     => $request->ip(),
+                'kalan'  => $lockedFor,
+            ]);
+
             return [
                 'ok'      => false,
                 'message' => sprintf(
@@ -106,11 +116,15 @@ final class Auth
 
             $limiter->hit($key, $request->ip());
 
+            self::logFailure('bilinmeyen hesap', $identifier, $request);
+
             return ['ok' => false, 'message' => self::genericFailure(), 'user' => null];
         }
 
         if (!$user->verifyPassword($password)) {
             $limiter->hit($key, $request->ip());
+
+            self::logFailure('hatalı parola', $identifier, $request);
 
             $remaining = $limiter->remaining($key);
             $message   = self::genericFailure();
@@ -123,6 +137,12 @@ final class Auth
         }
 
         if (!$user->isActive()) {
+            Logger::security('Pasif/askıdaki hesapla giriş denemesi', [
+                'kullanici' => $user->id,
+                'durum'     => $user->durum,
+                'ip'        => $request->ip(),
+            ]);
+
             return [
                 'ok'      => false,
                 'message' => 'Hesabınız şu anda ' . mb_strtolower($user->statusLabel(), 'UTF-8') . '. Yönetici ile iletişime geçin.',
@@ -139,7 +159,34 @@ final class Auth
         self::login($user);
         $users->touchLogin($user->id, $request->ip());
 
+        Logger::info('Giriş yapıldı', [
+            'kullanici' => $user->id,
+            'rol'       => $user->rol,
+            'ip'        => $request->ip(),
+        ], 'auth');
+
+        /* Olay, oturum AÇILDIKTAN sonra yayınlanır: dinleyiciler
+         * Auth::user() ile kullanıcıya erişebilir. */
+        Events::dispatch(new UserLoggedIn($user, $request->ip()));
+
         return ['ok' => true, 'message' => 'Hoş geldiniz, ' . $user->ad . '.', 'user' => $user];
+    }
+
+    /**
+     * Başarısız girişi kaydeder.
+     *
+     * DİKKAT: Parola ASLA loglanmaz; denenen kimlik de kırpılarak
+     * yazılır. Amaç "kim, nereden, kaç kez denedi" sorusuna yanıt
+     * vermek — kimlik bilgisi toplamak değil.
+     */
+    private static function logFailure(string $reason, string $identifier, Request $request): void
+    {
+        Logger::security('Başarısız giriş denemesi', [
+            'sebep'  => $reason,
+            'kimlik' => mb_substr(trim($identifier), 0, 60),
+            'ip'     => $request->ip(),
+            'tarayici' => $request->userAgent(),
+        ]);
     }
 
     /**
@@ -161,6 +208,14 @@ final class Auth
 
     public static function logout(): void
     {
+        /* Oturum YOK EDİLMEDEN ÖNCE: dinleyiciler oturumdaki veriye
+         * hâlâ erişebilmeli. */
+        if (self::$cached !== null) {
+            Logger::info('Çıkış yapıldı', ['kullanici' => self::$cached->id], 'auth');
+
+            Events::dispatch(new UserLoggedOut(self::$cached->id));
+        }
+
         Session::destroy();
 
         self::$cached   = null;

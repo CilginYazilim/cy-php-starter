@@ -14,11 +14,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Core\Auth;
+use App\Core\Events\Events;
 use App\Core\Flash;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Uploader;
 use App\Core\Validator;
+use App\Events\FileUploaded;
+use App\Events\PasswordChanged;
 use App\Http\Controller;
 use RuntimeException;
 
@@ -103,6 +106,11 @@ final class ProfileController extends Controller
         }
 
         $this->users()->update($user->id, ['sifre' => (string) $validator->validated()['yeni_sifre']]);
+
+        /* Parolanın kendisi olayda TAŞINMAZ. Bir dinleyici "parolanız
+         * değişti" bilgilendirmesi gönderebilir — hesabı çalınan
+         * kullanıcının fark etmesinin tek yolu genelde budur. */
+        Events::dispatch(new PasswordChanged($user->id, kendisi: true));
 
         Flash::success('Parolanız güncellendi.');
         Response::redirect(url('panel/hesabim'));

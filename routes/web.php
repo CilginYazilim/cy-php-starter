@@ -16,17 +16,19 @@
 
 declare(strict_types=1);
 
-use App\Core\Request;
 use App\Core\Router;
-use App\Core\View;
+use App\Http\Controllers\Api\MailApiController;
 use App\Http\Controllers\Api\MessageApiController;
 use App\Http\Controllers\Api\UserApiController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MailController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PwaController;
 use App\Http\Controllers\Site\ContactController;
 use App\Http\Controllers\Site\HomeController;
+use App\Http\Controllers\Site\SeoController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SystemController;
 use App\Http\Controllers\UserController;
@@ -38,6 +40,12 @@ $router = new Router();
  * ------------------------------------------------------------------ */
 $router->get('',            HomeController::class,    'index', ['installed']);
 $router->get('hakkimizda',  HomeController::class,    'about', ['installed']);
+$router->get('manifest.webmanifest', PwaController::class, 'manifest', ['installed']);
+$router->get('sitemap.xml', SeoController::class, 'sitemap', ['installed']);
+$router->get('robots.txt',  SeoController::class, 'robots',  ['installed']);
+
+$router->get('cevrimdisi',          PwaController::class, 'offline',  ['installed']);
+
 $router->get('iletisim',    ContactController::class, 'show',  ['installed']);
 $router->post('api/iletisim/gonder', ContactController::class, 'send', ['installed', 'csrf']);
 
@@ -61,12 +69,24 @@ $router->get('panel', DashboardController::class, 'index', ['installed', 'auth',
 
 $router->get('panel/kullanicilar', UserController::class, 'index', ['installed', 'auth', 'can:users.view']);
 $router->get('panel/mesajlar',     MessageController::class, 'index', ['installed', 'auth', 'can:messages.view']);
+$router->get('panel/eposta',       MailController::class,    'index', ['installed', 'auth', 'can:mail.view']);
 
-$router->get('panel/ayarlar',        SettingsController::class, 'index',      ['installed', 'auth', 'can:settings.view']);
-$router->post('panel/ayarlar',       SettingsController::class, 'update',     ['installed', 'auth', 'csrf', 'can:settings.manage']);
-$router->post('panel/ayarlar/logo',  SettingsController::class, 'uploadLogo', ['installed', 'auth', 'csrf', 'can:settings.manage']);
+// Ayarlar bölüm bölümdür: /panel/ayarlar genel bakış, /panel/ayarlar/eposta
+// yalnızca o grubu gösterir ve YALNIZCA onu kaydeder.
+$router->get('panel/ayarlar',            SettingsController::class, 'index',      ['installed', 'auth', 'can:settings.view']);
+$router->post('panel/ayarlar/logo',      SettingsController::class, 'uploadLogo', ['installed', 'auth', 'csrf', 'can:settings.manage']);
+$router->post('panel/ayarlar/logo-sil',  SettingsController::class, 'removeLogo', ['installed', 'auth', 'csrf', 'can:settings.manage']);
+
+// "{grup}" kalıbı "logo" ve "logo-sil" adreslerini de yakalardı.
+// Sorun olmaz: Router önce SABİT rotalara bakar, parametreli olanları
+// yalnızca hiçbiri eşleşmezse dener. Yine de okunurluk için sabit
+// olanları üste yazıyoruz.
+$router->get('panel/ayarlar/{grup}',     SettingsController::class, 'group',      ['installed', 'auth', 'can:settings.view']);
+$router->post('panel/ayarlar/{grup}',    SettingsController::class, 'update',     ['installed', 'auth', 'csrf', 'can:settings.manage']);
 
 $router->get('panel/sistem', SystemController::class, 'index', ['installed', 'auth', 'can:system.view']);
+$router->post('panel/sistem/kuyruk/tekrar',  SystemController::class, 'queueRetry', ['installed', 'auth', 'csrf', 'can:system.manage']);
+$router->post('panel/sistem/kuyruk/temizle', SystemController::class, 'queuePurge', ['installed', 'auth', 'csrf', 'can:system.manage']);
 
 $router->get('panel/hesabim',              ProfileController::class, 'index',        ['installed', 'auth', 'can:profile.view']);
 $router->post('panel/hesabim/guncelle',    ProfileController::class, 'update',       ['installed', 'auth', 'csrf', 'can:profile.update']);
@@ -94,20 +114,32 @@ $router->post('api/mesajlar/okundu', MessageApiController::class, 'markRead', ['
 $router->post('api/mesajlar/delete', MessageApiController::class, 'delete',   ['installed', 'auth', 'csrf', 'can:messages.manage']);
 $router->post('api/mesajlar/toplu',  MessageApiController::class, 'bulk',     ['installed', 'auth', 'csrf', 'can:messages.manage']);
 
+// --- E-POSTA MERKEZİ ---
+// Geçmişi görmek "mail.view", göndermek "mail.send" ister; editör
+// gidenleri görebilir ama toplu duyuru gönderemez.
+$router->post('api/eposta/list',    MailApiController::class, 'list',    ['installed', 'auth', 'csrf', 'can:mail.view']);
+$router->post('api/eposta/fetch',   MailApiController::class, 'fetch',   ['installed', 'auth', 'csrf', 'can:mail.view']);
+$router->post('api/eposta/tekrar',  MailApiController::class, 'requeue', ['installed', 'auth', 'csrf', 'can:mail.send']);
+$router->post('api/eposta/sil',     MailApiController::class, 'delete',  ['installed', 'auth', 'csrf', 'can:mail.send']);
+$router->post('api/eposta/temizle', MailApiController::class, 'purge',   ['installed', 'auth', 'csrf', 'can:mail.send']);
+
+$router->post('api/eposta/alicilar', MailApiController::class, 'audience', ['installed', 'auth', 'csrf', 'can:mail.send']);
+$router->post('api/eposta/onizle',   MailApiController::class, 'preview',  ['installed', 'auth', 'csrf', 'can:mail.send']);
+$router->post('api/eposta/gonder',   MailApiController::class, 'send',     ['installed', 'auth', 'csrf', 'can:mail.send']);
+$router->post('api/eposta/isle',     MailApiController::class, 'process',  ['installed', 'auth', 'csrf', 'can:mail.send']);
+
+$router->post('api/eposta/sinama',   MailApiController::class, 'test',    ['installed', 'auth', 'csrf', 'can:settings.manage']);
+$router->post('api/eposta/baglanti', MailApiController::class, 'verify',  ['installed', 'auth', 'csrf', 'can:settings.manage']);
+
 /* ---------------------------------------------------------------------
  *  BULUNAMAYAN ADRESLER
+ * ---------------------------------------------------------------------
+ *  Burada bir şey tanımlamıyoruz: eşleşmeyen adres için Router
+ *  HttpException::notFound() fırlatır, ErrorHandler da isteğin
+ *  türüne göre 404 sayfasını ya da JSON yanıtını üretir.
+ *
+ *  Özel bir davranış isterseniz (ör. bir modülün kendi arşiv
+ *  yönlendirmesi) $router->fallback(...) ile devralabilirsiniz.
  * ------------------------------------------------------------------ */
-$router->fallback(static function (Request $request, string $path): void {
-    if ($request->isAjax()) {
-        App\Core\Response::error('İstenen uç nokta bulunamadı.', 404);
-    }
-
-    http_response_code(404);
-
-    View::render('errors/404', [
-        'title' => 'Sayfa Bulunamadı',
-        'path'  => $path,
-    ], App\Core\Auth::check() ? 'layouts/admin' : 'layouts/site');
-});
 
 return $router;

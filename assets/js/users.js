@@ -104,25 +104,21 @@ jQuery(function ($) {
         userModal.show();
     }
 
-    var table = $('#user_table').DataTable({
-        processing: true,
-        serverSide: true,
+    /* Ortak tablo kurulumu app.js içindedir (CY.table): CSRF, Türkçe
+     * metinler, sayfa boyutu ve kayıt sayacı oradan gelir. Burada
+     * yalnızca kullanıcı listesine ÖZGÜ olanı tanımlıyoruz. */
+    var table = CY.table('#user_table', {
+        isim:  'kullanıcı',
         order: [[0, 'desc']],
-        pageLength: 10,
-        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-        dom: 'rt<"cy-dt-bottom"<"cy-dt-bottom__left"li>p>',
 
         ajax: {
             url: API.list,
-            type: 'POST',
             data: function (d) {
-                d.csrf_token      = CY.token();
-                d.filter_role     = $('#filter_role').val() || '';
-                d.filter_status   = $('#filter_status').val() || '';
+                d.filter_role      = $('#filter_role').val() || '';
+                d.filter_status    = $('#filter_status').val() || '';
                 d.filter_date_from = $('#filter_date_from').val() || '';
                 d.filter_date_to   = $('#filter_date_to').val() || '';
-            },
-            error: function (xhr) { CY.ajaxError(xhr, 'Kayıtlar yüklenirken bir hata oluştu.'); }
+            }
         },
 
         columnDefs: [
@@ -131,27 +127,7 @@ jQuery(function ($) {
             { targets: 3, className: 'cy-hide-sm' },
             { targets: 5, className: 'cy-hide-xs' },
             { targets: 6, orderable: false, searchable: false, className: 'text-center' }
-        ],
-
-        drawCallback: function (settings) {
-            $('#total_records').text(settings.json ? settings.json.recordsTotal : 0);
-        },
-
-        language: {
-            emptyTable: 'Henüz kullanıcı bulunmuyor.',
-            info: '_TOTAL_ kayıttan _START_ – _END_ arası',
-            infoEmpty: 'Gösterilecek kayıt yok',
-            infoFiltered: '(toplam _MAX_ kayıt içinden filtrelendi)',
-            lengthMenu: 'Sayfada _MENU_ kayıt',
-            loadingRecords: 'Yükleniyor…',
-            processing: 'İşleniyor…',
-            zeroRecords: 'Aramanızla eşleşen kullanıcı bulunamadı.',
-            paginate: { first: 'İlk', last: 'Son', next: 'Sonraki', previous: 'Önceki' },
-            aria: {
-                sortAscending: ': artan sırada sıralamak için etkinleştir',
-                sortDescending: ': azalan sırada sıralamak için etkinleştir'
-            }
-        }
+        ]
     });
 
     function reload(resetPaging) { table.ajax.reload(null, resetPaging === true); }
@@ -292,6 +268,17 @@ jQuery(function ($) {
                 $('#detail_initial').text(data.ad.charAt(0).toLocaleUpperCase('tr-TR')).removeClass('d-none');
             }
 
+            var attempts = data.basarisiz_giris;
+            if (attempts && attempts.adet > 0) {
+                $('#detail_login_attempts_text').text(
+                    attempts.adet + ' başarısız giriş denemesi (son: ' + attempts.son_tarih +
+                    (attempts.son_ip ? ', ' + attempts.son_ip : '') + ')'
+                );
+                $('#detail_login_attempts').removeClass('d-none');
+            } else {
+                $('#detail_login_attempts').addClass('d-none');
+            }
+
             $('#detail_edit_button').toggleClass('d-none', !data.can_edit);
             detailModal.show();
         });
@@ -340,4 +327,11 @@ jQuery(function ($) {
 
     $('#userModal').on('hidden.bs.modal', resetForm);
     $('#detailModal').on('hidden.bs.modal', function () { currentDetailId = null; });
+
+    /* Kontrol panelindeki "Yeni Kullanıcı" kısayolu buraya ?ekle=1 ile
+     * yönlendirir; sayfa yüklenir yüklenmez ekleme modalını açarız. */
+    if (new URLSearchParams(window.location.search).get('ekle') === '1') {
+        $('#add_button').trigger('click');
+        window.history.replaceState(null, '', window.location.pathname);
+    }
 });

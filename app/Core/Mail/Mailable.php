@@ -144,7 +144,12 @@ final class Mailable
      *
      * İçerik varsayılan olarak "emails/layout" şablonuna sarılır:
      * başlıkta logonuz, altta site adı ve yasal not. Sarmalamak
-     * istemiyorsanız ikinci parametreye null verin.
+     * istemiyorsanız üçüncü parametreye null verin.
+     *
+     * Düzene mektubun konusu "mailKonu" adıyla geçilir — "konu" DEĞİL.
+     * Çünkü iç şablonların çoğu kendi "konu" değişkenini kullanır
+     * (ör. iletişim bildiriminde ziyaretçinin yazdığı konu); ikisi
+     * aynı adı paylaşsaydı biri diğerini ezerdi.
      *
      * @param array<string,mixed> $data
      */
@@ -156,10 +161,11 @@ final class Mailable
 
         $this->html = $layout === null
             ? $content
-            : View::capture($layout, array_merge($data, [
-                'content' => $content,
-                'konu'    => $data['konu'] ?? $this->subject,
-            ]));
+            : View::capture($layout, [
+                'content'  => $content,
+                'mailKonu' => $this->subject,
+                'onizleme' => $data['onizleme'] ?? $this->subject,
+            ]);
 
         return $this;
     }
@@ -320,28 +326,67 @@ final class Mailable
      * ============================================================== */
 
     /**
-     * HTML gövdeden okunabilir düz metin üretir. Kusursuz bir
-     * dönüştürücü değildir; amacı HTML göremeyen istemcide mektubun
-     * anlaşılır kalmasıdır.
+     * HTML gövdeden okunabilir düz metin üretir.
+     *
+     * NEDEN GEREKLİ? Her mektup iki sürüm taşır: HTML ve düz metin.
+     * Düz metin sürümünü hem HTML gösteremeyen istemciler hem de spam
+     * filtreleri okur — düz metin alternatifi olmayan mektupların
+     * gereksiz klasörüne düşme ihtimali belirgin biçimde yüksektir.
+     *
+     * Kusursuz bir dönüştürücü değildir; amacı mektubun HTML'siz de
+     * anlaşılır kalmasıdır. Tabloları "Etiket: Değer" satırlarına
+     * indirger, bağlantıları "metin (adres)" biçiminde korur.
      */
     public static function htmlToText(string $html): string
     {
-        // <style> ve <script> içerikleri metinde işimize yaramaz.
-        $text = (string) preg_replace('#<(style|script)\b[^>]*>.*?</\1>#is', '', $html);
+        // Ön izleme bloğu (gelen kutusu için gizli metin) ve
+        // <style>/<script> içerikleri düz metinde işimize yaramaz.
+        // <head> bloğu (title, meta) düz metinde görünmemeli — yoksa
+        // mektup konuyu iki kez yazarak başlar.
+        $text = (string) preg_replace('#<head\b[^>]*>.*?</head>#is', '', $html);
+        $text = (string) preg_replace('#<div\b[^>]*\bdata-preheader\b[^>]*>.*?</div>#is', '', $text);
+        $text = (string) preg_replace('#<(style|script)\b[^>]*>.*?</\1>#is', '', $text);
 
         // Bağlantıları "metin (adres)" biçiminde koru.
         $text = (string) preg_replace('#<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>#is', '$2 ($1)', $text);
 
+        // Tablo hücreleri sekmeye, satırlar satır sonuna dönüşür;
+        // aşağıda sekmeler "Etiket: Değer" biçimine çevrilecek.
+        $text = (string) preg_replace('#</(td|th)>#i', "\t", $text);
+
         // Satır kıran etiketleri gerçek satır sonuna çevir.
-        $text = (string) preg_replace('#<(br|/p|/div|/tr|/h[1-6]|/li)\s*/?>#i', "\n", $text);
+        // Paragraf ve başlık sonlarına ÇİFT satır koyuyoruz: aşağıdaki
+        // temizlik ardışık boşları teke indirdiği için sonuçta
+        // paragraflar arasında tam olarak bir boş satır kalır.
+        $text = (string) preg_replace('#<(br|hr)\s*/?>#i', "\n", $text);
+        $text = (string) preg_replace('#</(p|h[1-6])>#i', "\n\n", $text);
+        $text = (string) preg_replace('#</(div|tr|li|table)>#i', "\n", $text);
 
         $text = strip_tags($text);
         $text = html_entity_decode($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
-        // Üçten fazla ardışık boş satırı ikiye indir.
-        $text = (string) preg_replace("/[ \t]+/", ' ', $text);
-        $text = (string) preg_replace("/\n{3,}/", "\n\n", $text);
+        /* Satır satır temizlik: düzen tabloları çok sayıda boş hücre
+         * üretir, hepsini olduğu gibi bırakırsak metin boş satır
+         * çölüne döner. */
+        $lines = [];
 
-        return trim($text);
+        foreach (explode("\n", $text) as $line) {
+            // Aynı satırdaki hücreleri "Etiket: Değer" yap.
+            $cells = array_values(array_filter(
+                array_map(static fn (string $cell): string => trim($cell), explode("\t", $line)),
+                static fn (string $cell): bool => $cell !== ''
+            ));
+
+            $line = trim((string) preg_replace('/[^\S\n]+/u', ' ', implode(': ', $cells)));
+
+            // Ardışık boş satırları tek boş satıra indir.
+            if ($line === '' && ($lines === [] || end($lines) === '')) {
+                continue;
+            }
+
+            $lines[] = $line;
+        }
+
+        return trim(implode("\n", $lines));
     }
 }

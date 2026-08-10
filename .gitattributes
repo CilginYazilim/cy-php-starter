@@ -1,0 +1,50 @@
+# =====================================================================
+#  .gitattributes – Dosyalar depoya nasıl girsin?
+# ---------------------------------------------------------------------
+#  SATIR SONU SORUNU: Windows'ta düzenlenen bir dosya CRLF, Linux ve
+#  macOS'ta LF satır sonu kullanır. Bu ayar olmadan aynı dosya iki
+#  geliştiricide "tamamen değişmiş" görünür ve fark (diff) ekranı
+#  okunmaz hale gelir.
+#
+#  ÇÖZÜM: Metin dosyaları depoda HER ZAMAN LF ile saklanır. Herkesin
+#  çalışma klasöründe kendi işletim sisteminin biçimi kalabilir.
+# =====================================================================
+
+* text=auto eol=lf
+
+# --- Sunucuda LF ZORUNLU olanlar -------------------------------------
+#  Kabuk betikleri ve konsol giriş noktası CRLF ile Linux'ta
+#  "bad interpreter" hatası verir.
+cy          text eol=lf
+*.sh        text eol=lf
+
+# --- İkili dosyalar: Git bunlara dokunmasın --------------------------
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.webp      binary
+*.ico       binary
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.eot       binary
+*.pdf       binary
+*.zip       binary
+
+# --- GitHub dil istatistikleri ---------------------------------------
+#  Bootstrap, jQuery ve DataTables bizim kodumuz değildir; "satıcı
+#  (vendor) kodu" olarak işaretlenmezlerse GitHub bu projeyi
+#  "%80 JavaScript" gösterir ve dil rozeti yanıltıcı olur.
+assets/js/jquery-*.js            linguist-vendored
+assets/js/bootstrap.bundle.js    linguist-vendored
+assets/js/jquery.dataTables*.js  linguist-vendored
+assets/js/dataTables.*.js        linguist-vendored
+assets/css/bootstrap.min.css     linguist-vendored
+assets/css/dataTables.*.css      linguist-vendored
+
+# --- Depo arşivine (zip/tar) girmeyecekler ---------------------------
+#  "Download ZIP" ile indiren kişinin işine yaramayan dosyalar.
+.gitattributes  export-ignore
+.gitignore      export-ignore
+docs/           export-ignore

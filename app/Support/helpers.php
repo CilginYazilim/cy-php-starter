@@ -14,6 +14,7 @@ use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Csrf;
 use App\Core\Setting;
+use App\Core\Url;
 
 if (!function_exists('e')) {
     /** Metni HTML'e GÜVENLE basmak için kaçışlar (XSS koruması). */
@@ -48,55 +49,34 @@ if (!function_exists('resolve_theme')) {
 
 if (!function_exists('url')) {
     /**
-     * Uygulama içi adres üretir.
-     *   pretty_urls kapalı (varsayılan) → index.php?r=panel/kullanicilar
-     *   pretty_urls açık                → panel/kullanicilar
+     * Uygulama içi adres üretir. Adresler KÖKE GÖRELİDİR ("/..."),
+     * böylece /panel/ayarlar gibi derin sayfalarda da doğru çözülür.
+     *
+     *   pretty_urls açık  → /cy-php-starter/panel/kullanicilar
+     *   pretty_urls kapalı → /cy-php-starter/index.php?r=panel/kullanicilar
      *
      * @param array<string,string|int> $params
      */
     function url(string $path = '', array $params = []): string
     {
-        $path = trim($path, '/');
-
-        if (Config::get('app.pretty_urls', false)) {
-            $url = $path === '' ? './' : $path;
-
-            return $params === [] ? $url : $url . '?' . http_build_query($params);
-        }
-
-        $query = $path === '' ? [] : ['r' => $path];
-        $query = array_merge($query, $params);
-
-        if ($query === []) {
-            return 'index.php';
-        }
-
-        // http_build_query() "/" karakterini %2F olarak kodlar; sorgu
-        // DEĞERLERİNDE "/" kodlanmak zorunda değildir (RFC 3986), bu
-        // yüzden adres çubuğunda okunaklı olsun diye geri çözüyoruz.
-        return 'index.php?' . str_replace('%2F', '/', http_build_query($query));
+        return Url::to($path, $params);
     }
 }
 
+if (!function_exists('url_full')) {
+    /** Tam adres (https://site.com/...) — e-posta ve site haritası için. */
+    function url_full(string $path = '', array $params = []): string
+    {
+        return Url::absolute($path, $params);
+    }
+}
 if (!function_exists('asset')) {
-    /**
-     * assets/ altındaki dosyaya SÜRÜM DAMGALI adres üretir.
-     *
-     * Tarayıcılar CSS/JS dosyalarını önbelleğe alır. filemtime() son
-     * değişiklik zamanını adrese ekleyerek, dosya güncellendiğinde
-     * tarayıcının eski sürümü göstermeye devam etmesini engeller.
-     */
+    /** assets/ altındaki dosyaya sürüm damgalı, köke göreli adres. */
     function asset(string $path): string
     {
-        $path = ltrim($path, '/');
-        $file = CY_BASE . '/assets/' . $path;
-
-        $version = is_file($file) ? (string) filemtime($file) : '';
-
-        return 'assets/' . $path . ($version !== '' ? '?v=' . $version : '');
+        return Url::asset($path);
     }
 }
-
 if (!function_exists('csrf_field')) {
     function csrf_field(): string
     {
@@ -125,6 +105,28 @@ if (!function_exists('can')) {
     }
 }
 
+if (!function_exists('config')) {
+    /**
+     * Yapılandırma değeri okur (config/ klasörü).
+     *
+     * setting() ile karıştırmayın: setting() veritabanındaki
+     * "ayarlar" tablosundan okur ve panelden değiştirilebilir;
+     * config() ise dosyadan gelir ve dağıtımla birlikte sabittir.
+     */
+    function config(string $key, mixed $default = null): mixed
+    {
+        return Config::get($key, $default);
+    }
+}
+
+if (!function_exists('is_debug')) {
+    /** Hata ayıklama açık mı? Görünümlerde tanılama bloğu göstermek için. */
+    function is_debug(): bool
+    {
+        return Config::isDebug();
+    }
+}
+
 if (!function_exists('setting')) {
     function setting(string $key, string $default = ''): string
     {
@@ -143,13 +145,9 @@ if (!function_exists('is_route')) {
     /** Sol menüde aktif bağlantıyı işaretlemek için. */
     function is_route(string $path): bool
     {
-        $current = (string) ($_GET['r'] ?? '');
-        $current = trim(preg_replace('#[^a-zA-Z0-9/_-]#', '', $current) ?? '', '/');
-
-        return $current === $path || str_starts_with($current, $path . '/');
+        return Url::isCurrent($path);
     }
 }
-
 if (!function_exists('old')) {
     /** @param array<string,mixed> $bag */
     function old(array $bag, string $key, string $default = ''): string
@@ -236,6 +234,9 @@ if (!function_exists('icon')) {
             'save'      => '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/>',
             'x-circle'  => '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/>',
             'link'      => '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
+            'send'      => '<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/>',
+            'inbox'     => '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+            'clock'     => '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
         ];
 
         $body = $paths[$name] ?? $paths['alert'];

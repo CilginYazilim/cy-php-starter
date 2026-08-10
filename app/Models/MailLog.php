@@ -97,7 +97,7 @@ final class MailLog
     {
         return match ($this->durum) {
             self::DURUM_GONDERILDI => 'is-active',
-            self::DURUM_BASARISIZ  => 'is-passive',
+            self::DURUM_BASARISIZ  => 'is-danger',
             default                => 'is-hold',
         };
     }

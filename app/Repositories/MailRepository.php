@@ -25,13 +25,19 @@ use PDO;
 
 final class MailRepository
 {
-    /** @var array<int,string> DataTables sütun sırası → SQL sütunu */
+    /**
+     * DataTables sütun sırası → SQL sütunu.
+     * Anahtarlar views/mail/index.php'deki <th> sırasıyla eşleşir:
+     * 0:Alıcı, 1:Konu, 2:Tür, 3:Durum, 4:Tarih, 5:İşlemler (sıralanamaz).
+     *
+     * @var array<int,string>
+     */
     private const SORTABLE = [
-        1 => 'alici_eposta',
-        2 => 'konu',
-        3 => 'tur',
-        4 => 'durum',
-        5 => 'created_at',
+        0 => 'alici_eposta',
+        1 => 'konu',
+        2 => 'tur',
+        3 => 'durum',
+        4 => 'created_at',
     ];
 
     public function __construct(private PDO $db)
@@ -217,7 +223,7 @@ final class MailRepository
     {
         [$where, $params] = $this->buildFilter($options);
 
-        $orderBy  = self::SORTABLE[(int) ($options['order_column'] ?? 5)] ?? 'created_at';
+        $orderBy  = self::SORTABLE[(int) ($options['order_column'] ?? 4)] ?? 'created_at';
         $orderDir = strtolower((string) ($options['order_dir'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
 
         $start  = max(0, (int) ($options['start'] ?? 0));

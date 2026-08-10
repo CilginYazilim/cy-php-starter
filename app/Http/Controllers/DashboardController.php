@@ -12,16 +12,13 @@ namespace App\Http\Controllers;
 use App\Core\Auth;
 use App\Core\Request;
 use App\Http\Controller;
-use App\Models\Role;
 
 final class DashboardController extends Controller
 {
     public function index(Request $request): void
     {
-        $user = Auth::user();
         $data = [
-            'title'    => 'Kontrol Paneli',
-            'subtitle' => 'Hoş geldiniz, ' . ($user?->ad ?? ''),
+            'title' => 'Kontrol Paneli',
         ];
 
         if (Auth::can('dashboard.stats')) {
@@ -29,9 +26,6 @@ final class DashboardController extends Controller
 
             $data['stats'] = [
                 'total'   => $users->countAll(),
-                'admins'  => $users->countByRole(Role::ADMIN),
-                'editors' => $users->countByRole(Role::EDITOR),
-                'members' => $users->countByRole(Role::MEMBER),
                 'active'  => $users->countByStatus('aktif'),
                 'passive' => $users->countByStatus('pasif') + $users->countByStatus('askida'),
                 'last7'   => $users->countSince(7),
@@ -49,6 +43,12 @@ final class DashboardController extends Controller
                     'unread'  => $messages->countUnread(),
                     'today'   => $messages->countToday(),
                 ];
+
+                $data['latestMessages'] = $messages->latest(5);
+            }
+
+            if (Auth::can('mail.view')) {
+                $data['mailStats'] = $this->mails()->stats();
             }
         }
 

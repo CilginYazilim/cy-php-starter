@@ -47,11 +47,28 @@ $formOpen = Setting::bool('sistem_iletisim_formu', true);
                         <form id="contact_form" novalidate>
                             <?= csrf_field() ?>
 
-                            <!-- Bal küpü: ekranda GÖRÜNMEZ, gerçek kullanıcı asla doldurmaz. -->
-                            <div class="cy-sr-only" aria-hidden="true">
-                                <label for="website">Web siteniz</label>
-                                <input type="text" name="website" id="website" tabindex="-1" autocomplete="off">
+                            <?php /*
+                                BAL KÜPÜ (honeypot) – ekranda görünmez, gerçek kullanıcı doldurmaz.
+
+                                ALAN ADI ÖNEMLİDİR: eskiden "website" idi ve tarayıcıların
+                                OTOMATİK DOLDURMA özelliği (Chrome/parola yöneticileri
+                                "website" alanlarını doldurur, autocomplete="off" çoğu zaman
+                                yok sayılır) bu alanı doldurduğu için gerçek ziyaretçilerin
+                                mesajları bot sanılıp sessizce çöpe atılıyordu.
+
+                                Artık hiçbir otomatik doldurma sezgisine uymayan anlamsız bir
+                                ad kullanıyoruz; ayrıca parola yöneticilerine "dokunma"
+                                diyen öznitelikleri ekliyoruz.
+                            */ ?>
+                            <div class="cy-hp" aria-hidden="true">
+                                <label for="cy_kontrol">Bu alanı boş bırakın</label>
+                                <input type="text" name="cy_kontrol" id="cy_kontrol" value=""
+                                       tabindex="-1" autocomplete="off"
+                                       data-lpignore="true" data-1p-ignore data-form-type="other">
                             </div>
+
+                            <?php /* Form ne zaman üretildi? Botlar formu anında gönderir. */ ?>
+                            <input type="hidden" name="cy_zaman" value="<?= (int) time() ?>">
 
                             <div class="row g-3">
                                 <div class="col-12 col-md-6">

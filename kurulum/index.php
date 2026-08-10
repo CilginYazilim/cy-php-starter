@@ -11,13 +11,26 @@
  *    4) Yönetici       → admin hesabı; bu adımda kurulum çalıştırılır
  *    5) Tamamlandı     → özet + KURULUM KLASÖRÜNÜ SİL butonu
  *
+ *  KURULUM SONUNDA TEK BİR EKSİK KALMAZ. Son adım sırasıyla:
+ *    · veritabanını oluşturur ve database.sql'i içeri aktarır
+ *    · istenmişse kurulum/demo.sql örnek verisini yükler
+ *    · site ayarlarını formdaki değerlerle günceller
+ *    · yönetici hesabını açar
+ *    · .env dosyasını yazar
+ *    · database/migrations altındaki EK tabloları kurar
+ *      (onbellek, isler, api_anahtarlari) — komut satırı GEREKMEZ
+ *
  *  NEDEN AYRI BİR KLASÖR VE BAĞIMSIZ KOD?
- *  Bu dosya BİLEREK app/ klasöründeki hiçbir sınıfı YÜKLEMEZ. Sebebi:
- *  Autoloader ve Config, projenin geri kalanı gibi ".env" dosyasının
- *  ve dolayısıyla VERİTABANININ var olduğunu varsayar — ki kurulumun
- *  amacı tam olarak bunları henüz oluşturmaktır. Bu yüzden gereken
- *  birkaç yardımcı fonksiyon (doğrulama, parola özetleme) bu dosyanın
- *  içinde ayrıca ve bağımsız olarak tanımlanmıştır.
+ *  Bu dosya, .env yazılana KADAR app/ klasöründeki hiçbir sınıfı
+ *  yüklemez. Sebebi: Autoloader ve Config, projenin geri kalanı gibi
+ *  ".env" dosyasının ve dolayısıyla VERİTABANININ var olduğunu
+ *  varsayar — ki kurulumun amacı tam olarak bunları oluşturmaktır.
+ *  Bu yüzden gereken birkaç yardımcı fonksiyon (doğrulama, parola
+ *  özetleme) bu dosyanın içinde ayrıca tanımlanmıştır.
+ *
+ *  .env YAZILDIKTAN SONRA bu varsayım artık geçerlidir; migration'ları
+ *  çalıştırmak için uygulamanın kendi önyüklemesi güvenle kullanılır
+ *  (bkz. run_migrations).
  *
  *  İş bittiğinde son adımdaki tek bir butonla "kurulum/" klasörünün
  *  tamamı silinir; proje kökünde kuruluma ait hiçbir dosya kalmaz.
@@ -44,6 +57,7 @@ if (session_status() === PHP_SESSION_NONE) {
 const ROOT_PATH     = __DIR__ . '/..';
 const ENV_PATH      = __DIR__ . '/../.env';
 const SCHEMA_PATH   = __DIR__ . '/database.sql';
+const DEMO_PATH     = __DIR__ . '/demo.sql';
 const IDENTIFIER_RE = '/^[A-Za-z_][A-Za-z0-9_]*$/';
 
 /** Sihirbazın adımları: anahtar => ekranda görünen başlık. */
@@ -64,7 +78,11 @@ const ADIMLAR = [
  *  app/ klasörü buradan bağımsız çalışmaya devam eder.
  * ================================================================== */
 
-function e(?string $value): string
+/* app/Support/helpers.php içindeki karşılıklarıyla AYNI imzayla
+ * tanımlanırlar. Kurulumun son adımında uygulamanın önyüklemesi
+ * yüklenir; oradaki tanımlar function_exists ile korunduğu için
+ * çakışma olmaz, bu sürümler geçerli kalır. */
+function e(mixed $value): string
 {
     return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
@@ -309,6 +327,57 @@ function split_sql_statements(string $sql): array
     return $statements;
 }
 
+/**
+ * database/migrations altındaki EK tabloları kurar.
+ *
+ * NEDEN BURADA? Şablonun temel tabloları database.sql ile gelir, ama
+ * sonradan eklenen tablolar (onbellek, isler, api_anahtarlari)
+ * migration dosyalarındadır. Bunları elle "php cy migrate" ile
+ * çalıştırmak gerekseydi, komut satırı olmayan bir paylaşımlı
+ * hostingde şablon EKSİK kurulurdu — önbellek sürücüsü "veritabani"
+ * seçildiğinde ya da API anahtarı üretilmek istendiğinde hata verirdi.
+ *
+ * Aynı SQL'i database.sql içine KOPYALAMIYORUZ: bir tablo tek bir
+ * yerde tanımlanmalıdır. Bunun yerine uygulamanın kendi Migrator'ını
+ * çağırıyoruz — böylece kayıt tablosu da doğru doldurulur ve daha
+ * sonra çalıştırılan "php cy migrate" bunları tekrar denemez.
+ *
+ * .env YAZILDIKTAN SONRA çağrılmalıdır.
+ *
+ * @return array{0:int,1:?string} [kurulan tablo sayısı, hata mesajı]
+ */
+function run_migrations(): array
+{
+    $root = realpath(ROOT_PATH);
+
+    if ($root === false || !is_file($root . '/app/bootstrap.php')) {
+        return [0, 'Uygulama dosyaları bulunamadı; migration adımı atlandı.'];
+    }
+
+    if (!defined('CY_BASE')) {
+        define('CY_BASE', $root);
+    }
+    if (!defined('CY_START')) {
+        define('CY_START', microtime(true));
+    }
+
+    try {
+        require_once CY_BASE . '/app/bootstrap.php';
+
+        $migrator = new App\Core\Database\Migrator(
+            App\Core\Database::connection(),
+            (string) App\Core\Config::get('db.migrations')
+        );
+
+        return [count($migrator->run()), null];
+    } catch (Throwable $e) {
+        /* Migration hatası kurulumu ÇÖKERTMEZ: temel tablolar ve
+         * yönetici hesabı zaten hazır, site açılır. Kullanıcıya son
+         * ekranda "php cy migrate" çalıştırması söylenir. */
+        return [0, $e->getMessage()];
+    }
+}
+
 /** Ayarları ".env" dosyasına yazar (app/Core/Env.php formatıyla uyumlu). */
 function write_env_file(string $path, array $values): void
 {
@@ -410,8 +479,9 @@ if ($existingEnv !== []) {
     try {
         $probe = new PDO(
             sprintf(
-                'mysql:host=%s;dbname=%s;charset=utf8mb4',
+                'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
                 $existingEnv['DB_HOST'] ?? '127.0.0.1',
+                $existingEnv['DB_PORT'] ?? '3306',
                 $existingEnv['DB_NAME'] ?? ''
             ),
             $existingEnv['DB_USER'] ?? 'root',
@@ -472,6 +542,7 @@ $checks = [
     ['label' => 'Proje klasörüne yazma izni (.env için)', 'ok' => is_writable(ROOT_PATH), 'note' => is_writable(ROOT_PATH) ? '' : 'Klasör izinlerini kontrol edin.'],
     ['label' => 'kurulum/database.sql dosyası mevcut', 'ok' => is_file(SCHEMA_PATH), 'note' => is_file(SCHEMA_PATH) ? '' : 'Şema dosyası bulunamadı.'],
     ['label' => 'upload/ klasörü yazılabilir', 'ok' => !is_dir(ROOT_PATH . '/upload') || is_writable(ROOT_PATH . '/upload'), 'note' => 'Avatar ve görsel yükleme için gerekli.'],
+    ['label' => 'storage/ klasörü yazılabilir', 'ok' => !is_dir(ROOT_PATH . '/storage') || is_writable(ROOT_PATH . '/storage'), 'note' => 'Günlük kayıtları, önbellek ve kuyruk dosyaları buraya yazılır.'],
     ['label' => 'kurulum/ klasörü silinebilir', 'ok' => is_writable(ROOT_PATH) && is_writable(__DIR__), 'note' => 'Kurulum bitince klasörü tek tıkla silebilmek için gerekli.'],
 ];
 $allChecksOk = !in_array(false, array_column($checks, 'ok'), true);
@@ -545,6 +616,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && ($_POST['islem'] ?? ''
             [$admin_kadi, $kadiHata]     = validate_username($_POST['admin_kadi'] ?? '');
             [$admin_eposta, $epostaHata] = validate_email($_POST['admin_eposta'] ?? '');
             $admin_sifre = (string) ($_POST['admin_sifre'] ?? '');
+            $demo_yukle  = isset($_POST['demo_yukle']);
 
             foreach ([$adHata, $soyadHata, $kadiHata, $epostaHata] as $fieldError) {
                 if ($fieldError !== null) {
@@ -577,6 +649,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && ($_POST['islem'] ?? ''
 
                     $statements = import_schema($pdo, SCHEMA_PATH);
 
+                    /* Örnek veri temel şemadan SONRA gelir: demo
+                     * kullanıcılar "kullanicilar" tablosuna, demo
+                     * mesajlar ona bağlı "mesajlar" tablosuna yazar. */
+                    if ($demo_yukle && is_file(DEMO_PATH)) {
+                        $statements += import_schema($pdo, DEMO_PATH);
+                    }
+
                     $settingsStmt = $pdo->prepare('UPDATE ayarlar SET deger = :deger WHERE anahtar = :anahtar');
                     foreach ([
                         'site_adi'        => $site['site_adi'],
@@ -600,25 +679,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && ($_POST['islem'] ?? ''
                         ':durum'  => 'aktif',
                     ]);
 
+                    /* .env, .env.example ile AYNI anahtarları taşır.
+                     * Eksik bırakılan her anahtar için kod varsayılana
+                     * düşerdi; dosyada görünmediği için de kullanıcı
+                     * öyle bir ayarın var olduğunu fark etmezdi. */
                     write_env_file(ENV_PATH, [
                         'APP_NAME'         => $site['site_adi'],
                         'APP_DESCRIPTION'  => $site['site_aciklama'],
                         'APP_URL'          => $site['site_url'],
+                        'APP_ENV'          => 'local',
                         'APP_DEBUG'        => 'true',
-                        'APP_PRETTY_URLS'  => 'false',
+                        'APP_PRETTY_URLS'  => 'true',
+                        'APP_TIMEZONE'     => 'Europe/Istanbul',
                         'DB_HOST'          => $db['db_host'],
                         'DB_PORT'          => '3306',
                         'DB_NAME'          => $db['db_name'],
                         'DB_USER'          => $db['db_user'],
                         'DB_PASS'          => $db['db_pass'],
+                        'LOG_ENABLED'      => 'true',
+                        'LOG_LEVEL'        => 'debug',
+                        'LOG_DAYS'         => '30',
+                        'CACHE_DRIVER'     => 'dosya',
+                        'CACHE_TTL'        => '3600',
+                        'CACHE_PREFIX'     => 'cy',
                     ]);
 
+                    /* Artık .env var: ek tabloları uygulamanın kendi
+                     * Migrator'ı kurabilir. Komut satırı gerekmez. */
+                    [$migrationSayisi, $migrationHatasi] = run_migrations();
+
                     $_SESSION['kurulum_sonuc'] = [
-                        'db_name'    => $db['db_name'],
-                        'statements' => $statements,
-                        'kadi'       => $admin_kadi,
-                        'eposta'     => $admin_eposta,
-                        'site_adi'   => $site['site_adi'],
+                        'db_name'     => $db['db_name'],
+                        'statements'  => $statements,
+                        'migrations'  => $migrationSayisi,
+                        'migr_hata'   => $migrationHatasi,
+                        'demo'        => $demo_yukle,
+                        'kadi'        => $admin_kadi,
+                        'eposta'      => $admin_eposta,
+                        'site_adi'    => $site['site_adi'],
                     ];
                     unset($_SESSION['kurulum']);
 
@@ -834,6 +932,22 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                             <input type="password" class="form-control" id="admin_sifre" name="admin_sifre" required>
                             <div class="form-text">En az 8 karakter; harf ve rakam içermelidir.</div>
                         </div>
+
+                        <div class="col-12">
+                            <hr class="my-1">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="demo_yukle" name="demo_yukle" value="1"
+                                       <?= isset($_POST['demo_yukle']) ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="demo_yukle">
+                                    <strong>Örnek verileri de yükle</strong>
+                                </label>
+                                <div class="form-text">
+                                    Şablonu ilk kez deniyorsanız işaretleyin: 4 demo kullanıcı ve 2 iletişim
+                                    mesajı eklenir, böylece listeleri ve filtreleri dolu görürsünüz.
+                                    Gerçek bir projeye başlıyorsanız <strong>boş bırakın</strong>.
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <button type="submit" class="btn cy-btn cy-btn--primary mt-3">Kurulumu Tamamla</button>
                 </form>
@@ -843,23 +957,43 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                 <div class="cy-alert cy-alert--success mb-3">Kurulum başarıyla tamamlandı!</div>
 
                 <div class="kurulum-summary mb-3">
-                    Veritabanı: <?= e($sonuc['db_name']) ?> (<?= (int) $sonuc['statements'] ?> ifade çalıştırıldı)<br>
-                    Site: <?= e($sonuc['site_adi']) ?><br>
-                    Yönetici: <?= e($sonuc['kadi']) ?> · <?= e($sonuc['eposta']) ?>
+                    Veritabanı&nbsp;: <?= e($sonuc['db_name']) ?> (<?= (int) $sonuc['statements'] ?> ifade)<br>
+                    Ek tablolar : <?= (int) ($sonuc['migrations'] ?? 0) ?> migration çalıştı<br>
+                    Örnek veri&nbsp;: <?= !empty($sonuc['demo']) ? 'yüklendi' : 'yüklenmedi (temiz kurulum)' ?><br>
+                    Site&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <?= e($sonuc['site_adi']) ?><br>
+                    Yönetici&nbsp;&nbsp;: <?= e($sonuc['kadi']) ?> · <?= e($sonuc['eposta']) ?>
                 </div>
+
+                <?php if (!empty($sonuc['migr_hata'])): ?>
+                    <div class="cy-alert cy-alert--warning mb-3">
+                        <strong>Ek tablolar kurulamadı.</strong> Site çalışır durumda, ancak önbelleğin
+                        veritabanı sürücüsü, iş kuyruğu ve API anahtarları için şu komutu çalıştırın:
+                        <code>php cy migrate</code><br>
+                        <small><?= e($sonuc['migr_hata']) ?></small>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (!empty($sonuc['demo'])): ?>
+                    <div class="cy-alert cy-alert--info mb-3">
+                        Örnek kullanıcıların tümünün parolası <code>Demo1234!</code>.
+                        Canlıya çıkmadan önce silin:
+                        <code>DELETE FROM kullanicilar WHERE eposta LIKE '%@ornek.com';</code>
+                    </div>
+                <?php endif; ?>
 
                 <div class="cy-alert cy-alert--warning mb-3">
                     <strong>Son adım:</strong> Güvenlik için "kurulum/" klasörünü şimdi silin.
                     Silmezseniz herkes bu sihirbaza erişip veritabanınızı sıfırlamayı deneyebilir.
+                    Aşağıdaki düğme klasörü siler ve sizi sitenin ana sayfasına götürür.
                 </div>
 
                 <div class="d-flex flex-wrap gap-2">
                     <form method="post" action="index.php">
                         <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
                         <input type="hidden" name="islem" value="temizle">
-                        <button type="submit" class="btn cy-btn cy-btn--danger">Kurulum Klasörünü Sil</button>
+                        <button type="submit" class="btn cy-btn cy-btn--danger">Kurulum Klasörünü Sil ve Bitir</button>
                     </form>
-                    <a class="btn cy-btn cy-btn--ghost" href="../index.php?r=giris">Kurulum klasörünü elle sileceğim, girişe git</a>
+                    <a class="btn cy-btn cy-btn--ghost" href="../index.php?r=giris">Klasörü elle sileceğim, girişe git</a>
                 </div>
             <?php endif; ?>
         </div>

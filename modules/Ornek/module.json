@@ -1,0 +1,12 @@
+{
+    "baslik": "Örnek Modül",
+    "aciklama": "Modül sisteminin çalışan örneği — inceleyip silebilirsiniz",
+    "surum": "1.0.0",
+
+    "menu": {
+        "route": "panel/ornek",
+        "icon": "inbox",
+        "label": "Örnek Modül",
+        "can": "ornek.view"
+    }
+}

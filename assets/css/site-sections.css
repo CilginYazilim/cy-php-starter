@@ -1,0 +1,343 @@
+/* =====================================================================
+ *  ÖN YÜZ BÖLÜMLERİ
+ * ---------------------------------------------------------------------
+ *  Ana sayfa ve iç sayfaların bölüm bileşenleri. site.css'ten AYRI bir
+ *  dosyada: site.css kabuk (menü, alt bilgi, form) içindir, burası
+ *  içerik bölümleri. Ayırmak, birini düzenlerken diğerini bozma
+ *  riskini ortadan kaldırır.
+ *
+ *  Tümü MOBİL ÖNCELİKLİ yazılmıştır: varsayılan tek sütun, ekran
+ *  büyüdükçe açılır. Yazı boyutları clamp() ile ekranla ölçeklenir,
+ *  böylece her kırılma noktası için ayrı medya sorgusu gerekmez.
+ * ================================================================== */
+
+/* ------------------------------ HERO ------------------------------ */
+.cy-hero {
+    position: relative;
+    padding: clamp(2.5rem, 8vw, 5rem) 0;
+    overflow: hidden;
+}
+
+/* Yumuşak arka plan lekesi — marka rengiyle, düşük opaklıkta. */
+.cy-hero::before {
+    content: "";
+    position: absolute;
+    inset: -40% 40% 40% -20%;
+    background: radial-gradient(circle at 30% 40%, var(--cy-brand-soft), transparent 65%);
+    opacity: .7;
+    pointer-events: none;
+}
+
+.cy-hero > .container { position: relative; }
+
+.cy-hero__title {
+    font-size: clamp(1.9rem, 6vw, 3.1rem);
+    font-weight: 750;
+    line-height: 1.12;
+    letter-spacing: -.02em;
+    color: var(--cy-text);
+    margin: 0 0 .75rem;
+    overflow-wrap: anywhere;
+}
+
+.cy-hero__lead {
+    font-size: clamp(1rem, 2.4vw, 1.15rem);
+    line-height: 1.65;
+    color: var(--cy-text-muted);
+    max-width: 54ch;
+    margin: 0;
+}
+
+.cy-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem;
+    margin-top: 1.5rem;
+}
+
+.cy-hero__stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: .75rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--cy-border);
+    max-width: 30rem;
+}
+
+.cy-hero__stat strong {
+    display: block;
+    font-size: clamp(1.2rem, 3.5vw, 1.6rem);
+    font-weight: 700;
+    color: var(--cy-brand);
+    line-height: 1.1;
+}
+
+.cy-hero__stat span {
+    font-size: .78rem;
+    color: var(--cy-text-muted);
+}
+
+.cy-hero__visual {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.cy-hero__logo {
+    max-width: min(300px, 70vw);
+    height: auto;
+    filter: drop-shadow(0 18px 40px rgba(15, 23, 42, .14));
+}
+
+@media (min-width: 576px) {
+    .cy-hero__stats { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Dar ekranda görsel metnin ALTINDA dursun: ziyaretçi önce başlığı
+   görmeli, logoyu değil. */
+@media (max-width: 991.98px) {
+    .cy-hero__visual { order: 2; padding-top: 0; }
+    .cy-hero__logo   { max-width: min(200px, 55vw); }
+}
+
+/* ----------------------------- BÖLÜM ------------------------------ */
+.cy-section { padding: clamp(2.25rem, 6vw, 4rem) 0; }
+
+.cy-section--alt { background: var(--cy-brand-soft); }
+
+.cy-section__head {
+    max-width: 46rem;
+    margin: 0 auto clamp(1.5rem, 4vw, 2.5rem);
+    text-align: center;
+}
+
+.cy-section__title {
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    font-weight: 700;
+    letter-spacing: -.01em;
+    color: var(--cy-text);
+    margin: 0 0 .6rem;
+}
+
+.cy-section__lead {
+    font-size: clamp(.95rem, 2vw, 1.05rem);
+    line-height: 1.65;
+    color: var(--cy-text-muted);
+    margin: 0;
+}
+
+/* ---------------------------- ÖZELLİK ----------------------------- */
+.cy-feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+}
+
+.cy-feature-grid--compact {
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.cy-feature {
+    padding: 1.4rem;
+    background: var(--cy-surface);
+    border: 1px solid var(--cy-border);
+    border-radius: 14px;
+    transition: border-color .15s, transform .15s, box-shadow .15s;
+}
+
+.cy-feature:hover {
+    border-color: var(--cy-brand);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(15, 23, 42, .07);
+}
+
+.cy-feature__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    margin-bottom: .9rem;
+    background: var(--cy-brand-soft);
+    color: var(--cy-brand);
+}
+
+.cy-feature__icon--success { background: var(--cy-success-soft); color: var(--cy-success); }
+.cy-feature__icon--warning { background: var(--cy-warning-soft); color: var(--cy-warning); }
+
+.cy-feature__title {
+    font-size: 1.02rem;
+    font-weight: 650;
+    color: var(--cy-text);
+    margin: 0 0 .35rem;
+}
+
+.cy-feature__text {
+    font-size: .875rem;
+    line-height: 1.6;
+    color: var(--cy-text-muted);
+    margin: 0;
+}
+
+/* ----------------------------- ALINTI ----------------------------- */
+.cy-quote {
+    padding: 1.75rem;
+    border-radius: 14px;
+    background: var(--cy-surface);
+    border: 1px solid var(--cy-border);
+    color: var(--cy-brand);
+}
+
+.cy-quote p {
+    margin: .85rem 0 0;
+    font-size: 1.02rem;
+    line-height: 1.6;
+    font-style: italic;
+    color: var(--cy-text);
+}
+
+/* -------------------------- ÇAĞRI (CTA) --------------------------- */
+.cy-cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: clamp(1.4rem, 4vw, 2.25rem);
+    border-radius: 16px;
+    background: var(--cy-surface);
+    border: 1px solid var(--cy-border);
+}
+
+.cy-cta__text h2 {
+    font-size: clamp(1.2rem, 3.5vw, 1.6rem);
+    font-weight: 700;
+    margin: 0 0 .3rem;
+    color: var(--cy-text);
+}
+
+.cy-cta__text p {
+    margin: 0;
+    color: var(--cy-text-muted);
+    font-size: .95rem;
+}
+
+/* ---------------------------- İLETİŞİM ---------------------------- */
+.cy-contact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: .75rem;
+}
+
+.cy-contact-card {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    padding: 1rem 1.1rem;
+    background: var(--cy-surface);
+    border: 1px solid var(--cy-border);
+    border-radius: 12px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color .15s;
+}
+
+a.cy-contact-card:hover { border-color: var(--cy-brand); color: inherit; }
+
+.cy-contact-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    border-radius: 10px;
+    background: var(--cy-brand-soft);
+    color: var(--cy-brand);
+}
+
+.cy-contact-card__body { min-width: 0; }
+
+.cy-contact-card__label {
+    display: block;
+    font-size: .74rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--cy-text-muted);
+}
+
+.cy-contact-card__value {
+    display: block;
+    font-size: .92rem;
+    font-weight: 550;
+    color: var(--cy-text);
+    overflow-wrap: anywhere;
+}
+
+.cy-contact-row {
+    display: flex;
+    gap: .7rem;
+    padding: .6rem 0;
+    border-bottom: 1px solid var(--cy-border);
+    font-size: .9rem;
+}
+
+.cy-contact-row:last-of-type { border-bottom: 0; }
+
+.cy-contact-row__icon {
+    color: var(--cy-brand);
+    flex: 0 0 auto;
+    padding-top: .15rem;
+}
+
+.cy-contact-row__label {
+    display: block;
+    font-size: .74rem;
+    color: var(--cy-text-muted);
+}
+
+/* ------------------------ İÇ SAYFA BAŞLIĞI ------------------------ */
+.cy-pagehero {
+    padding: clamp(2rem, 6vw, 3.25rem) 0 clamp(1.25rem, 3vw, 1.75rem);
+    background: var(--cy-brand-soft);
+}
+
+.cy-pagehero__title {
+    font-size: clamp(1.6rem, 5vw, 2.4rem);
+    font-weight: 730;
+    letter-spacing: -.015em;
+    color: var(--cy-text);
+    margin: .35rem 0 .5rem;
+}
+
+.cy-pagehero__lead {
+    font-size: clamp(.95rem, 2.2vw, 1.08rem);
+    color: var(--cy-text-muted);
+    max-width: 52ch;
+    margin: 0;
+}
+
+.cy-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: .3rem;
+    font-size: .78rem;
+    color: var(--cy-text-muted);
+}
+
+.cy-breadcrumb a { color: var(--cy-text-muted); text-decoration: none; }
+.cy-breadcrumb a:hover { color: var(--cy-brand); text-decoration: underline; }
+
+/* ------------------------------ METİN ----------------------------- */
+.cy-prose {
+    font-size: 1rem;
+    line-height: 1.75;
+    color: var(--cy-text);
+    overflow-wrap: anywhere;
+}
+
+/* Sayfa hiçbir zaman yatay kaymasın. */
+.cy-site { overflow-x: hidden; }

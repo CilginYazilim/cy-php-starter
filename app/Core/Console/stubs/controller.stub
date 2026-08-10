@@ -1,0 +1,29 @@
+<?php
+/**
+ * =====================================================================
+ *  {{AD}}
+ * ---------------------------------------------------------------------
+ *  Rotasını routes/web.php içine eklemeyi unutmayın:
+ *
+ *      $router->get('panel/{{GORUNUM}}', {{AD}}::class, 'index',
+ *          ['installed', 'auth', 'can:{{GORUNUM}}.view']);
+ * =====================================================================
+ */
+
+declare(strict_types=1);
+
+namespace {{NAMESPACE}};
+
+use App\Core\Request;
+use App\Http\Controller;
+
+final class {{AD}} extends Controller
+{
+    public function index(Request $request): void
+    {
+        $this->view('{{GORUNUM}}/index', [
+            'title'    => '{{BASLIK}}',
+            'subtitle' => '',
+        ]);
+    }
+}

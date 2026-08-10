@@ -30,13 +30,17 @@ final class Role
             'dashboard.view', 'dashboard.stats',
             'users.view', 'users.create', 'users.update', 'users.delete', 'users.role', 'users.status',
             'messages.view', 'messages.manage',
+            'mail.view', 'mail.send',
             'settings.view', 'settings.manage',
-            'system.view',
+            'system.view', 'system.manage',
             'profile.view', 'profile.update',
         ],
         self::EDITOR => [
             'dashboard.view', 'dashboard.stats',
             'messages.view', 'messages.manage',
+            // Editör giden e-postaların geçmişini görebilir ama
+            // toplu duyuru gönderemez (mail.send yalnızca yöneticide).
+            'mail.view',
             'profile.view', 'profile.update',
         ],
         self::MEMBER => [
@@ -86,8 +90,26 @@ final class Role
         return array_key_exists($role, self::ABILITIES);
     }
 
+    /**
+     * Bu rol şu işi yapabilir mi?
+     *
+     * YÖNETİCİ HER ŞEYİ YAPABİLİR — listeye bakılmaz. Bunun nedeni
+     * modüllerdir: modules/Stok kendi "stok.view" yetkisini tanımlar
+     * ama çekirdeğin ABILITIES listesini değiştiremez. Yönetici için
+     * beyaz liste şart koşsaydık, kurulan her modül için bu dosyaya
+     * elle satır eklemek gerekirdi — ve unutulduğunda "yönetici
+     * kendi kurduğu modüle giremiyor" gibi kafa karıştırıcı bir
+     * durum çıkardı.
+     *
+     * Diğer roller için liste bağlayıcıdır: bir modülün editöre de
+     * açılmasını istiyorsanız yetkisini aşağıdaki listeye ekleyin.
+     */
     public static function can(string $role, string $ability): bool
     {
+        if ($role === self::ADMIN) {
+            return true;
+        }
+
         return in_array($ability, self::ABILITIES[$role] ?? [], true);
     }
 

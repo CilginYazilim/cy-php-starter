@@ -12,12 +12,14 @@ namespace App\Http\Controllers;
 use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Flash;
+use App\Core\Events\Events;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
 use App\Core\Setting;
 use App\Core\Validator;
 use App\Http\Controller;
+use App\Events\UserRegistered;
 
 final class AuthController extends Controller
 {
@@ -142,6 +144,12 @@ final class AuthController extends Controller
         $user = $this->users()->find($id);
 
         if ($user !== null) {
+            /* Denetleyici karşılama mektubunu KENDİSİ göndermiyor;
+             * yalnızca "yeni kullanıcı kaydoldu" diye duyuruyor.
+             * Mektubu app/Listeners/HosgeldinMailiGonder.php gönderir.
+             * Bir dinleyici hata verse bile kayıt geçerli kalır. */
+            Events::dispatch(new UserRegistered($user));
+
             Auth::login($user);
         }
 

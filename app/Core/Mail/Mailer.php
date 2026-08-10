@@ -26,6 +26,7 @@ namespace App\Core\Mail;
 
 use App\Core\Config;
 use App\Core\Database;
+use App\Core\Log\Logger;
 use App\Core\Setting;
 use App\Repositories\MailRepository;
 use Throwable;
@@ -132,6 +133,36 @@ final class Mailer
         self::$transport = $transport;
     }
 
+    /**
+     * Göreli bir yolu MUTLAK adrese çevirir.
+     *
+     * E-postada "assets/images/logo.png" hiçbir şey ifade etmez;
+     * mektup Gmail'de açıldığında tarayıcı o dosyayı gmail.com'da
+     * arar. Bu yüzden her adres site köküyle birleştirilir.
+     */
+    public static function absolute(string $path = ''): string
+    {
+        if ($path !== '' && preg_match('#^(https?:)?//#i', $path) === 1) {
+            return $path;
+        }
+
+        $base = Setting::get('site_url');
+
+        if ($base === '') {
+            $base = (string) Config::get('app.url', '');
+        }
+
+        $base = rtrim($base, '/');
+
+        if ($base === '') {
+            // Adres hiç bilinmiyorsa göreli yolu olduğu gibi bırakırız;
+            // mektup yine gider, yalnızca logo görünmeyebilir.
+            return $path;
+        }
+
+        return $path === '' ? $base . '/' : $base . '/' . ltrim($path, '/');
+    }
+
     private static function heloName(): string
     {
         $host = parse_url(Config::get('app.url', ''), PHP_URL_HOST);
@@ -180,6 +211,14 @@ final class Mailer
                 self::log()?->markFailed($logId, $e->getMessage());
             }
 
+            // Veritabanı kaydı panelde görünür; dosya log'u ise
+            // veritabanına hiç ulaşılamadığı durumda tek izdir.
+            Logger::error('Mektup gönderilemedi: ' . $e->getMessage(), [
+                'alici'  => $mail->recipients()[0][0] ?? '',
+                'konu'   => $mail->getSubject(),
+                'surucu' => self::config()['surucu'],
+            ], 'mail');
+
             if ($rethrow) {
                 throw $e instanceof MailException ? $e : new MailException($e->getMessage(), 0, $e);
             }
@@ -222,8 +261,9 @@ final class Mailer
             return ['gonderildi' => 0, 'basarisiz' => 0, 'kalan' => 0];
         }
 
-        $sent   = 0;
-        $failed = 0;
+        $sent            = 0;
+        $failed          = 0;
+        self::$lastError = '';
 
         foreach ($repository->pending($limit) as $row) {
             $mail = $repository->toMailable($row);
@@ -239,6 +279,10 @@ final class Mailer
                 $repository->markSent((int) $row['id']);
                 $sent++;
             } catch (Throwable $e) {
+                // Son hatayı saklıyoruz: arayüz "3 mektup başarısız"
+                // demekle yetinmesin, SEBEBİNİ de gösterebilsin.
+                self::$lastError = $e->getMessage();
+
                 $repository->markFailed((int) $row['id'], $e->getMessage());
                 $failed++;
             }

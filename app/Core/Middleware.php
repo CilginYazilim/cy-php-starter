@@ -9,12 +9,22 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Core\Exceptions\HttpException;
+
 final class Middleware
 {
     /** @param string $rule "auth" | "guest" | "role:admin" | "can:users.delete" | "csrf" | "installed" */
     public static function handle(string $rule, Request $request): void
     {
         [$name, $parameter] = array_pad(explode(':', $rule, 2), 2, null);
+
+        // API kuralları ayrı bir kapıcıya devredilir (Bearer anahtarı,
+        // hız sınırı, JSON hata biçimi). Bkz. App\Core\Api\ApiGuard.
+        if (str_starts_with($rule, 'api')) {
+            \App\Core\Api\ApiGuard::handle($rule, $request);
+
+            return;
+        }
 
         match ($name) {
             'auth'      => self::auth($request),
@@ -33,8 +43,10 @@ final class Middleware
             return;
         }
 
+        // AJAX isteği yönlendirilemez: tarayıcı giriş sayfasının HTML'ini
+        // JSON sanıp çöker. 401 döner, JavaScript sayfayı yeniler.
         if ($request->isAjax()) {
-            Response::error('Oturumunuz sonlandı. Lütfen tekrar giriş yapın.', 401);
+            throw HttpException::unauthorized();
         }
 
         Session::set('_intended', $request->raw('r', ''));
@@ -53,11 +65,11 @@ final class Middleware
     {
         $allowed = explode('|', $roles);
 
-        if (Auth::user() !== null && in_array(Auth::user()->role, $allowed, true)) {
+        if (Auth::user() !== null && in_array(Auth::user()->rol, $allowed, true)) {
             return;
         }
 
-        self::deny($request);
+        self::deny($request, 'rol:' . $roles);
     }
 
     /** "can:users.delete" — birden fazlası "|" ile VEYA anlamına gelir. */
@@ -69,7 +81,7 @@ final class Middleware
             }
         }
 
-        self::deny($request);
+        self::deny($request, $abilities);
     }
 
     private static function csrf(Request $request): void
@@ -78,17 +90,17 @@ final class Middleware
             return;
         }
 
-        if ($request->isAjax()) {
-            Response::error('Oturum doğrulaması başarısız. Lütfen sayfayı yenileyin.', 419);
-        }
-
-        Flash::error('Güvenlik doğrulaması başarısız oldu. Lütfen tekrar deneyin.');
-        Response::redirect(url(''));
+        // Bağlamı istisnaya koyuyoruz; kaydı ErrorHandler tek satırda
+        // "security" kanalına yazar (bkz. ErrorHandler::log).
+        throw HttpException::pageExpired([
+            'yontem'  => $request->method(),
+            'referer' => mb_substr((string) ($_SERVER['HTTP_REFERER'] ?? ''), 0, 200),
+        ]);
     }
 
     /**
      * Kurulum tamamlanmadıysa siteyi kapatır, kurulum sihirbazına yönlendirir.
-     * install/ klasörü kendi başına çalışır; bu kontrol SADECE ana
+     * kurulum/ klasörü kendi başına çalışır; bu kontrol SADECE ana
      * uygulamanın .env'siz açılmasını (500 hatası yerine) engeller.
      */
     private static function installed(): void
@@ -97,17 +109,19 @@ final class Middleware
             return;
         }
 
-        Response::redirect('kurulum/');
+        Response::redirect(Url::base() . '/kurulum/');
     }
 
-    private static function deny(Request $request): never
+    /**
+     * Yetkisiz erişim. Yanıtın nasıl görüneceğine (JSON mu, hata
+     * sayfası mı) burada değil ErrorHandler karar verir; biz yalnızca
+     * "bu istek 403 ile bitmeli" deriz.
+     */
+    private static function deny(Request $request, string $ability = ''): never
     {
-        if ($request->isAjax()) {
-            Response::error('Bu işlem için yetkiniz bulunmuyor.', 403);
-        }
-
-        http_response_code(403);
-        View::render('errors/403', ['title' => 'Yetkisiz Erişim'], Auth::check() ? 'layouts/admin' : 'layouts/site');
-        exit;
+        throw HttpException::forbidden(
+            ability: $ability,
+            context: ['kullanici' => Auth::id() ?? 'konuk']
+        );
     }
 }

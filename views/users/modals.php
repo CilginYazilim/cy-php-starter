@@ -194,6 +194,13 @@ $roles = $roles ?? [];
                     <dt>Son Giriş</dt>      <dd id="detail_login"></dd>
                     <dt>Kayıt Tarihi</dt>   <dd id="detail_created"></dd>
                 </dl>
+
+                <?php if (can('users.view')): ?>
+                    <div class="cy-alert cy-alert--warning mt-3 d-none" id="detail_login_attempts">
+                        <?= icon('alert', 'cy-icon cy-icon--sm') ?>
+                        <span id="detail_login_attempts_text"></span>
+                    </div>
+                <?php endif; ?>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn cy-btn cy-btn--ghost" data-bs-dismiss="modal">Kapat</button>

@@ -462,6 +462,7 @@ button.cy-status:hover { border-color: var(--cy-border-strong); background: var(
 .cy-status.is-active  { color: var(--cy-success); background: var(--cy-success-soft); }
 .cy-status.is-passive { color: var(--cy-text-muted); }
 .cy-status.is-hold    { color: var(--cy-warning); background: var(--cy-warning-soft); }
+.cy-status.is-danger  { color: var(--cy-danger);  background: var(--cy-danger-soft); }
 
 /* Küçük gri etiket ("siz" işareti gibi) */
 .cy-tag {
@@ -1107,4 +1108,20 @@ table.dataTable > thead .sorting_desc:after { display: none !important; }
 /* Yüksek karşıtlık modunda çizgiler kaybolmasın */
 @media (prefers-contrast: more) {
     :root { --cy-border: #94a3b8; --cy-border-strong: #64748b; }
+}
+
+/* ---------------------------------------------------------------------
+ *  Bal küpü (honeypot) alanı
+ * ---------------------------------------------------------------------
+ *  display:none KULLANMIYORUZ: bazı botlar görünmez alanları atlamak
+ *  için tam olarak ona bakar. Ekran dışına taşımak hem gerçek
+ *  kullanıcıdan gizler hem de bota "normal alan" gibi görünür.
+ * ------------------------------------------------------------------ */
+.cy-hp {
+    position: absolute !important;
+    left: -9999px !important;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
 }

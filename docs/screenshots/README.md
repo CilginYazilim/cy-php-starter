@@ -1,10 +1,15 @@
 # Ekran Görüntüleri
 
-Bu klasördeki mevcut görseller **eski (prosedürel) sürüme** aittir ve
-artık geçerli değildir; OOP mimariye geçişle birlikte tasarım ve akış
-değişti. Yeniden çekilmeleri gerekir.
+Bu klasör **boştur**. Eski görseller şablonun prosedürel sürümüne
+aitti; sol menü, koyu tema ve panel tabloları geldikten sonra artık
+ürünü doğru göstermiyorlardı, bu yüzden depodan çıkarıldılar.
 
-## Beklenen dosya adları
+Yanlış bir ekran görüntüsü, hiç ekran görüntüsü olmamasından daha
+kötüdür: insanlar okumadıkları şeye değil, gördükleri şeye inanır.
+
+## Yeni görsel eklemek isterseniz
+
+Kurulumu tamamlayın, panele girin ve aşağıdaki adları kullanın:
 
 | Dosya | İçerik |
 |---|---|
@@ -21,8 +26,12 @@ değişti. Yeniden çekilmeleri gerekir.
 | `11-koyu-tema.png` | Koyu tema |
 | `12-mobil.png` | Mobil görünüm |
 
-## Yeni ekran görüntüsü eklerken
+## Kurallar
 
 - Genişlik 1200–1400 px; mobil için ~390 px.
-- PNG tercih edin, 500 KB altında tutmaya çalışın.
-- Kurulum sihirbazı ekran görüntülerinde gerçek şifre/veritabanı bilgisi göstermeyin.
+- PNG tercih edin, 500 KB altında tutun.
+- Kurulum ekranlarında **gerçek şifre veya veritabanı bilgisi
+  göstermeyin**.
+- Örnek veriyle çekin (demo kullanıcılar listeyi dolu gösterir),
+  gerçek müşteri verisiyle değil.
+- Şablonun tasarımı değiştiğinde görselleri **yenileyin ya da silin**.

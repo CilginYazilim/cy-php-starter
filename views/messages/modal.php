@@ -21,9 +21,19 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn cy-btn cy-btn--ghost" data-bs-dismiss="modal">Kapat</button>
-                <a class="btn cy-btn cy-btn--primary" id="msg_reply" href="#">
-                    <?= icon('mail', 'cy-icon cy-icon--sm') ?> Yanıtla
+
+                <?php /* İki yanıt yolu: kendi posta programınızla (mailto)
+                        ya da panelin e-posta merkeziyle. İkincisi mektubu
+                        site kimliğiyle gönderir ve geçmişe kaydeder. */ ?>
+                <a class="btn cy-btn cy-btn--ghost" id="msg_reply" href="#">
+                    <?= icon('mail', 'cy-icon cy-icon--sm') ?> Posta Programım
                 </a>
+
+                <?php if (can('mail.send')): ?>
+                    <a class="btn cy-btn cy-btn--primary" id="msg_reply_panel" href="#">
+                        <?= icon('send', 'cy-icon cy-icon--sm') ?> Panelden Yanıtla
+                    </a>
+                <?php endif; ?>
             </div>
         </div>
     </div>

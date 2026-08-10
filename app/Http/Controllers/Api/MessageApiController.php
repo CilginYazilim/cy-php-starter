@@ -18,15 +18,8 @@ final class MessageApiController extends Controller
 {
     public function list(Request $request): void
     {
-        $order = $request->raw('order', []);
-
-        $result = $this->messages()->paginate([
-            'search'       => $this->searchTerm($request),
-            'filter'       => $request->input('filter'),
-            'order_column' => (int) ($order[0]['column'] ?? 4),
-            'order_dir'    => (string) ($order[0]['dir'] ?? 'desc'),
-            'start'        => (int) $request->raw('start', 0),
-            'length'       => (int) $request->raw('length', 10),
+        $result = $this->messages()->paginate($this->tableQuery($request, 4) + [
+            'filter' => $request->input('filter'),
         ]);
 
         $rows = [];
@@ -35,20 +28,8 @@ final class MessageApiController extends Controller
             $rows[] = $this->toTableRow($message);
         }
 
-        Response::json([
-            'draw'            => (int) $request->raw('draw', 1),
-            'recordsTotal'    => $result['total'],
-            'recordsFiltered' => $result['filtered'],
-            'data'            => $rows,
-            'unread'          => $result['unread'],
-        ]);
-    }
-
-    private function searchTerm(Request $request): string
-    {
-        $search = $request->raw('search', []);
-
-        return is_array($search) ? trim((string) ($search['value'] ?? '')) : '';
+        // "unread": okunmamış rozeti listeyle birlikte tazelensin.
+        $this->tableJson($request, $result, $rows, ['unread' => $result['unread']]);
     }
 
     /** @return array<int,string> */

@@ -110,6 +110,23 @@ final class SmtpTransport implements Transport
         return $this->log;
     }
 
+    /**
+     * İşletim sisteminden gelen hata metnini UTF-8'e çevirir.
+     *
+     * Windows'ta soket hataları sistem kod sayfasıyla (Türkçe
+     * kurulumda CP1254) gelir: "Bağlantı reddedildi" metnindeki
+     * "ğ" tek bayttır ve UTF-8 sayılmaz. Böyle bir metin doğrudan
+     * json_encode()'a girerse yanıtın tamamı boşa çıkar.
+     */
+    private static function toUtf8(string $value): string
+    {
+        if (mb_check_encoding($value, 'UTF-8')) {
+            return $value;
+        }
+
+        return mb_convert_encoding($value, 'UTF-8', 'Windows-1254, ISO-8859-9, ISO-8859-1');
+    }
+
     /* =================================================================
      *  BAĞLANTI
      * ============================================================== */
@@ -142,7 +159,7 @@ final class SmtpTransport implements Transport
                 'SMTP sunucusuna bağlanılamadı (%s:%d): %s',
                 $this->host,
                 $this->port,
-                $errorMessage !== '' ? $errorMessage : 'bilinmeyen hata #' . $errorCode
+                $errorMessage !== '' ? self::toUtf8($errorMessage) : 'bilinmeyen hata #' . $errorCode
             ));
         }
 

@@ -1,0 +1,47 @@
+<?php
+/**
+ * =====================================================================
+ *  {{AD}} – "{{TABLO}}" tablosunun bir satırı
+ * ---------------------------------------------------------------------
+ *  Bu bir ORM DEĞİLDİR: veritabanına gitmez, sorgu çalıştırmaz.
+ *  Sadece bir satırı temsil eden sade, değişmez (readonly) bir
+ *  nesnedir. Sorgular {{AD}}Repository içinde yaşar.
+ *
+ *  NEDEN readonly? Bir nesne oluşturulduktan sonra değişemiyorsa,
+ *  "bu değer nerede değişti?" sorusunu hiç sormazsınız.
+ * =====================================================================
+ */
+
+declare(strict_types=1);
+
+namespace App\Models;
+
+final class {{AD}}
+{
+    public function __construct(
+        public readonly int     $id,
+        public readonly string  $ad,
+        public readonly ?string $createdAt = null,
+    ) {
+    }
+
+    /** @param array<string,mixed> $row */
+    public static function fromRow(array $row): self
+    {
+        return new self(
+            id:        (int) ($row['id'] ?? 0),
+            ad:        (string) ($row['ad'] ?? ''),
+            createdAt: isset($row['created_at']) ? (string) $row['created_at'] : null,
+        );
+    }
+
+    /** @return array<string,mixed> */
+    public function toArray(): array
+    {
+        return [
+            'id'         => $this->id,
+            'ad'         => $this->ad,
+            'created_at' => $this->createdAt,
+        ];
+    }
+}

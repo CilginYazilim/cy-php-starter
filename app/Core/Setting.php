@@ -78,14 +78,39 @@ final class Setting
         return $all[$key] === '1';
     }
 
-    /** Tek bir ayarı yazar (yoksa oluşturur). */
-    public static function set(PDO $db, string $key, ?string $value): void
-    {
+    /**
+     * Tek bir ayarı yazar (yoksa oluşturur).
+     *
+     * @param string $group     Yeni oluşturulacaksa hangi gruba girsin?
+     *                          "dahili" grubu ayarlar ekranında GÖRÜNMEZ.
+     * @param bool   $editable  false → ayarlar formu bu satıra dokunamaz
+     *
+     * DİKKAT: $editable=false verilen ayarlar Setting::saveMany() ile
+     * yazılamaz (o metot yalnızca duzenlenebilir=1 satırları günceller)
+     * ama bu metotla yazılabilir. Sistemin kendi tuttuğu değerler
+     * (açık modül listesi gibi) tam olarak böyle olmalıdır: kod
+     * değiştirebilsin, form ekranı yanlışlıkla SİLEMESİN.
+     */
+    public static function set(
+        PDO $db,
+        string $key,
+        ?string $value,
+        string $group = 'genel',
+        bool $editable = true,
+    ): void {
         $stmt = $db->prepare(
-            'INSERT INTO ayarlar (anahtar, deger, etiket) VALUES (:anahtar, :deger, :etiket)
+            'INSERT INTO ayarlar (anahtar, deger, grup, etiket, duzenlenebilir)
+             VALUES (:anahtar, :deger, :grup, :etiket, :duzenlenebilir)
              ON DUPLICATE KEY UPDATE deger = VALUES(deger)'
         );
-        $stmt->execute([':anahtar' => $key, ':deger' => $value, ':etiket' => $key]);
+
+        $stmt->execute([
+            ':anahtar'        => $key,
+            ':deger'          => $value,
+            ':grup'           => $group,
+            ':etiket'         => $key,
+            ':duzenlenebilir' => $editable ? 1 : 0,
+        ]);
 
         self::flush();
         self::load($db);
@@ -126,14 +151,34 @@ final class Setting
      *
      * @return array<string,array<int,array<string,mixed>>> grup => satırlar
      */
+    /**
+     * Ayarları gruplayarak döndürür (ayarlar ekranı bundan üretilir).
+     *
+     * YALNIZCA ETİKETİ OLAN GRUPLAR döner. Sistemin kendi tuttuğu
+     * değerler ("aktif_moduller" gibi) "dahili" grubundadır ve
+     * groupLabels() içinde yer almadığı için ekranda hiç görünmez.
+     *
+     * Bu filtre bir hatadan doğdu: açık modül listesi "genel" grubunda
+     * düzenlenebilir bir metin alanı olarak görünüyordu ve Genel
+     * ayarları kaydetmek listeyi siliyordu.
+     *
+     * @return array<string,array<int,array<string,mixed>>> grup => satırlar
+     */
     public static function grouped(PDO $db): array
     {
-        $rows = $db->query('SELECT * FROM ayarlar ORDER BY grup ASC, sira ASC, id ASC')->fetchAll();
+        $rows   = $db->query('SELECT * FROM ayarlar ORDER BY grup ASC, sira ASC, id ASC')->fetchAll();
+        $labels = self::groupLabels();
 
         $grouped = [];
 
         foreach ($rows as $row) {
-            $grouped[(string) $row['grup']][] = $row;
+            $grup = (string) $row['grup'];
+
+            if (!array_key_exists($grup, $labels)) {
+                continue;
+            }
+
+            $grouped[$grup][] = $row;
         }
 
         return $grouped;
@@ -145,6 +190,7 @@ final class Setting
         return [
             'genel'    => 'Genel',
             'iletisim' => 'İletişim',
+            'eposta'   => 'E-posta',
             'sosyal'   => 'Sosyal Medya',
             'seo'      => 'SEO',
             'sistem'   => 'Sistem',
@@ -156,6 +202,6 @@ final class Setting
     {
         $url = Uploader::url(self::get('site_logo'));
 
-        return $url !== '' ? $url : 'assets/images/logo.png';
+        return $url !== '' ? $url : Url::asset('images/logo.png');
     }
 }

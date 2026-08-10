@@ -1,0 +1,32 @@
+<?php
+/**
+ * =====================================================================
+ *  SEEDER: {{AD}}
+ * ---------------------------------------------------------------------
+ *  Çalıştırmak için:  php cy db:seed --class={{AD}}
+ *
+ *  Buraya ÖRNEK veri yazın (demo kayıtlar). Uygulamanın çalışması için
+ *  ZORUNLU veri (roller, varsayılan ayarlar) migration'a yazılmalıdır.
+ * =====================================================================
+ */
+
+declare(strict_types=1);
+
+return new class extends App\Core\Database\Seeder
+{
+    public function run(): void
+    {
+        // Aynı seeder iki kez çalışırsa kayıtlar ikiye katlanmasın.
+        if ($this->count('ornek_tablo') > 0) {
+            $this->say('Zaten veri var, atlandı.');
+
+            return;
+        }
+
+        foreach (['Birinci', 'İkinci', 'Üçüncü'] as $ad) {
+            $this->execute('INSERT INTO `ornek_tablo` (ad) VALUES (:ad)', [':ad' => $ad]);
+        }
+
+        $this->say('3 örnek kayıt eklendi.');
+    }
+};

@@ -1,152 +1,76 @@
 <?php
 /**
  * =====================================================================
- *  GÖRÜNÜM: Site Ayarları
+ *  GÖRÜNÜM: Site Ayarları — genel bakış
  * ---------------------------------------------------------------------
- *  Form, "ayarlar" tablosundaki satırlardan OTOMATİK üretilir.
- *  Yeni bir ayar eklemek için tabloya satır eklemeniz yeterlidir.
+ *  Her grup bir karttır. Kart, o grubun MEVCUT DURUMUNU da gösterir
+ *  ("Kayıt modu — mektuplar gönderilmiyor" gibi); böylece kullanıcı
+ *  altı sayfayı tek tek açmadan neyin eksik olduğunu görür.
  *
- *  @var array<string,array<int,array<string,mixed>>> $groups
- *  @var array<string,string> $labels
+ *  @var array<int,array<string,mixed>> $kartlar
+ *  @var int $toplam
  * =====================================================================
  */
 
-use App\Core\Flash;
-use App\Core\Setting;
-
-$groups = $groups ?? [];
-$labels = $labels ?? [];
-$errors = Flash::errors();
+$kartlar = $kartlar ?? [];
+$uyarili = array_filter($kartlar, static fn (array $k): bool => (bool) $k['uyari']);
 ?>
 
 <div class="cy-page-head">
     <div>
         <h2 class="cy-title">Site Ayarları</h2>
-        <p class="cy-subtitle">Değişiklikler kaydedildiği anda tüm sitede etkili olur.</p>
+        <p class="cy-subtitle">
+            <strong><?= (int) ($toplam ?? 0) ?></strong> ayar, <strong><?= count($kartlar) ?></strong> bölümde.
+            Düzenlemek istediğiniz bölümü seçin.
+        </p>
     </div>
 </div>
 
-<div class="row g-3">
-    <div class="col-12 col-xl-8">
-        <form method="post" action="<?= e(url('panel/ayarlar')) ?>" novalidate>
-            <?= csrf_field() ?>
-
-            <?php
-            $groupKeys = array_keys($labels);
-            $firstTab  = $groupKeys[0] ?? array_key_first($groups);
-            ?>
-
-            <div class="cy-card">
-                <div class="cy-card__header cy-card__header--tabs">
-                    <ul class="nav nav-pills cy-tabnav" role="tablist">
-                        <?php foreach ($groups as $groupKey => $rows): ?>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link<?= $groupKey === $firstTab ? ' active' : '' ?>"
-                                        id="tab-<?= e($groupKey) ?>" data-bs-toggle="pill"
-                                        data-bs-target="#pane-<?= e($groupKey) ?>" type="button" role="tab">
-                                    <?= e($labels[$groupKey] ?? ucfirst($groupKey)) ?>
-                                </button>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-
-                <div class="cy-card__body">
-                    <div class="tab-content">
-                        <?php foreach ($groups as $groupKey => $rows): ?>
-                            <div class="tab-pane fade<?= $groupKey === $firstTab ? ' show active' : '' ?>" id="pane-<?= e($groupKey) ?>" role="tabpanel">
-                                <div class="row g-3">
-                                    <?php foreach ($rows as $row): ?>
-                                        <?php
-                                        $key      = (string) $row['anahtar'];
-                                        $type     = (string) $row['tip'];
-                                        $value    = Setting::get($key);
-                                        $editable = (int) $row['duzenlenebilir'] === 1;
-                                        $width    = in_array($type, ['uzun_metin'], true) ? 'col-12' : 'col-12 col-md-6';
-                                        ?>
-                                        <div class="<?= $width ?>">
-                                            <label class="form-label" for="set_<?= e($key) ?>"><?= e($row['etiket']) ?></label>
-
-                                            <?php if (!$editable): ?>
-                                                <input type="text" class="form-control" value="<?= e($value) ?>" disabled>
-
-                                            <?php elseif ($type === 'onay'): ?>
-                                                <div class="form-check form-switch mt-2">
-                                                    <input class="form-check-input" type="checkbox" role="switch"
-                                                           name="<?= e($key) ?>" id="set_<?= e($key) ?>" value="1"
-                                                           <?= $value === '1' ? 'checked' : '' ?>>
-                                                    <label class="form-check-label" for="set_<?= e($key) ?>">Etkin</label>
-                                                </div>
-
-                                            <?php elseif ($type === 'uzun_metin'): ?>
-                                                <textarea class="form-control" name="<?= e($key) ?>" id="set_<?= e($key) ?>" rows="3"><?= e($value) ?></textarea>
-
-                                            <?php elseif ($type === 'secim'): ?>
-                                                <?php $options = json_decode((string) ($row['secenekler'] ?? '[]'), true) ?: []; ?>
-                                                <select class="form-select" name="<?= e($key) ?>" id="set_<?= e($key) ?>">
-                                                    <?php foreach ($options as $option): ?>
-                                                        <option value="<?= e($option) ?>" <?= $value === $option ? 'selected' : '' ?>><?= e($option) ?></option>
-                                                    <?php endforeach; ?>
-                                                </select>
-
-                                            <?php elseif ($type === 'renk'): ?>
-                                                <input type="color" class="form-control form-control-color" name="<?= e($key) ?>" id="set_<?= e($key) ?>" value="<?= e($value !== '' ? $value : '#0b5cb5') ?>">
-
-                                            <?php else: ?>
-                                                <input type="<?= $type === 'sayi' ? 'number' : ($type === 'eposta' ? 'email' : ($type === 'url' ? 'url' : 'text')) ?>"
-                                                       class="form-control" name="<?= e($key) ?>" id="set_<?= e($key) ?>" value="<?= e($value) ?>">
-                                            <?php endif; ?>
-
-                                            <?php if (!empty($row['aciklama'])): ?>
-                                                <div class="form-text"><?= e($row['aciklama']) ?></div>
-                                            <?php endif; ?>
-                                        </div>
-                                    <?php endforeach; ?>
-
-                                    <?php if ($groupKey === 'genel'): ?>
-                                        <div class="col-12">
-                                            <hr class="cy-divider">
-                                            <label class="form-label">Site Logosu</label>
-                                            <div class="cy-upload">
-                                                <span class="cy-upload__preview">
-                                                    <img src="<?= e(Setting::logoUrl()) ?>" alt="" class="cy-avatar cy-avatar--md">
-                                                </span>
-                                                <div class="flex-grow-1" style="min-width:0">
-                                                    <p class="cy-muted small mb-1">Logoyu değiştirmek için ayrı bir formla yükleyin (aşağıda).</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-
-                <div class="cy-card__footer d-flex justify-content-end">
-                    <button type="submit" class="btn cy-btn cy-btn--primary">
-                        <?= icon('save', 'cy-icon cy-icon--sm') ?> Ayarları Kaydet
-                    </button>
-                </div>
-            </div>
-        </form>
+<?php if ($uyarili !== []): ?>
+    <div class="cy-alert cy-alert--warning mb-3">
+        <strong><?= count($uyarili) ?> bölüm dikkatinizi bekliyor.</strong>
+        Turuncu işaretli kartlara bakın — yayına çıkmadan önce
+        tamamlanması gereken ayarlar var.
     </div>
+<?php endif; ?>
 
-    <div class="col-12 col-xl-4">
-        <div class="cy-card">
-            <div class="cy-card__header">
-                <h3 class="cy-section-title">Site Logosu</h3>
-            </div>
-            <form method="post" action="<?= e(url('panel/ayarlar/logo')) ?>" enctype="multipart/form-data" class="cy-card__body">
-                <?= csrf_field() ?>
-                <div class="text-center mb-3">
-                    <img src="<?= e(Setting::logoUrl()) ?>" alt="" class="cy-avatar cy-avatar--lg">
-                </div>
-                <input type="file" name="logo" class="form-control form-control-sm mb-2" accept="image/jpeg,image/png,image/gif,image/webp">
-                <button type="submit" class="btn cy-btn cy-btn--ghost cy-btn--block cy-btn--sm">
-                    <?= icon('upload', 'cy-icon cy-icon--sm') ?> Logoyu Güncelle
-                </button>
-            </form>
-        </div>
+<div class="cy-setting-grid">
+    <?php foreach ($kartlar as $kart): ?>
+        <a class="cy-setting-card<?= $kart['uyari'] ? ' is-warning' : '' ?>"
+           href="<?= e(url('panel/ayarlar/' . $kart['anahtar'])) ?>">
+
+            <span class="cy-setting-card__icon">
+                <?= icon($kart['ikon']) ?>
+            </span>
+
+            <span class="cy-setting-card__body">
+                <span class="cy-setting-card__title">
+                    <?= e($kart['baslik']) ?>
+                    <span class="cy-badge cy-badge--count"><?= (int) $kart['adet'] ?></span>
+                </span>
+
+                <span class="cy-setting-card__desc"><?= e($kart['aciklama']) ?></span>
+
+                <?php if ($kart['ozet'] !== ''): ?>
+                    <span class="cy-setting-card__state">
+                        <?= icon($kart['uyari'] ? 'alert' : 'check', 'cy-icon cy-icon--sm') ?>
+                        <?= e($kart['ozet']) ?>
+                    </span>
+                <?php endif; ?>
+            </span>
+
+            <span class="cy-setting-card__go"><?= icon('chevron', 'cy-icon cy-icon--sm') ?></span>
+        </a>
+    <?php endforeach; ?>
+</div>
+
+<div class="cy-card mt-3">
+    <div class="cy-card__body">
+        <p class="cy-muted small mb-0">
+            <?= icon('alert', 'cy-icon cy-icon--sm') ?>
+            <strong>Yeni ayar eklemek:</strong> <code class="cy-mono">ayarlar</code> tablosuna bir satır
+            eklemeniz yeterlidir — form otomatik üretilir, kodda değişiklik gerekmez.
+            Ayrıntı için <code class="cy-mono">SISTEM.md</code> → “Yapılandırma ve ortam”.
+        </p>
     </div>
 </div>

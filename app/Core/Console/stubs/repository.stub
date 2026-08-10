@@ -1,0 +1,67 @@
+<?php
+/**
+ * =====================================================================
+ *  {{AD}} – "{{TABLO}}" tablosuna erişimin TEK kapısı
+ * ---------------------------------------------------------------------
+ *  SQL yalnızca burada yazılır. Denetleyiciler sorgu bilmez; bu
+ *  sayede tabloyu değiştirdiğinizde tek bir dosyaya bakarsınız.
+ *
+ *  HER SORGU HAZIRLIKLI (prepared) OLMALIDIR. Değişkeni SQL metnine
+ *  yapıştırmak SQL enjeksiyonuna açık kapı bırakır.
+ * =====================================================================
+ */
+
+declare(strict_types=1);
+
+namespace App\Repositories;
+
+use App\Models\{{MODEL}};
+use PDO;
+
+final class {{AD}}
+{
+    public function __construct(private PDO $db)
+    {
+    }
+
+    public function find(int $id): ?{{MODEL}}
+    {
+        $statement = $this->db->prepare('SELECT * FROM `{{TABLO}}` WHERE id = :id LIMIT 1');
+        $statement->execute([':id' => $id]);
+
+        $row = $statement->fetch();
+
+        return $row ? {{MODEL}}::fromRow($row) : null;
+    }
+
+    /** @return array<int,{{MODEL}}> */
+    public function all(int $limit = 100): array
+    {
+        $limit = max(1, min($limit, 1000));
+
+        $rows = $this->db->query(
+            'SELECT * FROM `{{TABLO}}` ORDER BY id DESC LIMIT ' . $limit
+        )->fetchAll();
+
+        return array_map(
+            static fn (array $row): {{MODEL}} => {{MODEL}}::fromRow($row),
+            $rows
+        );
+    }
+
+    public function create(string $ad): int
+    {
+        $statement = $this->db->prepare('INSERT INTO `{{TABLO}}` (ad) VALUES (:ad)');
+        $statement->execute([':ad' => $ad]);
+
+        return (int) $this->db->lastInsertId();
+    }
+
+    public function delete(int $id): bool
+    {
+        $statement = $this->db->prepare('DELETE FROM `{{TABLO}}` WHERE id = :id');
+        $statement->execute([':id' => $id]);
+
+        return $statement->rowCount() > 0;
+    }
+}

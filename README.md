@@ -2,15 +2,18 @@
 
 # Çılgın Yazılım – PHP Başlangıç Şablonu
 
-### Her yeni örnek projeye buradan başlayın
+### Her yeni projeye buradan başlayın
 
-**Kurulum sihirbazı + OOP mimari + rol tabanlı panel + ön yüz + tasarım kalıbı hazır. Siz sadece işin özüne odaklanın.**
+**Kurulum sihirbazı · rol tabanlı panel · konsol · migration · kuyruk · olay · modül sistemi · REST API · PWA — hepsi hazır.**
 
 [![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://php.net)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.2-7952B3?style=flat-square&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
+[![Bağımlılık](https://img.shields.io/badge/Bağımlılık-Sıfır-16a34a?style=flat-square)](#)
 [![License](https://img.shields.io/badge/Lisans-MIT-16a34a?style=flat-square)](LICENSE)
 
 [cilginyazilim.com](https://cilginyazilim.com)
+
+**[📖 Ayrıntılı Sistem Kılavuzu → SISTEM.md](SISTEM.md)**
 
 </div>
 
@@ -18,47 +21,52 @@
 
 ## Bu şablon nedir?
 
-Her yeni PHP projesine "boş bir klasörden" başlamak yerine, gerçek bir
-uygulamada olması gereken iskeletle başlamanız için hazırlandı: katmanlı
-OOP mimari, kurulum sihirbazı, rol tabanlı yönetim paneli, tipli ayar
-sistemi ve baştan sona güvenlik.
+Her yeni PHP projesinde baştan yazdığınız teknik altyapıyı hazır sunar.
+Belirli bir iş uygulaması **değildir**; ERP, CRM, CMS, blog, SaaS, REST
+API ya da iç uygulama — hepsinin altına aynı sağlam temeli koyar.
 
 **Composer yok, framework yok, CDN yok.** İndirin, `kurulum/` adresini
 açın, birkaç adımda çalışan bir site + panel elde edin.
 
-> Bu şablonun önceki sürümü prosedürel (fonksiyon tabanlı) bir yapıya
-> sahipti. Bu sürüm, [PHP PDO MySQL Ajax CRUD](https://github.com/CilginYazilim/PHP-PDO-MySQL-Ajax-CRUD-DataTables-Bootstrap-5-Modals)
-> örneğiyle **aynı mimari kalıbı** kullanacak şekilde OOP'a taşındı:
-> `app/Core` çatı sınıfları, `Repository` deseni, tek giriş noktası,
-> rota tablosu ve ara katmanlar (middleware).
+### Tek cümlelik felsefe
+
+> Core, uygulamanın **ne iş yaptığını** bilmez. Yalnızca **nasıl
+> çalıştığını** sağlar.
+
+```php
+// YANLIŞ — çekirdek iş mantığını biliyor
+UserService::register($data);
+ErpPersonel::olustur($user);
+
+// DOĞRU — çekirdek duyurur, modül dinler
+Events::dispatch(new UserRegistered($user));
+```
 
 ---
 
-## Öne çıkan özellikler
+## Neler hazır?
 
-### Kurulum
-- 5 adımlı **kurulum sihirbazı** (`kurulum/`) — veritabanını oluşturur, şemayı kurar, site ayarlarını ve yönetici hesabını yazar, `.env` dosyasını üretir
-- Bağlantı bilgileri 2. adımda **hemen test edilir**
-- İş bitince tek tıkla **kendi klasörünü siler**
-
-### Mimari
-- Katmanlı OOP yapı — Core / Models / Repositories / Controllers / Views
-- PSR-4 mantığında otomatik yükleyici (Composer'sız)
-- Tek giriş noktası (front controller) + rota tablosu
-- Ability tabanlı yetkilendirme: `Auth::can('users.delete')`
-
-### Ön yüz (site)
-- Ana sayfa, Hakkımızda, İletişim, Giriş, Kayıt — oturum durumuna göre değişir
-- **Tipli ayar sistemi**: `ayarlar` tablosuna satır eklemek, panelde otomatik form alanı üretir
-- İletişim formu → `mesajlar` tablosu (SMTP gerekmez), bal küpü + hız sınırı korumalı
-
-### Yönetim paneli
-- Daraltılabilir sol menü, kontrol paneli (özet kartlar + grafik + son işlemler)
-- Kullanıcı yönetimi: sunucu taraflı DataTables, rol/durum filtresi, modal CRUD
-- Mesaj yönetimi: okundu/okunmadı, toplu işlem, arama
-- Site Ayarları: form otomatik üretilir — yeni ayar eklemek bir SQL satırı kadar kolay
-- Sistem sayfası: canlı güvenlik denetim listesi
-- Açık / koyu tema — tercih çerezde saklanır
+| Katman | İçerik |
+|---|---|
+| **Kurulum** | Adım adım sihirbaz · `.env` üretimi · tabloları **ve migration'ları** kurar · yönetici hesabı · isteğe bağlı örnek veri · tek tuşla kendini silme |
+| **Kimlik** | Giriş/kayıt/çıkış · rol-yetki · kaba kuvvet koruması · sertleştirilmiş oturum |
+| **Yönlendirme** | Temiz SEO adresleri · `{parametre}` · GET/POST/PUT/PATCH/DELETE · gruplar |
+| **Hata yönetimi** | Merkezi işleyici · ölümcül hata yakalama · geliştirici ekranı · güvenli 404/403/419/500 |
+| **Günlük** | Kanal bazlı (`app` `error` `security` `auth` `mail` `queue`) · parola maskeleme · rotasyon |
+| **Veritabanı** | Migration + rollback + parti · seeder · Repository deseni |
+| **Depolama** | `public` / `private` disk · 9 katmanlı yükleme güvenliği · güvenli indirme |
+| **Önbellek** | Dosya / veritabanı / kapalı sürücüleri · `remember()` |
+| **Olaylar** | Yayıncı-dinleyici · hata yalıtımı · test için `fake()` |
+| **Kuyruk** | Veritabanı kuyruğu · atomik ayırma · katlanan yeniden deneme |
+| **Zamanlayıcı** | Tek cron satırı · üst üste binme koruması |
+| **E-posta** | SMTP / mail() / diske yazma · toplu gönderim · kuyruk · panel arayüzü |
+| **REST API** | Standart yanıt zarfı · Bearer anahtarı · hız sınırı · sayfalama |
+| **Modüller** | Aç/kapa · kendi rotaları, tabloları, görünümleri, menüsü |
+| **PWA** | Dinamik manifest · servis çalışanı · çevrimdışı sayfa |
+| **SEO** | Temiz adresler · canonical · Open Graph · dinamik sitemap.xml & robots.txt |
+| **Ayarlar** | Bölüm bölüm sayfalar · durum özetli genel bakış · kapsamlı kaydetme |
+| **Tema** | Tek renk seçin, panelin ve sitenin tamamı yeniden renklensin |
+| **Konsol** | `php cy` — 20 komut, üreteçler dahil |
 
 ---
 
@@ -66,218 +74,249 @@ açın, birkaç adımda çalışan bir site + panel elde edin.
 
 ### Gereksinimler
 
-| | En az | Önerilen |
-|---|---|---|
-| PHP | 8.1 | 8.2+ |
-| MySQL / MariaDB | 5.7 / 10.3 | 8.0+ |
-| PHP eklentileri | `pdo_mysql`, `mbstring` | + `gd` |
+- PHP **8.1+** (`pdo_mysql`, `mbstring`, `json`; `gd` ve `fileinfo` önerilir)
+- MySQL 5.7+ / MariaDB 10.3+
+- Apache (`mod_rewrite`) ya da Nginx
 
 ### Adımlar
 
 ```bash
-# 1) Şablondan yeni proje oluştur
-git clone https://github.com/CilginYazilim/cy-php-starter.git yeni-projem
-cd yeni-projem
-rm -rf .git && git init
-
-# 2) Çalıştır
-php -S 127.0.0.1:8000
+git clone https://github.com/CilginYazilim/cy-php-starter
 ```
 
-Tarayıcıda `http://127.0.0.1:8000/` adresini açın. `.env` dosyası henüz
-yoksa otomatik olarak **kurulum sihirbazına** yönlendirilirsiniz:
+1. Klasörü sunucunuza koyun
+2. Tarayıcıda **`http://siteniz/kurulum/`** adresini açın
+3. Sihirbazı tamamlayın
+4. Son adımdaki düğmeyle **`kurulum/` klasörünü silin**
 
-```
-Gereksinimler → Veritabanı → Site Ayarları → Yönetici → Tamamlandı
-```
+Hepsi bu. **Komut satırı gerekmez** — sihirbaz `.env` dosyasını yazar,
+tabloları kurar, migration'ları çalıştırır (önbellek, kuyruk, API
+anahtarları) ve yönetici hesabınızı açar. Paylaşımlı hostingde de
+eksiksiz kurulur.
 
-Son adımdaki **"Kurulum Klasörünü Sil"** butonu, `kurulum/` klasörünü
-içindeki her şeyle birlikte kaldırır; proje kökünde kuruluma ait tek
-bir dosya bile kalmaz.
+> **Örnek veri:** Son adımda "Örnek verileri de yükle" kutusu vardır.
+> Şablonu ilk kez deniyorsanız işaretleyin — listeleri ve filtreleri
+> dolu görürsünüz (demo parolası `Demo1234!`). Gerçek bir projeye
+> başlıyorsanız **boş bırakın**, veritabanınız tertemiz kalır.
 
-> **Elle kurulum tercih ederseniz:** `mysql -u root -p < kurulum/database.sql`
-> ile şemayı kendiniz kurup `.env.example` dosyasını `.env` olarak
-> kopyalayabilirsiniz. Yönetici hesabını da kendiniz eklemeniz gerekir
-> — bkz. `kurulum/database.sql` dosyasının sonundaki not.
+> **`mod_rewrite` yoksa:** `.env` içinde `APP_PRETTY_URLS=false` yapın.
+> Uygulama `index.php?r=…` biçimine döner, başka hiçbir şey değişmez.
 
 ---
 
 ## Klasör yapısı
 
 ```
-├── index.php              ← TEK giriş noktası (ön yüz + panel)
-├── kurulum/                ← Kurulum sihirbazı (iş bitince silinir)
-│   ├── index.php             5 adımlı, app/ klasöründen BAĞIMSIZ çalışır
-│   └── database.sql          Şema: ayarlar · kullanicilar · login_attempts · mesajlar
-│
-├── config/config.php      ← Tüm ayarlar tek dizide
-├── routes/web.php         ← Rota tablosu + yetki kuralları
+├── index.php               Web giriş noktası
+├── cy                      Konsol giriş noktası (php cy …)
+├── sw.js                   Servis çalışanı (PWA)
 │
 ├── app/
-│   ├── Core/                 Autoloader, Env, Config, Database, Session, Csrf,
-│   │                         Auth, Middleware, Router, Request, Response,
-│   │                         Validator, Uploader, RateLimiter, Flash, View, Setting
-│   ├── Models/                User (entity) · Role (yetki tablosu) · Message
-│   ├── Repositories/          UserRepository · MessageRepository
-│   ├── Http/Controllers/      Auth, Dashboard, User, Profile, Settings, System, Message
-│   │   ├── Api/                UserApiController · MessageApiController (AJAX)
-│   │   └── Site/                HomeController · ContactController (ön yüz)
-│   └── Support/helpers.php    e(), url(), can(), icon(), setting() …
+│   ├── bootstrap.php       Web + CLI ortak önyükleme
+│   ├── Core/               ÇEKİRDEK (iş mantığı içermez)
+│   │   ├── Api/ Cache/ Console/ Database/ Events/ Exceptions/
+│   │   ├── Log/ Mail/ Modules/ Queue/ Schedule/ Storage/
+│   │   └── Auth Config Csrf Database Env ErrorHandler Flash
+│   │       Middleware RateLimiter Request Response Router
+│   │       Session Setting Uploader Url Validator View
+│   ├── Events/ Listeners/ Jobs/
+│   ├── Models/             Entity'ler (ORM DEĞİL) + Role
+│   ├── Repositories/       SQL yalnızca burada
+│   ├── Http/Controllers/   Panel · Api · Site
+│   └── Support/helpers.php
 │
-├── views/
-│   ├── layouts/               admin · site · plain
-│   ├── partials/               sidebar · topbar · site-nav · site-footer
-│   ├── site/ auth/ dashboard/ users/ messages/ settings/ system/ profile/ errors/
-│
-├── assets/
-│   ├── css/   cilginyazilim.css (tasarım kalıbı) · admin.css (panel) · site.css (ön yüz)
-│   └── js/    app.js (kabuk) · users.js · messages.js · login.js · register.js · contact.js
-│
-└── upload/                 ← Yüklenen görseller (PHP çalıştırma kapalı)
+├── config/                 app db session log cache queue api storage
+│                           upload security validation events
+├── routes/                 web.php · events.php · schedule.php
+├── database/               migrations/ · seeders/
+├── modules/                Eklenebilir modüller (Ornek/ = çalışan örnek)
+├── views/                  layouts · partials · emails · errors · sayfalar
+├── assets/                 css · js · images (CDN yok)
+├── storage/                logs · cache · files · mail (web'e kapalı)
+├── upload/                 Yüklenen görseller (PHP çalıştırma kapalı)
+└── kurulum/                Sihirbaz + database.sql + demo.sql (sonra SİLİN)
 ```
 
 ### İsteğin yolculuğu
 
 ```
-Tarayıcı → index.php → routes/web.php → Middleware → Controller → Repository → View/JSON
+Tarayıcı → .htaccess → index.php → bootstrap → Session/Güvenlik
+   → Ayarlar → Modüller → Router → Middleware → Controller
+   → Repository → View / JSON
 ```
-
-`installed` ara katmanı, `.env` yoksa isteği otomatik olarak
-`kurulum/` adresine yönlendirir — ana uygulama veritabanı olmadan hiç
-çalışmayı denemez.
 
 ---
 
-## Roller ve yetkiler
+## Konsol
 
-Yetkiler `app/Models/Role.php` içinde tek bir tabloda tanımlıdır:
+```bash
+php cy                      # tüm komutlar
+php cy yardim migrate       # ayrıntılı yardım
+```
+
+```bash
+# Şema
+php cy make:migration "urunlere aciklama ekle"
+php cy migrate                     php cy migrate --pretend
+php cy migrate:status              php cy migrate:rollback --step=3
+php cy migrate:fresh --seed
+
+# Üreteçler
+php cy make:module Stok            # çalışır durumda CRUD modülü
+php cy make:controller Urun --api
+php cy make:model Urun --repository
+php cy make:seeder Urun
+
+# Modüller
+php cy module                      php cy module --enable=Stok
+
+# Bakım
+php cy cache:clear --expired       php cy config:cache
+php cy log:purge --list            php cy queue:work --max=30
+php cy schedule:run --list         php cy mail:test ali@ornek.com
+```
+
+**Cron — tek satır yeter:**
+
+```cron
+* * * * * cd /yol/site && php cy schedule:run >> /dev/null 2>&1
+```
+
+---
+
+## Modül eklemek
+
+```bash
+php cy make:module Stok
+php cy module --enable=Stok
+php cy migrate
+```
+
+Panelde `/panel/stok` hazır: listeleme, ekleme, silme. Modül kendi
+rotalarını, tablolarını, görünümlerini ve menü girdisini taşır.
+
+**Kapalı modül hiç yüklenmez** — rotaları tanımlanmaz, sınıfları
+yüklenmez, olayları dinlenmez.
+
+---
+
+## Sık kullanılanlar
 
 ```php
-Auth::can('users.delete')          // ✔ doğru
-Auth::user()->rol === 'admin'      // ✘ kırılgan
+// Adres ve varlık (hepsi köke göreli)
+url('panel/ayarlar');            asset('css/site.css');
+
+// Ayarlar
+config('db.host');               // config/ dosyaları (geliştirici)
+setting('site_adi');             // ayarlar tablosu (yönetici, panelden)
+
+// Yetki
+can('users.delete');
+
+// Marka rengi (Ayarlar → Sistem → Tema Rengi)
+Theme::brand();                  // '#7c3aed' — doğrulanmış
+Theme::styleTag();               // düzenlere basılan <style> bloğu
+
+// Günlük
+Logger::info('…', ['id' => 3], 'auth');
+Logger::security('Şüpheli istek', ['ip' => $ip]);
+
+// Önbellek
+Cache::remember('rapor', 900, fn () => $agirHesap());
+
+// Olay
+Events::dispatch(new UserRegistered($user));
+
+// Kuyruk
+Queue::push(new RaporUret(3));
+
+// Dosya
+Uploader::store($request->file('belge'), ['disk' => 'private', 'group' => 'belge']);
+
+// API yanıtı
+ApiResponse::paginated($items, $total, $page, $perPage);
 ```
-
-| Yetki | Yönetici | Editör | Üye |
-|---|:--:|:--:|:--:|
-| Kontrol paneli | ✔ | ✔ | ✔ |
-| Özet istatistikler | ✔ | ✔ | — |
-| Kullanıcı yönetimi | ✔ | — | — |
-| Mesaj yönetimi | ✔ | ✔ | — |
-| Site ayarları | ✔ | — | — |
-| Sistem sayfası | ✔ | — | — |
-| Kendi profili | ✔ | ✔ | ✔ |
-
-Ek iş kuralları: kimse kendi rolünü/durumunu değiştiremez, kendini
-silemez; sistemdeki **son aktif yönetici** silinemez/pasifleştirilemez;
-kayıt formundan gelen `rol` alanı yok sayılır — yeni hesap her zaman
-`uye` olur.
 
 ---
 
-## Ayarları kullanmak
-
-```php
-use App\Core\Setting;
-
-echo Setting::get('site_adi');                    // oku
-if (Setting::bool('sistem_bakim_modu')) { … }      // aç/kapa
-
-Setting::saveMany($db, ['site_adi' => 'Yeni Ad']); // yaz (transaction'lı)
-```
-
-**Yeni bir ayar eklemek** için `kurulum/database.sql` içindeki
-`ayarlar` tablosuna (veya kurulu bir sisteme doğrudan) satır eklemeniz
-yeterlidir — yönetim panelindeki form **otomatik** üretilir:
-
-```sql
-INSERT INTO ayarlar (anahtar, deger, grup, tip, etiket, sira)
-VALUES ('site_favicon', '', 'genel', 'metin', 'Favicon', 70);
-```
-
-Desteklenen `tip` değerleri: `metin`, `uzun_metin`, `sayi`, `eposta`, `url`, `secim`, `onay`, `renk`.
-
----
-
-## Yeni sayfa eklemek
-
-```php
-// 1. app/Http/Controllers/Site/ServicesController.php
-final class ServicesController extends Controller
-{
-    public function index(Request $request): void
-    {
-        $this->view('site/services', ['title' => 'Hizmetler'], 'layouts/site');
-    }
-}
-
-// 2. routes/web.php
-$router->get('hizmetler', ServicesController::class, 'index', ['installed']);
-
-// 3. views/site/services.php — plain PHP/HTML
-```
-
-Panel sayfaları için `layouts/admin` düzenini ve ilgili `can:...` ara
-katmanını kullanın; menüde görünmesi için `views/partials/sidebar.php`
-içindeki `$menu` dizisine bir satır eklemeniz yeterlidir.
-
----
-
-## Güvenlik önlemleri
+## Güvenlik
 
 | Tehdit | Önlem |
 |---|---|
-| SQL Injection | Prepared statement; sıralama sütunu beyaz listeden |
-| XSS | `e()` ile kaçışlama + Content-Security-Policy, satır içi script yok |
-| CSRF | Oturum bazlı token, `hash_equals` sabit süreli karşılaştırma |
-| Kaba kuvvet | 5 hatalı denemede 15 dakika kilit (veritabanı tabanlı sayaç) |
-| Kullanıcı sayımı | Giriş hatalarında tek/aynı mesaj + sahte `password_verify` |
-| Session fixation/hijacking | Girişte kimlik yenileme, `httponly`+`samesite`+`secure` çerez |
-| Yetki yükseltme | Rol/durum alanları yetki olmadan okunmaz; güncellemede beyaz liste |
-| Kötü amaçlı dosya | İçerik doğrulaması, sunucu tarafından üretilen ad, görsel yeniden üretilir |
-| Parola saklama | `password_hash()` / bcrypt, girişte otomatik `needs_rehash` |
-| Spam (iletişim formu) | Bal küpü (honeypot) + oturum başına hız sınırı |
-| Kod dosyasına erişim | `.htaccess` ile `app/`, `config/`, `views/`, `routes/` erişimi engelli |
+| SQL Injection | Hazırlıklı sorgular; sıralama sütunu beyaz listeden |
+| XSS | `e()` kaçışlama + CSP (`script-src 'self'`, satır içi JS yok) |
+| CSP çakışması | Analytics kodunun adresi ve sha256 özeti otomatik tanıtılır; politika gevşetilmez |
+| CSRF | Her POST'ta token (form alanı veya `X-CSRF-Token`) |
+| Oturum çalma | `httponly` + `samesite` + `secure` + parmak izi + yenileme |
+| Kaba kuvvet | Hız sınırı + kilit (kimlik+IP) |
+| Path traversal | Segment bazlı doğrulama + `realpath()` |
+| Kötücül yükleme | Gerçek MIME + beyaz/kara liste + rastgele ad + GD yeniden üretimi |
+| Dosya ifşası | `app/` `config/` `storage/` `views/` `.env` `cy` web'e kapalı |
+| Bilgi sızması | Yayında yığın izi ve dosya yolu gösterilmez |
 
-**Sistem** sayfası (yalnızca yönetici) bu önlemlerin kurulumunuzda
-aktif olup olmadığını canlı olarak denetler.
+**Panel → Sistem Bilgisi** sayfası bunların canlı denetimini yapar ve
+her sorunun nasıl çözüleceğini yazar.
 
 ---
 
-## Canlıya alma kontrol listesi
+## Canlıya çıkış
 
-- [ ] **`kurulum/` klasörünü silin** (sihirbazın son adımındaki buton bunu yapar)
-- [ ] `.env` içinde **`APP_DEBUG=false`**
-- [ ] `root` yerine sınırlı yetkili bir veritabanı kullanıcısı
-- [ ] HTTPS sertifikası kurun (oturum çerezi otomatik `secure` olur)
-- [ ] `.env`, `app/`, `config/`, `views/`, `routes/` tarayıcıdan erişilemez olsun
-- [ ] `upload/` klasöründe PHP çalıştırma kapalı olsun
-- [ ] **Sistem** sayfasındaki denetim listesini kontrol edin
+```bash
+# .env
+APP_ENV=production
+APP_DEBUG=false
+LOG_LEVEL=info
+
+php cy config:cache && php cy migrate
+```
+
+- [ ] `kurulum/` klasörü silindi
+- [ ] HTTPS aktif
+- [ ] `storage/` ve `upload/` yazılabilir
+- [ ] `php cy mail:test` başarılı
+- [ ] Cron kuruldu
+- [ ] Sistem Bilgisi sayfasındaki tüm denetimler yeşil
 
 ### Nginx kullanıyorsanız
 
 ```nginx
-location ~ ^/(app|config|views|routes)/ { deny all; return 404; }
-location ~ /\.                          { deny all; return 404; }
-location ~ \.(sql|md|log|ini|bak)$      { deny all; return 404; }
-location ^~ /upload/ { location ~ \.php$ { deny all; } }
+location / {
+    try_files $uri $uri/ /index.php?$query_string;
+}
+
+location ~ ^/(app|config|storage|views|database|modules|kurulum)/ { deny all; }
+location ~ /\.env  { deny all; }
+location ~ ^/cy$   { deny all; }
+
+location ~* ^/upload/.*\.php$ { deny all; }
 ```
 
 ---
 
-## Örnek Projeler
+## Yeni projeye başlarken
 
-Bu şablonla üretilen örnekler:
+```bash
+git clone https://github.com/CilginYazilim/cy-php-starter yeni-proje
+cd yeni-proje && rm -rf .git
 
-- [PHP PDO MySQL Ajax CRUD](https://github.com/CilginYazilim/PHP-PDO-MySQL-Ajax-CRUD-DataTables-Bootstrap-5-Modals) — aynı mimari kalıbın CRUD odaklı örneği
+# kurulum/ adresini aç, sihirbazı tamamla
+# ("Örnek verileri de yükle" kutusunu işaretlemeyin)
+
+rm -rf modules/Ornek app/Jobs/OrnekIs.php
+
+php cy make:module KendiModulun
+```
+
+Ardından Panel → **Site Ayarları**'ndan site adını, logoyu ve tema
+rengini kendinize göre ayarlayın; arayüz anında yeni renginizi alır.
 
 ---
 
-## Lisans
-
-[MIT](LICENSE) — ticari kullanım dahil serbesttir.
-
 <div align="center">
 
-**[cilginyazilim.com](https://cilginyazilim.com)**
+**Ayrıntılı mimari, tasarım kararları ve genişletme rehberi için:
+[SISTEM.md](SISTEM.md)**
+
+MIT Lisansı · **Çılgın Yazılım** · [cilginyazilim.com](https://cilginyazilim.com)
 
 </div>

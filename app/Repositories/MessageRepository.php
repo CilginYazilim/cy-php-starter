@@ -184,6 +184,19 @@ final class MessageRepository
         return (int) $this->db->query('SELECT COUNT(*) FROM mesajlar WHERE DATE(created_at) = CURDATE()')->fetchColumn();
     }
 
+    /** @return array<int,Message> */
+    public function latest(int $limit = 5): array
+    {
+        $limit = max(1, min($limit, 50));
+
+        $stmt = $this->db->query(
+            'SELECT id, ad, eposta, konu, mesaj, okundu, created_at
+               FROM mesajlar ORDER BY created_at DESC, id DESC LIMIT ' . $limit
+        );
+
+        return array_map(static fn (array $row): Message => Message::fromRow($row), $stmt->fetchAll());
+    }
+
     /** @param array<string,mixed> $data */
     public function create(array $data): int
     {

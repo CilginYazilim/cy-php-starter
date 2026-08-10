@@ -7,6 +7,8 @@
 
 use App\Core\Csrf;
 use App\Core\Flash;
+use App\Core\Setting;
+use App\Core\Url;
 use App\Core\View;
 
 $theme     = resolve_theme();
@@ -26,7 +28,12 @@ $flashes      = Flash::pull();
     <meta name="csrf-token" content="<?= e(Csrf::token()) ?>">
     <meta name="cy-base" content="<?= e(url('__PATH__')) ?>">
 
+    <?php /* Liste tablolarının varsayılan sayfa boyutu (Ayarlar → Sistem). */ ?>
+    <meta name="cy-page-length" content="<?= (int) Setting::get('sistem_sayfa_basina', '10') ?>">
+
     <title><?= e($pageTitle) ?> · <?= e($appName ?? 'Panel') ?></title>
+
+    <?php View::partial('partials/pwa-head'); ?>
 
     <link rel="icon" type="image/png" href="<?= e(asset('images/logo.png')) ?>">
 
@@ -34,6 +41,9 @@ $flashes      = Flash::pull();
     <link rel="stylesheet" href="<?= e(asset('css/dataTables.bootstrap5.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/cilginyazilim.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/admin.css')) ?>">
+
+    <?php /* Ayarlar → Sistem → Tema Rengi. Varsayılan renkte hiçbir şey basılmaz. */ ?>
+    <?= App\Core\Theme::styleTag() ?>
 </head>
 
 <body class="cy-app<?= $collapsed ? ' is-collapsed' : '' ?>" data-cy-auth="1">
@@ -75,5 +85,9 @@ $flashes      = Flash::pull();
     <?php foreach (($scripts ?? []) as $script): ?>
         <script src="<?= e(asset('js/' . $script)) ?>"></script>
     <?php endforeach; ?>
+
+    <?php if (Setting::bool('pwa_aktif', false)): ?>
+        <script src="<?= e(asset('js/pwa.js')) ?>"></script>
+    <?php endif; ?>
 </body>
 </html>

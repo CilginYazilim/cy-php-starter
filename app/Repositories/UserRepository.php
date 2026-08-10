@@ -127,6 +127,84 @@ final class UserRepository
         return (int) $stmt->fetchColumn();
     }
 
+    /**
+     * TOPLU E-POSTA ALICILARI.
+     *
+     * Rol ve duruma göre süzülmüş kullanıcıların yalnızca gönderim
+     * için gereken alanlarını döndürür — bütün User nesnelerini
+     * belleğe almak binlerce kayıtta gereksiz yük olurdu.
+     *
+     * @param string $role   '' → rol farketmez
+     * @param string $status Varsayılan 'aktif'; '' → durum farketmez
+     * @return array<int,array{id:int,ad:string,soyad:string,eposta:string}>
+     */
+    public function mailRecipients(string $role = '', string $status = 'aktif'): array
+    {
+        $conditions = ["eposta <> ''"];
+        $params     = [];
+
+        if ($role !== '' && Role::exists($role)) {
+            $conditions[]   = 'rol = :rol';
+            $params[':rol'] = $role;
+        }
+
+        if (in_array($status, ['aktif', 'pasif', 'askida'], true)) {
+            $conditions[]     = 'durum = :durum';
+            $params[':durum'] = $status;
+        }
+
+        $stmt = $this->db->prepare(
+            'SELECT id, ad, soyad, eposta FROM kullanicilar
+              WHERE ' . implode(' AND ', $conditions) . '
+           ORDER BY id ASC'
+        );
+        $stmt->execute($params);
+
+        $rows = [];
+
+        foreach ($stmt->fetchAll() as $row) {
+            $rows[] = [
+                'id'     => (int) $row['id'],
+                'ad'     => (string) $row['ad'],
+                'soyad'  => (string) $row['soyad'],
+                'eposta' => (string) $row['eposta'],
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Alıcı seçme kutusunu doldurmak için hafif kullanıcı listesi.
+     *
+     * @return array<int,array{id:int,etiket:string,eposta:string}>
+     */
+    public function pickList(int $limit = 500): array
+    {
+        $limit = max(1, min($limit, 2000));
+
+        $rows = $this->db->query(
+            "SELECT id, ad, soyad, kullanici_adi, eposta FROM kullanicilar
+              WHERE eposta <> ''
+           ORDER BY ad ASC, soyad ASC
+              LIMIT " . $limit
+        )->fetchAll();
+
+        $list = [];
+
+        foreach ($rows as $row) {
+            $name = trim((string) $row['ad'] . ' ' . (string) $row['soyad']);
+
+            $list[] = [
+                'id'     => (int) $row['id'],
+                'etiket' => ($name !== '' ? $name : (string) $row['kullanici_adi']) . ' (' . (string) $row['eposta'] . ')',
+                'eposta' => (string) $row['eposta'],
+            ];
+        }
+
+        return $list;
+    }
+
     /** @return array{0:string,1:array<string,mixed>} */
     private function buildFilter(array $options): array
     {

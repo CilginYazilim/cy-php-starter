@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Core\Auth;
+use App\Core\RateLimiter;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Uploader;
@@ -31,18 +32,13 @@ final class UserApiController extends Controller
      * ============================================================== */
     public function list(Request $request): void
     {
-        $order = $request->raw('order', []);
-
-        $result = $this->users()->paginate([
-            'search'       => $this->searchTerm($request),
-            'role'         => $request->input('filter_role'),
-            'status'       => $request->input('filter_status'),
-            'date_from'    => $request->input('filter_date_from'),
-            'date_to'      => $request->input('filter_date_to'),
-            'order_column' => (int) ($order[0]['column'] ?? 0),
-            'order_dir'    => (string) ($order[0]['dir'] ?? 'desc'),
-            'start'        => (int) $request->raw('start', 0),
-            'length'       => (int) $request->raw('length', 10),
+        // Arama, sıralama ve sayfalama Controller::tableQuery'den gelir;
+        // burada yalnızca bu ekrana özgü filtreleri ekliyoruz.
+        $result = $this->users()->paginate($this->tableQuery($request) + [
+            'role'      => $request->input('filter_role'),
+            'status'    => $request->input('filter_status'),
+            'date_from' => $request->input('filter_date_from'),
+            'date_to'   => $request->input('filter_date_to'),
         ]);
 
         $rows = [];
@@ -51,19 +47,7 @@ final class UserApiController extends Controller
             $rows[] = $this->toTableRow($user);
         }
 
-        Response::json([
-            'draw'            => (int) $request->raw('draw', 1),
-            'recordsTotal'    => $result['total'],
-            'recordsFiltered' => $result['filtered'],
-            'data'            => $rows,
-        ]);
-    }
-
-    private function searchTerm(Request $request): string
-    {
-        $search = $request->raw('search', []);
-
-        return is_array($search) ? trim((string) ($search['value'] ?? '')) : '';
+        $this->tableJson($request, $result, $rows);
     }
 
     /** @return array<int,string|int> */
@@ -130,14 +114,25 @@ final class UserApiController extends Controller
      * ============================================================== */
     public function fetch(Request $request): void
     {
-        $user = $this->requireUser($request);
+        $user  = $this->requireUser($request);
+        $extra = [
+            'can_edit'   => Auth::can('users.update'),
+            'can_delete' => Auth::can('users.delete') && !Auth::isSelf($user->id),
+        ];
+
+        if (Auth::can('users.view')) {
+            $basarisiz = (new RateLimiter($this->db))->recentFailures($user->eposta, $user->kullaniciAdi);
+
+            $extra['basarisiz_giris'] = [
+                'adet'      => $basarisiz['adet'],
+                'son_ip'    => $basarisiz['son_ip'],
+                'son_tarih' => $basarisiz['son_tarih'] !== null ? User::formatDate($basarisiz['son_tarih']) : null,
+            ];
+        }
 
         Response::json([
             'success' => true,
-            'data'    => array_merge($user->toArray(), [
-                'can_edit'   => Auth::can('users.update'),
-                'can_delete' => Auth::can('users.delete') && !Auth::isSelf($user->id),
-            ]),
+            'data'    => array_merge($user->toArray(), $extra),
         ]);
     }
 

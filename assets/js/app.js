@@ -74,6 +74,113 @@ window.CY = (function ($) {
     };
 
     /* =============================================================
+     *  PANEL TABLOLARI (DataTables)
+     * -------------------------------------------------------------
+     *  Kullanıcılar, Mesajlar ve E-posta ekranları aynı tabloyu
+     *  kurar: sunucu taraflı sayfalama, POST + CSRF, Türkçe metinler,
+     *  aynı sayfa düzeni. Bu kurulum üç dosyada birebir tekrar
+     *  ediyordu; bir metni düzeltmek üç yerde düzeltmek demekti.
+     *
+     *  Artık ortak kısım burada. Sayfalar yalnızca KENDİNE ÖZGÜ
+     *  olanı verir: sütun tanımları, filtreler, boş liste metni.
+     * ============================================================= */
+
+    /**
+     * Sayfa başına kayıt sayısı. Yönetici bunu panelden değiştirebilir
+     * (Ayarlar → Sistem); sunucu değeri <meta> ile bildirir.
+     */
+    CY.pageLength = function () {
+        var meta  = document.querySelector('meta[name="cy-page-length"]');
+        var value = meta ? parseInt(meta.getAttribute('content'), 10) : 0;
+
+        return value > 0 ? value : 10;
+    };
+
+    /** DataTables'ın Türkçe metinleri. "isim" listelenen şeyin adıdır. */
+    CY.tableLanguage = function (isim) {
+        return {
+            emptyTable:     'Henüz ' + isim + ' bulunmuyor.',
+            info:           '_TOTAL_ kayıttan _START_ – _END_ arası',
+            infoEmpty:      'Gösterilecek kayıt yok',
+            infoFiltered:   '(toplam _MAX_ kayıt içinden filtrelendi)',
+            lengthMenu:     'Sayfada _MENU_ kayıt',
+            loadingRecords: 'Yükleniyor…',
+            processing:     'İşleniyor…',
+            zeroRecords:    'Aramanızla eşleşen ' + isim + ' bulunamadı.',
+            paginate: { first: 'İlk', last: 'Son', next: 'Sonraki', previous: 'Önceki' },
+            aria: {
+                sortAscending:  ': artan sırada sıralamak için etkinleştir',
+                sortDescending: ': azalan sırada sıralamak için etkinleştir'
+            }
+        };
+    };
+
+    /**
+     * Sunucu taraflı bir panel tablosu kurar.
+     *
+     *   CY.table('#user_table', {
+     *       isim: 'kullanıcı',
+     *       order: [[0, 'desc']],
+     *       ajax: { url: API.list, data: function (d) { d.filter_role = …; } },
+     *       columnDefs: [ … ]
+     *   });
+     *
+     * ajax.data ve drawCallback verirseniz ORTAK davranışın YERİNE
+     * değil ARDINDAN çalışırlar: CSRF anahtarı ve toplam kayıt sayacı
+     * her tabloda kendiliğinden işler.
+     */
+    CY.table = function (selector, options) {
+        options = options || {};
+
+        var isim = options.isim || 'kayıt';
+        var ajax = options.ajax || {};
+
+        var sayfaBoyu = CY.pageLength();
+        var secenekler = [10, 25, 50, 100];
+
+        // Yöneticinin seçtiği boyut menüde yoksa ekle; aksi halde
+        // DataTables "Sayfada — kayıt" gösterip boş bir seçim yapar.
+        if (secenekler.indexOf(sayfaBoyu) === -1) {
+            secenekler.push(sayfaBoyu);
+            secenekler.sort(function (a, b) { return a - b; });
+        }
+
+        var ayarlar = $.extend({
+            processing: true,
+            serverSide: true,
+            pageLength: sayfaBoyu,
+            lengthMenu: [secenekler, secenekler],
+            dom: 'rt<"cy-dt-bottom"<"cy-dt-bottom__left"li>p>'
+        }, options);
+
+        delete ayarlar.isim;
+
+        ayarlar.language = $.extend(CY.tableLanguage(isim), options.language || {});
+
+        var ekVeri = ajax.data;
+
+        ayarlar.ajax = $.extend({ type: 'POST' }, ajax, {
+            data: function (d) {
+                d.csrf_token = CY.token();
+                if (ekVeri) { ekVeri(d); }
+            },
+            error: ajax.error || function (xhr) {
+                CY.ajaxError(xhr, 'Kayıtlar yüklenirken bir hata oluştu.');
+            }
+        });
+
+        var ekCizim = options.drawCallback;
+
+        ayarlar.drawCallback = function (settings) {
+            $('#total_records').text(settings.json ? settings.json.recordsTotal : 0);
+
+            if (ekCizim) { ekCizim.call(this, settings); }
+        };
+
+        return $(selector).DataTable(ayarlar);
+    };
+
+    /* =============================================================
      *  BİLDİRİMLER (Toast)
      * ============================================================= */
 
@@ -193,6 +300,22 @@ window.CY = (function ($) {
 
         $backdrop.on('click', closeDrawer);
 
+        /* --- Açılır alt menüler (ör. Site Ayarları) ---
+         * Menü daraltılmışken (yalnızca ikonlar) alt menüyü göstermenin
+         * yeri yok; önce menüyü genişletiyoruz, sonra grubu açıyoruz. */
+        $sidebar.on('click', '.cy-nav-parent', function () {
+            if (!isMobile() && $body.hasClass('is-collapsed')) {
+                $body.removeClass('is-collapsed');
+                CY.setCookie('cy_sidebar', 'expanded');
+            }
+
+            var $item = $(this).closest('.cy-nav-item');
+            var open  = !$item.hasClass('is-open');
+
+            $item.toggleClass('is-open', open);
+            $(this).attr('aria-expanded', open ? 'true' : 'false');
+        });
+
         // Menüden bir bağlantıya tıklanınca çekmece kapansın.
         $sidebar.on('click', 'a', function () {
             if (isMobile()) { closeDrawer(); }
@@ -289,6 +412,17 @@ window.CY = (function ($) {
         /* =========================================================
          *  5) ORTAK FORM DAVRANIŞLARI
          * ======================================================= */
+
+        /* --- Onay isteyen formlar ---
+         * Satır içi onsubmit="return confirm(...)" KULLANILMAZ:
+         * İçerik Güvenliği Politikası (CSP) satır içi JavaScript'i
+         * yasaklar ve düğme sessizce çalışmaz hale gelirdi. Bunun
+         * yerine form'a data-confirm="..." yazılır. */
+        $(document).on('submit', 'form[data-confirm]', function (event) {
+            if (!window.confirm($(this).data('confirm'))) {
+                event.preventDefault();
+            }
+        });
 
         /* --- Parolayı göster / gizle ---
          * Olay, sabit bir üst elemana bağlanır ("event delegation");

@@ -83,6 +83,34 @@ final class RateLimiter
         $this->db->exec('DELETE FROM login_attempts WHERE attempted_at < (NOW() - INTERVAL 1 DAY)');
     }
 
+    /**
+     * Bir kullanıcının e-posta VEYA kullanıcı adıyla yapılmış son
+     * başarısız giriş denemeleri (panelde göstermek için).
+     *
+     * Kayıtlar başarılı girişte silindiği (bkz. clear()) ve bir günden
+     * eskisi budandığı (bkz. prune()) için bu yalnızca YAKIN ZAMANDAKİ
+     * başarısız denemeleri gösterir — kalıcı bir denetim günlüğü değildir.
+     *
+     * @return array{adet:int,son_ip:string,son_tarih:?string}
+     */
+    public function recentFailures(string $eposta, string $kullaniciAdi): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT COUNT(*) AS adet, MAX(attempted_at) AS son, SUBSTRING_INDEX(GROUP_CONCAT(ip ORDER BY attempted_at DESC), \',\', 1) AS son_ip
+               FROM login_attempts
+              WHERE identifier IN (:eposta, :kadi)'
+        );
+        $stmt->execute([':eposta' => $this->hash($eposta), ':kadi' => $this->hash($kullaniciAdi)]);
+
+        $row = $stmt->fetch() ?: [];
+
+        return [
+            'adet'      => (int) ($row['adet'] ?? 0),
+            'son_ip'    => (string) ($row['son_ip'] ?? ''),
+            'son_tarih' => $row['son'] !== null ? (string) $row['son'] : null,
+        ];
+    }
+
     private function hash(string $key): string
     {
         return hash('sha256', mb_strtolower(trim($key)));
