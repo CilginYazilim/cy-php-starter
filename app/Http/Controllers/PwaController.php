@@ -27,28 +27,35 @@ use App\Http\Controller;
 
 final class PwaController extends Controller
 {
+    /** Künyede geçerli sayılan değerler; ayar bozuksa bunlara düşülür. */
+    private const GORUNUMLER = ['standalone', 'fullscreen', 'minimal-ui', 'browser'];
+    private const YONLER     = ['any', 'portrait', 'landscape'];
+
     public function manifest(Request $request): void
     {
-        $ad   = Setting::get('site_adi', 'Uygulama');
-        $renk = Theme::brand();
-        $logo = Setting::logoUrl();
+        /* HER ALANIN BİR YEDEĞİ VAR: PWA ayarları boş bırakıldığında
+         * künye eksik kalmaz, site ayarlarından beslenir. Yönetici
+         * yalnızca farklı olmasını istediği alanı doldurur. */
+        $ad      = Setting::get('pwa_ad', Setting::get('site_adi', 'Uygulama'));
+        $kisaAd  = Setting::get('pwa_kisa_ad', mb_substr($ad, 0, 12, 'UTF-8'));
+        $simge   = Setting::pwaIconUrl();
 
         $manifest = [
             'name'             => $ad,
-            'short_name'       => mb_substr($ad, 0, 12, 'UTF-8'),
-            'description'      => Setting::get('site_aciklama', ''),
+            'short_name'       => $kisaAd,
+            'description'      => Setting::get('pwa_aciklama', Setting::get('site_aciklama', '')),
             'lang'             => Setting::get('site_dil', 'tr'),
             'dir'              => 'ltr',
-            'start_url'        => Url::to(''),
+            'start_url'        => Url::to(Setting::get('pwa_baslangic', '')),
             'scope'            => Url::base() . '/',
-            'display'          => 'standalone',
-            'orientation'      => 'any',
-            'background_color' => '#ffffff',
-            'theme_color'      => $renk,
+            'display'          => $this->secim('pwa_gorunum', self::GORUNUMLER, 'standalone'),
+            'orientation'      => $this->secim('pwa_yon', self::YONLER, 'any'),
+            'background_color' => $this->renk('pwa_arka_renk', '#ffffff'),
+            'theme_color'      => Theme::brand(),
             'icons'            => [
-                ['src' => $logo, 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
-                ['src' => $logo, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
-                ['src' => $logo, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
+                ['src' => $simge, 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
+                ['src' => $simge, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
+                ['src' => $simge, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
             ],
         ];
 
@@ -58,6 +65,31 @@ final class PwaController extends Controller
         }
 
         echo json_encode($manifest, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    }
+
+    /**
+     * Listedeki bir değer mi? Değilse varsayılan.
+     *
+     * Ayar satırı "secim" tipinde olduğu için form yalnızca geçerli
+     * değer gönderebilir; ama ayarlar tablosuna elle (SQL ile) de
+     * yazılabiliyor. Geçersiz bir "display" değeri künyeyi tamamen
+     * geçersiz kılar ve kurulum düğmesi hiç görünmez.
+     *
+     * @param array<int,string> $izinli
+     */
+    private function secim(string $anahtar, array $izinli, string $varsayilan): string
+    {
+        $deger = Setting::get($anahtar, $varsayilan);
+
+        return in_array($deger, $izinli, true) ? $deger : $varsayilan;
+    }
+
+    /** "#rrggbb" biçiminde değilse varsayılan renk. */
+    private function renk(string $anahtar, string $varsayilan): string
+    {
+        $deger = Setting::get($anahtar, $varsayilan);
+
+        return preg_match('/^#[0-9a-fA-F]{6}$/', $deger) === 1 ? $deger : $varsayilan;
     }
 
     /** Ağ yokken servis çalışanının gösterdiği sayfa. */

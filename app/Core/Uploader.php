@@ -78,6 +78,20 @@ final class Uploader
     }
 
     /**
+     * PWA uygulama simgesi: KARE kırpılır, 512 pikselde tutulur.
+     *
+     * Favicondan daha büyüktür çünkü künye (manifest) 512 piksellik
+     * bir simge ister: telefon onu ana ekranda, uygulama listesinde
+     * ve açılış ekranında büyüterek kullanır. 256'ya indirseydik
+     * Android'in "maskable" kırpması gözle görülür biçimde bulanık
+     * çıkardı.
+     */
+    public static function pwaIcon(array $file): string
+    {
+        return self::image($file, 'pwa', true, 512);
+    }
+
+    /**
      * Görseli doğrular, kaydeder ve yeniden üretir.
      *
      * @param string   $kind   Alt klasör adı ("avatar", "logo"…); boşsa disk köküne.

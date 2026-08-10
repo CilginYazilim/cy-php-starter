@@ -952,18 +952,54 @@ Sıralama modül önekine değil **zaman damgasına** göre yapılır.
 
 ## 17. PWA
 
-Panel → Site Ayarları → Sistem → **Uygulama Modu (PWA)** ile açılır
-(`pwa_aktif` ayarı, **varsayılan kapalı**).
+Panel → Site Ayarları → **Uygulama (PWA)** bölümünden yönetilir
+(`pwa` ayar grubu).
+
+**Taze kurulumda AÇIK gelir.** Kurulum sihirbazının "Site Ayarları"
+adımında işaretli bir anahtar vardır; kaldırılırsa `pwa_aktif` sıfır
+yazılır. Açık gelmesi ziyaretçiye yalnızca "ana ekrana ekle" seçeneği
+sunar, hiçbir şeyi zorlamaz — kapalı geldiğinde ise özelliğin var
+olduğu, ayarlar ekranı taranmadan fark edilmiyordu. Mevcut kurulumlar
+etkilenmez: migration yalnızca ayarı yeni gruba **taşır**, değerine
+dokunmaz.
 
 Kapalıyken tek bir etiket bile basılmaz: manifest istenmez, servis
 çalışanı kaydedilmez. Özelliği kullanmayan bir proje varlığını hiç
 hissetmez. Künye etiketleri iki düzende de aynıydı; tek yerde
 toplandılar: `views/partials/pwa-head.php`.
 
-- `manifest.webmanifest` **dinamiktir** (PHP üretir): site adı, tema
-  rengi ve logo panelden değişince künye de değişir.
+| Ayar | Ne yapar | Boşsa |
+|---|---|---|
+| `pwa_aktif` | Uygulama modunu açar | — (kurulumda açık) |
+| `pwa_ad` | Künyedeki tam ad | `site_adi` |
+| `pwa_kisa_ad` | Ana ekranda simge altındaki ad | adın ilk 12 harfi |
+| `pwa_aciklama` | Kurulum penceresindeki açıklama | `site_aciklama` |
+| `pwa_baslangic` | Açılışta gidilecek sayfa | ana sayfa |
+| `pwa_gorunum` | `standalone` · `fullscreen` · `minimal-ui` · `browser` | `standalone` |
+| `pwa_yon` | `any` · `portrait` · `landscape` | `any` |
+| `pwa_arka_renk` | Açılış ekranının arka planı | `#ffffff` |
+| `pwa_cevrimdisi` | Servis çalışanı kaydedilsin mi | açık |
+| `pwa_simge` | Ana ekran simgesi (`dahili`, yükleme kartından) | site logosu |
+
+> **Tema rengi PWA'ya ait bir alan değildir:** künye
+> `sistem_tema_rengi` ne ise onu kullanır. İki ayrı yerde tutulsaydı
+> panelin rengiyle uygulamanın rengi sessizce ayrışırdı.
+
+- `manifest.webmanifest` **dinamiktir** (PHP üretir): ayarlar panelden
+  değişince künye de değişir. `display`, `orientation` ve renk değerleri
+  künye basılmadan önce doğrulanır — tabloya elle yazılmış geçersiz bir
+  değer künyenin tamamını geçersiz kılar ve kurulum düğmesi hiç
+  görünmezdi.
 - `sw.js` **kökte statik** bir dosyadır: bir servis çalışanı yalnızca
   bulunduğu klasörü ve altını kontrol edebilir.
+
+**`pwa.js` PWA kapalıyken de yüklenir — bilerek.** Betik
+`<meta name="cy-sw">` etiketine bakar: etiket varsa servis çalışanını
+kaydeder, **yoksa kayıtlı olanı siler ve `cy-` önekli önbellekleri
+boşaltır**. Koşula bağlansaydı ayarı kapatmak siteyi daha önce ziyaret
+etmiş tarayıcılarda hiçbir şeyi değiştirmezdi: servis çalışanı bir kez
+kaydedildiğinde kalıcıdır ve sayfaları eski önbellekten sunmaya devam
+ederdi.
 
 **Önbellek stratejisi:**
 

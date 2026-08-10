@@ -62,7 +62,7 @@ Events::dispatch(new UserRegistered($user));
 | **E-posta** | SMTP / mail() / diske yazma · toplu gönderim · kuyruk · panel arayüzü |
 | **REST API** | Standart yanıt zarfı · Bearer anahtarı · hız sınırı · sayfalama |
 | **Modüller** | Aç/kapa · kendi rotaları, tabloları, görünümleri, menüsü |
-| **PWA** | Dinamik manifest · servis çalışanı · çevrimdışı sayfa |
+| **PWA** | Panelden yönetilen künye (ad, simge, açılış adresi, görüntüleme modu, renk) · servis çalışanı · çevrimdışı sayfa |
 | **İçerik** | **Sayfa yönetimi** — zengin metin editörü · adres (slug) üretimi · taslak/yayın · menü · sayfa bazlı SEO |
 | **SEO** | Temiz adresler · canonical · Open Graph · başlık şablonu · dinamik sitemap.xml & robots.txt (panelden ek kural) |
 | **Ayarlar** | Bölüm bölüm sayfalar · durum özetli genel bakış · kapsamlı kaydetme · logo **ve favicon** yükleme |

@@ -598,12 +598,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && ($_POST['islem'] ?? ''
             $site_aciklama = trim((string) ($_POST['site_aciklama'] ?? ''));
             $site_url      = trim((string) ($_POST['site_url'] ?? ''));
 
+            /* Uygulama modu VARSAYILAN AÇIK gelir; kutuyu boşaltmak
+             * yalnızca "pwa_aktif" ayarını 0 yapar, başka hiçbir şeye
+             * dokunmaz ve panelden istendiği an geri açılır. */
+            $pwa_aktif = isset($_POST['pwa_aktif']);
+
             if ($siteHata !== null) {
                 $errors[] = $siteHata;
             }
 
             if ($errors === []) {
-                $kurulum['site'] = compact('site_adi', 'site_aciklama', 'site_url');
+                $kurulum['site'] = compact('site_adi', 'site_aciklama', 'site_url', 'pwa_aktif');
                 header('Location: index.php?adim=yonetici');
                 exit;
             }
@@ -662,10 +667,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && ($_POST['islem'] ?? ''
                      * sürece hangisinin geçerli olduğu belirsizdi ve
                      * panelden değiştirilen değer .env'i güncellemediği
                      * için hiçbir işe yaramıyordu. */
+                    /* PWA'nın YALNIZCA açma anahtarı yazılır. Uygulama adı,
+                     * açıklaması ve simgesi bilerek BOŞ bırakılır: künyeyi
+                     * üreten PwaController boş alanlarda site ayarlarına
+                     * düşer, yani uygulama yukarıda girilen site adıyla
+                     * kurulur ve site adı sonradan değişirse uygulama adı
+                     * da onunla birlikte değişir. Buraya kopyalasaydık iki
+                     * ayrı doğruluk kaynağı olur, biri sessizce bayatlardı. */
                     foreach ([
                         'site_adi'        => $site['site_adi'],
                         'site_aciklama'   => $site['site_aciklama'],
                         'iletisim_eposta' => $admin_eposta,
+                        'pwa_aktif'       => ($site['pwa_aktif'] ?? true) ? '1' : '0',
                     ] as $anahtar => $deger) {
                         $settingsStmt->execute([':deger' => $deger, ':anahtar' => $anahtar]);
                     }
@@ -721,6 +734,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && ($_POST['islem'] ?? ''
                         'kadi'        => $admin_kadi,
                         'eposta'      => $admin_eposta,
                         'site_adi'    => $site['site_adi'],
+                        'pwa'         => (bool) ($site['pwa_aktif'] ?? true),
                     ];
                     unset($_SESSION['kurulum']);
 
@@ -925,6 +939,33 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                             <label class="form-label" for="site_url">Site Adresi</label>
                             <input type="url" class="form-control" id="site_url" name="site_url" value="<?= e(eski('site_url', $kurulum['site'] ?? [], guess_site_url())) ?>">
                         </div>
+
+                        <?php
+                        /* ONAY KUTUSU "eski()" İLE GERİ GETİRİLEMEZ: işaretlenmemiş
+                         * bir kutu hiç gönderilmez, yani "kullanıcı kapattı" ile
+                         * "form hiç gönderilmedi" aynı görünür. Bu yüzden isteğin
+                         * POST olup olmadığına bakıyoruz; ilk açılışta ve geri
+                         * dönüldüğünde varsayılan AÇIK'tır. */
+                        $pwaSecili = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'
+                            ? isset($_POST['pwa_aktif'])
+                            : (bool) ($kurulum['site']['pwa_aktif'] ?? true);
+                        ?>
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       id="pwa_aktif" name="pwa_aktif" value="1" <?= $pwaSecili ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="pwa_aktif">
+                                    Uygulama modu (PWA) açık kurulsun
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                Ziyaretçiler siteyi telefonlarına uygulama olarak kurabilir ve ağ
+                                yokken açabilir. Uygulamanın adı, açıklaması ve simgesi yukarıdaki
+                                site bilgilerinden gelir; hepsi daha sonra
+                                <strong>Panel → Site Ayarları → Uygulama (PWA)</strong>
+                                bölümünden değiştirilebilir.
+                            </div>
+                        </div>
                     </div>
                     <button type="submit" class="btn cy-btn cy-btn--primary mt-3">Devam Et →</button>
                 </form>
@@ -987,6 +1028,7 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                     Ek tablolar : <?= (int) ($sonuc['migrations'] ?? 0) ?> migration çalıştı<br>
                     Örnek veri&nbsp;: <?= !empty($sonuc['demo']) ? 'yüklendi' : 'yüklenmedi (temiz kurulum)' ?><br>
                     Site&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <?= e($sonuc['site_adi']) ?><br>
+                    Uygulama&nbsp;&nbsp;: <?= !empty($sonuc['pwa']) ? 'PWA açık (telefona kurulabilir)' : 'PWA kapalı' ?><br>
                     Yönetici&nbsp;&nbsp;: <?= e($sonuc['kadi']) ?> · <?= e($sonuc['eposta']) ?>
                 </div>
 

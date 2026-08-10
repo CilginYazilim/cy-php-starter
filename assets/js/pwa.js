@@ -1,25 +1,33 @@
 /* ==================================================================
- *  PWA – Servis çalışanını kaydeder ve güncellemeyi bildirir
+ *  PWA – Servis çalışanını kaydeder, kapatıldığında SİLER
  * ------------------------------------------------------------------
- *  Yalnızca PWA ayarı açıkken yüklenir (bkz. layouts/admin, site).
+ *  Davranış tek bir etikete bakar: <meta name="cy-sw">
  *
- *  GÜNCELLEME SORUNU: Servis çalışanı eski sürümü önbellekten
- *  sunmaya devam edebilir; kullanıcı "site güncellenmiyor" der.
- *  Bu yüzden yeni sürüm hazır olduğunda bir bildirim gösterip
- *  sayfayı yenilemeyi öneriyoruz.
+ *    · Etiket VARSA  → servis çalışanını kaydet, güncellemeyi bildir
+ *    · Etiket YOKSA  → kayıtlı servis çalışanını sil, önbelleğini boşalt
+ *
+ *  İKİNCİSİ NEDEN ŞART? Servis çalışanı bir kez kaydedildiğinde
+ *  tarayıcıda KALICIDIR. "Çevrimdışı Çalışma" ayarını kapatmak
+ *  sunucuda etiketi kaldırmakla bitseydi, o siteyi daha önce açmış
+ *  herkesin tarayıcısı sayfaları eski önbellekten sunmaya devam
+ *  ederdi ve yönetici "ayarı kapattım ama hâlâ eski sayfa geliyor"
+ *  derdi. Bu yüzden betik PWA kapalıyken de yüklenir: tek işi
+ *  geride kalanı temizlemektir.
  * ================================================================== */
 
-/* global CY, jQuery */
+/* global CY */
 (function () {
     'use strict';
 
     if (!('serviceWorker' in navigator)) { return; }
 
-    var meta = document.querySelector('meta[name="cy-sw"]');
-    if (!meta) { return; }
+    var meta  = document.querySelector('meta[name="cy-sw"]');
+    var swUrl = meta ? meta.getAttribute('content') : '';
 
-    var swUrl = meta.getAttribute('content');
-    if (!swUrl) { return; }
+    if (!swUrl) {
+        temizle();
+        return;
+    }
 
     window.addEventListener('load', function () {
         navigator.serviceWorker.register(swUrl).then(function (registration) {
@@ -40,4 +48,21 @@
             // Kayıt başarısız olursa site normal çalışmaya devam eder.
         });
     });
+
+    /* Kayıtlı servis çalışanını ve BU UYGULAMANIN önbelleklerini siler.
+     * Yalnızca "cy-" ile başlayan önbellekler silinir; aynı alan adında
+     * duran başka bir uygulamanın verisine dokunmayız. */
+    function temizle() {
+        navigator.serviceWorker.getRegistrations().then(function (kayitlar) {
+            kayitlar.forEach(function (kayit) { kayit.unregister(); });
+        }).catch(function () { /* yoksay */ });
+
+        if (!('caches' in window)) { return; }
+
+        caches.keys().then(function (adlar) {
+            adlar.forEach(function (ad) {
+                if (ad.indexOf('cy-') === 0) { caches.delete(ad); }
+            });
+        }).catch(function () { /* yoksay */ });
+    }
 }());

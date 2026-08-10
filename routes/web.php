@@ -93,6 +93,8 @@ $router->post('panel/ayarlar/logo',      SettingsController::class, 'uploadLogo'
 $router->post('panel/ayarlar/logo-sil',  SettingsController::class, 'removeLogo', ['installed', 'auth', 'csrf', 'can:settings.manage']);
 $router->post('panel/ayarlar/favicon',     SettingsController::class, 'uploadFavicon', ['installed', 'auth', 'csrf', 'can:settings.manage']);
 $router->post('panel/ayarlar/favicon-sil', SettingsController::class, 'removeFavicon', ['installed', 'auth', 'csrf', 'can:settings.manage']);
+$router->post('panel/ayarlar/pwa-simge',     SettingsController::class, 'uploadIcon', ['installed', 'auth', 'csrf', 'can:settings.manage']);
+$router->post('panel/ayarlar/pwa-simge-sil', SettingsController::class, 'removeIcon', ['installed', 'auth', 'csrf', 'can:settings.manage']);
 
 // "{grup}" kalıbı "logo" ve "logo-sil" adreslerini de yakalardı.
 // Sorun olmaz: Router önce SABİT rotalara bakar, parametreli olanları

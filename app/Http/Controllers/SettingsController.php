@@ -51,7 +51,8 @@ final class SettingsController extends Controller
         'eposta'   => ['ikon' => 'send',     'aciklama' => 'SMTP bilgileri, gönderen adresi ve otomatik bildirimler.'],
         'sosyal'   => ['ikon' => 'globe',    'aciklama' => 'Alt bilgide görünecek sosyal medya bağlantıları.'],
         'seo'      => ['ikon' => 'search',   'aciklama' => 'İndeksleme, site haritası, robots.txt ve paylaşım görseli.'],
-        'sistem'   => ['ikon' => 'server',   'aciklama' => 'Bakım modu, kayıt açık/kapalı, tema rengi, PWA.'],
+        'sistem'   => ['ikon' => 'server',   'aciklama' => 'Bakım modu, kayıt açık/kapalı, tema rengi ve zaman dilimi.'],
+        'pwa'      => ['ikon' => 'mobil',    'aciklama' => 'Uygulama modu: künye (manifest) bilgileri, simge ve çevrimdışı çalışma.'],
     ];
 
     /* =================================================================
@@ -110,6 +111,10 @@ final class SettingsController extends Controller
                 . (Setting::bool('seo_sitemap_aktif', true) ? ' · site haritası üretiliyor' : ' · site haritası kapalı')
                 : 'Arama motorlarına KAPALI — yayına çıkmadan açın',
             'sistem'   => Setting::bool('sistem_bakim_modu', false) ? 'Bakım modu açık' : 'Site yayında',
+            'pwa'      => Setting::bool('pwa_aktif', false)
+                ? 'Açık — ' . Setting::get('pwa_ad', Setting::get('site_adi', 'Uygulama'))
+                    . (Setting::bool('pwa_cevrimdisi', true) ? ' · çevrimdışı çalışır' : ' · çevrimdışı kapalı')
+                : 'Kapalı — site uygulama olarak kurulamaz',
             default    => '',
         };
     }
@@ -322,5 +327,56 @@ final class SettingsController extends Controller
         }
 
         Response::redirect(url('panel/ayarlar/genel'));
+    }
+
+    /* =================================================================
+     *  PWA UYGULAMA SİMGESİ
+     * -----------------------------------------------------------------
+     *  Favicondan da logodan da AYRIDIR: telefonun ana ekranındaki
+     *  simge 512 piksele kadar büyütülür ve Android onu daire/kare
+     *  kalıba göre kenarlarından kırpar. Yatay bir logo orada başsız
+     *  görünür. Yüklenen görsel kare kırpılıp 512 piksele indirilir.
+     * ============================================================== */
+
+    public function uploadIcon(Request $request): void
+    {
+        $geri = url('panel/ayarlar/pwa');
+
+        if (!$request->hasFile('pwa_simge')) {
+            Flash::error('Dosya seçilmedi.');
+            Response::redirect($geri);
+        }
+
+        try {
+            $yeni = Uploader::pwaIcon((array) $request->file('pwa_simge'));
+        } catch (RuntimeException $e) {
+            Flash::error($e->getMessage());
+            Response::redirect($geri);
+        }
+
+        $eski = Setting::get('pwa_simge');
+
+        Setting::set($this->db, 'pwa_simge', $yeni, 'dahili');
+
+        if ($eski !== '' && $eski !== $yeni) {
+            Uploader::delete($eski);
+        }
+
+        Flash::success('Uygulama simgesi güncellendi. Telefona zaten kurulmuş uygulamalarda simge, uygulama yeniden kurulana kadar eski kalabilir.');
+        Response::redirect($geri);
+    }
+
+    public function removeIcon(Request $request): void
+    {
+        $mevcut = Setting::get('pwa_simge');
+
+        if ($mevcut !== '') {
+            Setting::set($this->db, 'pwa_simge', '', 'dahili');
+            Uploader::delete($mevcut);
+
+            Flash::success('Uygulama simgesi kaldırıldı; site logosu kullanılacak.');
+        }
+
+        Response::redirect(url('panel/ayarlar/pwa'));
     }
 }

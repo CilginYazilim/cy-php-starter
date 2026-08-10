@@ -171,8 +171,9 @@ $siteDil = substr($siteDil, 0, 5);
         <script src="<?= e(asset('js/' . $script)) ?>"></script>
     <?php endforeach; ?>
 
-    <?php if (Setting::bool('pwa_aktif', false)): ?>
-        <script src="<?= e(asset('js/pwa.js')) ?>"></script>
-    <?php endif; ?>
+    <?php /* PWA KAPALIYKEN DE YÜKLENİR — bkz. layouts/admin.php: betiğin
+             ikinci işi, kapatıldığında geride kalan servis çalışanını
+             ve önbelleğini temizlemektir. */ ?>
+    <script src="<?= e(asset('js/pwa.js')) ?>"></script>
 </body>
 </html>

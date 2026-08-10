@@ -150,8 +150,36 @@ INSERT INTO `ayarlar`
 ('sistem_sayfa_basina',   '10',   'sistem', 'sayi',  'Sayfa Başına Kayıt',   'Listelerde varsayılan sayfa boyutu.', NULL, 30),
 ('sistem_zaman_dilimi',   'Europe/Istanbul', 'sistem', 'metin', 'Zaman Dilimi', 'Örn: Europe/Istanbul', NULL, 40),
 ('sistem_tema_rengi',     '#0b5cb5', 'sistem', 'renk', 'Tema Rengi',          'Panelin ve sitenin ana rengi. Butonlar, bağlantılar, aktif menü ve gradyanlar bu renkten türetilir; kaydettiğiniz anda her yerde geçerli olur.', NULL, 50),
-('pwa_aktif',             '0',    'sistem', 'onay',  'Uygulama Modu (PWA)',  'Açıkken site telefona "uygulama olarak ekle" ile kurulabilir ve çevrimdışı açılır.', NULL, 60),
-('sistem_surum',          '2.1.0', 'sistem', 'metin', 'Sürüm',                'Şablon sürümü.', NULL, 90);
+('sistem_surum',          '2.1.0', 'sistem', 'metin', 'Sürüm',                'Şablon sürümü.', NULL, 90),
+
+-- ---- UYGULAMA (PWA) ----
+-- Künye (manifest) alanlarının hepsi BOŞ gelir. Bu bir eksiklik DEĞİL,
+-- kurulumun tasarımıdır: PwaController boş her alan için site
+-- ayarlarına düşer (ad → site_adi, açıklama → site_aciklama,
+-- simge → site logosu). Böylece kurulum sihirbazında yazılan site adı
+-- uygulamanın da adı olur ve site adı sonradan değiştiğinde uygulama
+-- adı da onunla birlikte değişir. Buraya sabit bir ad yazsaydık her
+-- yeni kurulum şablonun adıyla kurulur, yöneticinin girdiği ad
+-- yok sayılırdı. Yönetici yalnızca FARKLI olmasını istediği alanı
+-- doldurur.
+--
+-- "pwa_aktif" AÇIK GELİR: uygulama modunun açık olması ziyaretçiye
+-- yalnızca "ana ekrana ekle" seçeneği sunar, hiçbir şeyi zorlamaz ve
+-- kurulum sihirbazından tek tıkla kapatılabilir. Kapalı geldiğinde
+-- ise özelliğin var olduğu ayarlar ekranı taranmadan fark edilmiyordu.
+('pwa_aktif',      '1', 'pwa', 'onay',  'Uygulama Modu (PWA)', 'Açıkken ziyaretçi siteyi telefonuna uygulama olarak kurabilir. Kapalıyken sayfalara PWA ile ilgili tek bir etiket bile eklenmez.', NULL, 10),
+('pwa_ad',         '',  'pwa', 'metin', 'Uygulama Adı',        'Kurulum penceresinde ve uygulama listesinde görünen tam ad. Boşsa site adı kullanılır.', NULL, 20),
+('pwa_kisa_ad',    '',  'pwa', 'metin', 'Kısa Ad',             'Ana ekranda simgenin altında yazar; 12 karakteri geçmesin. Boşsa uygulama adının başı kullanılır.', NULL, 30),
+('pwa_aciklama',   '',  'pwa', 'uzun_metin', 'Uygulama Açıklaması', 'Kurulum penceresinde görünür. Boşsa site açıklaması kullanılır.', NULL, 40),
+('pwa_baslangic',  '',  'pwa', 'metin', 'Açılış Adresi',       'Uygulama açıldığında gidilecek sayfa; site köküne göre yazın (örn. panel). Boşsa ana sayfa açılır.', NULL, 50),
+('pwa_gorunum',    'standalone', 'pwa', 'secim', 'Görüntüleme Modu', 'standalone: adres çubuğu olmadan, ayrı bir uygulama gibi. fullscreen: tam ekran. minimal-ui: ince gezinme çubuğuyla. browser: normal sekmede.', '["standalone","fullscreen","minimal-ui","browser"]', 60),
+('pwa_yon',        'any', 'pwa', 'secim', 'Ekran Yönü',        'any: cihaz nasıl tutulursa. portrait: yalnızca dikey. landscape: yalnızca yatay.', '["any","portrait","landscape"]', 70),
+('pwa_arka_renk',  '#ffffff', 'pwa', 'renk', 'Açılış Arka Plan Rengi', 'Uygulama açılırken simgenin arkasında görünen renk. Tema rengi buradan değil, Sistem ayarlarından gelir.', NULL, 80),
+('pwa_cevrimdisi', '1', 'pwa', 'onay',  'Çevrimdışı Çalışma',  'Servis çalışanı sayfaları önbelleğe alır; ağ yokken site yine açılır. Kapatırsanız ziyaretçilerin tarayıcısındaki kayıtlı servis çalışanı ve önbellek de temizlenir.', NULL, 90),
+
+-- Simge dosya adı tutar ve "dahili"dir: değeri Uygulama ayarları
+-- sayfasının yan sütunundaki YÜKLEME KARTINDAN değişir, elle yazılmaz.
+('pwa_simge',      '',  'dahili', 'metin', 'Uygulama Simgesi', NULL, NULL, 95);
 
 UPDATE `ayarlar` SET `duzenlenebilir` = 0 WHERE `anahtar` = 'sistem_surum';
 

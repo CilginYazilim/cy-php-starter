@@ -194,6 +194,7 @@ final class Setting
             'sosyal'   => 'Sosyal Medya',
             'seo'      => 'SEO',
             'sistem'   => 'Sistem',
+            'pwa'      => 'Uygulama (PWA)',
         ];
     }
 
@@ -220,6 +221,22 @@ final class Setting
         $url = Uploader::url(self::get('site_favicon'));
 
         return $url !== '' ? $url : Url::asset('images/favicon.png');
+    }
+
+    /**
+     * "Ana ekrana ekle" simgesinin adresi (manifest icons).
+     *
+     * Faviconla AYNI dosya DEĞİLDİR ve olmamalıdır: favicon 16–32
+     * piksellik bir sekme simgesidir, telefonun ana ekranındaki simge
+     * ise 192–512 pikselde basılır ve kenarlarından kırpılabilir
+     * ("maskable"). Ayrı bir simge yüklenmediyse site logosuna
+     * düşeriz — kurulumla gelen logo karedir ve iş görür.
+     */
+    public static function pwaIconUrl(): string
+    {
+        $url = Uploader::url(self::get('pwa_simge'));
+
+        return $url !== '' ? $url : self::logoUrl();
     }
 
     /**

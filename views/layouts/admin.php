@@ -89,8 +89,11 @@ $flashes      = Flash::pull();
         <script src="<?= e(asset('js/' . $script)) ?>"></script>
     <?php endforeach; ?>
 
-    <?php if (Setting::bool('pwa_aktif', false)): ?>
-        <script src="<?= e(asset('js/pwa.js')) ?>"></script>
-    <?php endif; ?>
+    <?php /* PWA KAPALIYKEN DE YÜKLENİR — bilerek. Betik <head> içindeki
+             "cy-sw" etiketine bakar: etiket yoksa daha önce kaydedilmiş
+             servis çalışanını SİLER. Koşula bağlasaydık ayarı kapatmak
+             siteyi daha önce ziyaret etmiş tarayıcılarda hiçbir şeyi
+             değiştirmez, sayfalar eski önbellekten gelmeye devam ederdi. */ ?>
+    <script src="<?= e(asset('js/pwa.js')) ?>"></script>
 </body>
 </html>

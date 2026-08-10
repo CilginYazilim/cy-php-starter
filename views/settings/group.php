@@ -312,9 +312,81 @@ $old      = $old ?? [];
                         <strong>Bakım modu</strong> açıkken siteyi yalnızca panele giriş yetkisi olanlar görür.
                     </p>
                     <p class="cy-muted small mb-0">
-                        <strong>PWA</strong> açıkken ziyaretçiler siteyi telefonlarına uygulama gibi kurabilir.
-                        Değişikliğin görünmesi için tarayıcı önbelleğinin tazelenmesi gerekebilir.
+                        <strong>Tema rengi</strong> panelin ve sitenin her yerinde geçerli olur;
+                        uygulama künyesi (PWA) de bu renkten beslenir.
+                        Uygulama ayarları için <a class="cy-link" href="<?= e(url('panel/ayarlar/pwa')) ?>">Uygulama (PWA)</a> bölümüne bakın.
                     </p>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($grup === 'pwa'): ?>
+            <?php $pwaAcik = Setting::bool('pwa_aktif', false); ?>
+
+            <div class="cy-card">
+                <div class="cy-card__header">
+                    <h3 class="cy-section-title mb-0"><?= icon('mobil', 'cy-icon cy-icon--sm') ?> Uygulama Simgesi</h3>
+                </div>
+                <div class="cy-card__body">
+                    <div class="text-center mb-3">
+                        <img src="<?= e(Setting::pwaIconUrl()) ?>" alt="Uygulama simgesi" class="cy-avatar cy-avatar--lg">
+                    </div>
+
+                    <form method="post" action="<?= e(url('panel/ayarlar/pwa-simge')) ?>" enctype="multipart/form-data">
+                        <?= csrf_field() ?>
+                        <input type="file" name="pwa_simge" class="form-control form-control-sm mb-2"
+                               accept="image/jpeg,image/png,image/gif,image/webp">
+                        <button type="submit" class="btn cy-btn cy-btn--primary cy-btn--block cy-btn--sm">
+                            <?= icon('upload', 'cy-icon cy-icon--sm') ?> Simgeyi Güncelle
+                        </button>
+                    </form>
+
+                    <?php if (Setting::get('pwa_simge') !== ''): ?>
+                        <form method="post" action="<?= e(url('panel/ayarlar/pwa-simge-sil')) ?>" class="mt-2"
+                              data-confirm="Uygulama simgesi kaldırılacak, site logosu kullanılacak. Emin misiniz?">
+                            <?= csrf_field() ?>
+                            <button type="submit" class="btn cy-btn cy-btn--ghost cy-btn--block cy-btn--sm">
+                                <?= icon('trash', 'cy-icon cy-icon--sm') ?> Simgeyi Kaldır
+                            </button>
+                        </form>
+                    <?php endif; ?>
+
+                    <p class="cy-muted small mt-3 mb-0">
+                        <strong>Kare</strong> bir görsel yükleyin; merkezden kırpılır ve 512 piksele indirilir.
+                        Telefon bu simgeyi daire ya da kare kalıba göre kenarlarından kırpabilir —
+                        önemli ayrıntıları ortada tutun. Yüklemezseniz site logosu kullanılır.
+                    </p>
+                </div>
+            </div>
+
+            <div class="cy-card mt-3">
+                <div class="cy-card__header">
+                    <h3 class="cy-section-title mb-0"><?= icon('file', 'cy-icon cy-icon--sm') ?> Künye (manifest)</h3>
+                </div>
+                <div class="cy-card__body">
+                    <?php if (!$pwaAcik): ?>
+                        <p class="cy-muted small mb-0">
+                            Uygulama modu <strong>kapalı</strong>. Kapalıyken sayfalara tek bir
+                            etiket bile eklenmez: künye istenmez, servis çalışanı kaydedilmez,
+                            daha önce kaydedilmiş olan varsa silinir. Buradaki alanları
+                            doldurmak için önce yukarıdaki anahtarı açın.
+                        </p>
+                    <?php else: ?>
+                        <p class="cy-muted small mb-2">
+                            Bu ayarlardan üretilen künye dosyası her istekte anlık oluşturulur:
+                        </p>
+                        <p class="mb-3">
+                            <a class="cy-link cy-mono small" href="<?= e(url('manifest.webmanifest')) ?>" target="_blank" rel="noopener">
+                                manifest.webmanifest
+                            </a>
+                        </p>
+                        <p class="cy-muted small mb-0">
+                            <strong>Tema rengi</strong> ayrı bir alan değildir;
+                            <a class="cy-link" href="<?= e(url('panel/ayarlar/sistem')) ?>">Sistem → Tema Rengi</a>
+                            ne ise künye de onu kullanır. Telefona zaten kurulmuş bir uygulamada
+                            ad ve simge, uygulama yeniden kurulana kadar eski kalabilir.
+                        </p>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php endif; ?>
