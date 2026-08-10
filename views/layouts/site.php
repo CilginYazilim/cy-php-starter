@@ -17,7 +17,15 @@ $theme   = resolve_theme();
 $flashes = Flash::pull();
 
 $siteAdi = Setting::get('site_adi', $appName ?? 'Yeni Proje');
-$pageTitle = ($title ?? '') !== '' ? ($title . ' · ' . $siteAdi) : $siteAdi;
+
+/* BAŞLIK ŞABLONU (Ayarlar → SEO). "%sayfa% · %site%" gibi bir kalıp
+ * beklenir. Ana sayfada ($title boş) yalnızca site adı basılır:
+ * "· Site Adı" diye başlayan bir sekme başlığı bozuk görünürdü. */
+$baslikSablonu = Setting::get('seo_baslik_sablonu', '%sayfa% · %site%');
+
+$pageTitle = ($title ?? '') !== ''
+    ? str_replace(['%sayfa%', '%site%'], [$title, $siteAdi], $baslikSablonu)
+    : $siteAdi;
 
 /* Dil, panelden değiştirilebilir (Ayarlar → Genel). Beklenmedik bir
  * değer HTML'e girmesin diye iki harfe indirgiyoruz. */
@@ -33,9 +41,17 @@ $siteDil = substr($siteDil, 0, 5);
     /* SEO / paylaşım etiketleri.
        Sayfa başlığı ve açıklaması ayarlardan gelir; bir sayfa kendi
        $ogAciklama değerini vererek bunu geçersiz kılabilir. */
-    $ogBaslik   = ($title ?? '') !== '' ? $title . ' · ' . $siteAdi : $siteAdi;
+    $ogBaslik   = $pageTitle;
     $ogAciklama = $ogAciklama ?? Setting::get('site_aciklama', '');
-    $ogGorsel   = App\Core\Url::absolute(ltrim(Setting::logoUrl(), '/'));
+    /* shareImage() köke göreli bir adres döner ve TABAN YOLUNU ZATEN
+     * içerir ("/proje/assets/images/logo.png"). Url::absolute() ise
+     * kendisi taban yolu ekler; ikisini birleştirmek yolu iki kez
+     * yazıp paylaşım görselini kırıyordu. Yalnızca şema + alan adı
+     * eklemek yeterli — tam adres verilmişse ona hiç dokunmuyoruz. */
+    $paylasim   = Setting::shareImage();
+    $ogGorsel   = str_starts_with($paylasim, 'http')
+        ? $paylasim
+        : App\Core\Url::origin() . '/' . ltrim($paylasim, '/');
     $kanonik    = App\Core\Url::absolute(App\Core\Url::current());
     ?>
     <meta name="description" content="<?= e($ogAciklama) ?>">
@@ -62,11 +78,17 @@ $siteDil = substr($siteDil, 0, 5);
         <meta name="robots" content="noindex, nofollow">
     <?php endif; ?>
 
+    <?php if (($googleDogrulama = Setting::get('seo_google_dogrulama')) !== ''): ?>
+        <meta name="google-site-verification" content="<?= e($googleDogrulama) ?>">
+    <?php endif; ?>
+
     <title><?= e($pageTitle) ?></title>
 
     <?php View::partial('partials/pwa-head'); ?>
 
-    <link rel="icon" type="image/png" href="<?= e(asset('images/logo.png')) ?>">
+    <?php /* Favicon panelden değiştirilebilir (Ayarlar → Genel → Site Favicon). */ ?>
+    <link rel="icon" type="image/png" href="<?= e(Setting::faviconUrl()) ?>">
+    <link rel="apple-touch-icon" href="<?= e(Setting::faviconUrl()) ?>">
 
     <link rel="stylesheet" href="<?= e(asset('css/bootstrap.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/cilginyazilim.css')) ?>">
@@ -100,7 +122,28 @@ $siteDil = substr($siteDil, 0, 5);
 
     <?php View::partial('partials/site-nav'); ?>
 
-    <?php if (Setting::bool('sistem_bakim_modu', false) && !can('dashboard.view')): ?>
+    <?php
+    /* GİRİŞ SAYFASI BAKIM ÖRTÜSÜNDEN MUAFTIR.
+     *
+     * Örtü "panele girebilenler hariç herkes" için çiziliyordu; ama
+     * bakım modunu kapatabilecek kişi de siteye tam olarak buradan
+     * giriyor. Sonuç: bakım modunu açan yönetici kendini dışarıda
+     * bırakıp yalnızca veritabanından geri dönebiliyordu. */
+    $bakimOrtusu = Setting::bool('sistem_bakim_modu', false)
+        && !can('dashboard.view')
+        && !App\Core\Url::isCurrent('giris');
+    ?>
+    <?php if ($bakimOrtusu): ?>
+        <?php
+        /* Görünüm tamponlanarak üretildiği için başlık göndermek hâlâ
+         * mümkün. 200 ile "bakımdayız" basmak arama motorlarına bunun
+         * sayfanın YENİ İÇERİĞİ olduğunu söyler ve gerçek sayfalar
+         * dizinden düşer; 503 + Retry-After "geçici, sonra uğra" der. */
+        if (!headers_sent()) {
+            http_response_code(503);
+            header('Retry-After: 3600');
+        }
+        ?>
         <div class="cy-maintenance">
             <div class="cy-maintenance__box">
                 <?= icon('settings', 'cy-icon cy-icon--lg') ?>

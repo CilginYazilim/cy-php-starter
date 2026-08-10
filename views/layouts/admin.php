@@ -35,7 +35,10 @@ $flashes      = Flash::pull();
 
     <?php View::partial('partials/pwa-head'); ?>
 
-    <link rel="icon" type="image/png" href="<?= e(asset('images/logo.png')) ?>">
+    <?php /* Panelde de sitenin faviconu görünür: iki sekme arasında
+             gidip gelirken aynı simgeyi görmek yön duygusunu korur. */ ?>
+    <link rel="icon" type="image/png" href="<?= e(Setting::faviconUrl()) ?>">
+    <link rel="apple-touch-icon" href="<?= e(Setting::faviconUrl()) ?>">
 
     <link rel="stylesheet" href="<?= e(asset('css/bootstrap.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/dataTables.bootstrap5.min.css')) ?>">

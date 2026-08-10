@@ -30,6 +30,7 @@ use App\Core\Session;
 use App\Core\Setting;
 use App\Core\Storage\Storage;
 use App\Http\Controller;
+use App\Repositories\PageRepository;
 use Throwable;
 
 final class SystemController extends Controller
@@ -46,6 +47,7 @@ final class SystemController extends Controller
             'klasorler'  => $this->directories(),
             'eklentiler' => $this->extensions(),
             'checks'     => $this->securityChecks(),
+            'ayarChecks' => $this->settingChecks(),
             'moduller'   => Modules::all(),
             'basarisizIsler' => $this->safe(static fn (): array => Queue::failed(20), []),
         ]);
@@ -135,7 +137,10 @@ final class SystemController extends Controller
             'Ortam'          => $env === 'production' ? 'Yayın (production)' : 'Geliştirme (' . $env . ')',
             'Hata ayıklama'  => Config::isDebug() ? 'AÇIK' : 'Kapalı',
             'Adres biçimi'   => Config::get('app.pretty_urls', true) ? 'Temiz adres (SEO uyumlu)' : 'index.php?r=…',
-            'Site adresi'    => Setting::get('site_url', (string) Config::get('app.url', '—')),
+            // Site adresi ARTIK YALNIZCA .env'de (APP_URL). Panelde de
+            // duran ikinci bir kopya, hangisinin geçerli olduğunu
+            // belirsizleştiriyordu; ayar satırı kaldırıldı.
+            'Site adresi'    => (string) Config::get('app.url', '—'),
             'Zaman dilimi'   => date_default_timezone_get(),
             'Sunucu saati'   => date('d.m.Y H:i:s'),
             'Yapılandırma'   => Config::isCached() ? 'Önbellekten okunuyor' : 'Dosyalardan okunuyor',
@@ -329,6 +334,107 @@ final class SystemController extends Controller
                     true
                 ),
                 'detail' => 'storage/ ve upload/ klasörleri yazılabilir olmalıdır; aksi halde günlük, önbellek ve yüklemeler çalışmaz.',
+            ],
+        ];
+    }
+
+    /**
+     * YAPILANDIRMA DENETİMİ – "yayına çıkmadan önce bunları doldurun".
+     *
+     * Güvenlik denetiminden AYRI tutuluyor çünkü farklı bir soruya
+     * cevap veriyor: orası "sunucu güvenli mi?", burası "site
+     * kullanılabilir durumda mı?" diye sorar. İkisi tek listede
+     * karışınca, SMTP'nin kurulmamış olması bir güvenlik açığıymış
+     * gibi görünüyor, gerçek açıklar ise listenin içinde kayboluyordu.
+     *
+     * Her madde sorunun NEREDE çözüleceğini de yazar; "yol" alanı
+     * doluysa görünümde tıklanabilir bir bağlantı olur.
+     *
+     * @return array<int,array{label:string,ok:bool,detail:string,yol:string,baglanti:string}>
+     */
+    private function settingChecks(): array
+    {
+        $surucu   = Setting::get('mail_surucu', 'kayit');
+        $iletisim = Setting::get('iletisim_eposta');
+        $aciklama = Setting::get('site_aciklama');
+        $logo     = Setting::get('site_logo');
+        $favicon  = Setting::get('site_favicon');
+        $indeksle = Setting::bool('seo_indeksleme', true);
+        $bakim    = Setting::bool('sistem_bakim_modu', false);
+
+        $yayindaSayfa = 0;
+
+        try {
+            $yayindaSayfa = (new PageRepository($this->db))->stats()['yayin'];
+        } catch (\Throwable) {
+            $yayindaSayfa = 0;
+        }
+
+        return [
+            [
+                'label'    => 'E-posta gönderimi yapılandırıldı',
+                'ok'       => $surucu !== 'kayit',
+                'detail'   => $surucu === 'kayit'
+                    ? 'Gönderim yöntemi hâlâ "kayıt": mektuplar storage/mail/ klasörüne .eml olarak yazılıyor, KİMSEYE ULAŞMIYOR. İletişim formu bildirimleri, hoş geldiniz mektupları ve parola bilgilendirmeleri gitmiyor demektir.'
+                    : 'Yöntem: ' . ($surucu === 'smtp' ? 'SMTP · ' . Setting::get('mail_host', '—') : 'PHP mail()') . '.',
+                'yol'      => 'panel/ayarlar/eposta',
+                'baglanti' => 'SMTP ayarlarını aç',
+            ],
+            [
+                'label'    => 'İletişim e-postası tanımlı',
+                'ok'       => $iletisim !== '',
+                'detail'   => $iletisim !== ''
+                    ? 'Form bildirimleri ' . $iletisim . ' adresine gidiyor.'
+                    : 'İletişim formundan gelen mesajların bildirimi hiçbir adrese gönderilemiyor.',
+                'yol'      => 'panel/ayarlar/iletisim',
+                'baglanti' => 'İletişim ayarlarını aç',
+            ],
+            [
+                'label'    => 'Site açıklaması yazılmış',
+                'ok'       => mb_strlen($aciklama) >= 40,
+                'detail'   => mb_strlen($aciklama) >= 40
+                    ? 'Arama sonuçlarında ve paylaşımlarda bu metin görünüyor.'
+                    : 'Açıklama boş ya da çok kısa (' . mb_strlen($aciklama) . ' karakter). Arama motorları için 120–160 karakter idealdir.',
+                'yol'      => 'panel/ayarlar/genel',
+                'baglanti' => 'Genel ayarları aç',
+            ],
+            [
+                'label'    => 'Logo ve favicon yüklendi',
+                'ok'       => $logo !== '' && $favicon !== '',
+                'detail'   => $logo !== '' && $favicon !== ''
+                    ? 'Kendi görselleriniz kullanılıyor.'
+                    : 'Hâlâ şablonun varsayılan görselleri kullanılıyor'
+                        . ($logo === '' ? ' (logo)' : '')
+                        . ($favicon === '' ? ' (favicon)' : '') . '.',
+                'yol'      => 'panel/ayarlar/genel',
+                'baglanti' => 'Logo ve favicon',
+            ],
+            [
+                'label'    => 'Yayında içerik sayfası var',
+                'ok'       => $yayindaSayfa > 0,
+                'detail'   => $yayindaSayfa > 0
+                    ? $yayindaSayfa . ' sayfa yayında ve site haritasında.'
+                    : 'Hiçbir sayfa yayında değil; menüde yalnızca ana sayfa görünür.',
+                'yol'      => 'panel/sayfalar',
+                'baglanti' => 'Sayfaları aç',
+            ],
+            [
+                'label'    => 'Arama motorlarına açık',
+                'ok'       => $indeksle,
+                'detail'   => $indeksle
+                    ? 'robots.txt tarama izni veriyor, sayfalarda noindex yok.'
+                    : 'İndeksleme KAPALI: robots.txt tüm siteyi engelliyor ve her sayfaya noindex ekleniyor. Yayına çıkarken açın.',
+                'yol'      => 'panel/ayarlar/seo',
+                'baglanti' => 'SEO ayarlarını aç',
+            ],
+            [
+                'label'    => 'Bakım modu kapalı',
+                'ok'       => !$bakim,
+                'detail'   => $bakim
+                    ? 'Site ziyaretçilere kapalı; yalnızca panele girebilenler içeriği görüyor.'
+                    : 'Site herkese açık.',
+                'yol'      => 'panel/ayarlar/sistem',
+                'baglanti' => 'Sistem ayarlarını aç',
             ],
         ];
     }

@@ -13,7 +13,7 @@ use App\Core\Exceptions\HttpException;
 
 final class Middleware
 {
-    /** @param string $rule "auth" | "guest" | "role:admin" | "can:users.delete" | "csrf" | "installed" */
+    /** @param string $rule "auth" | "guest" | "role:admin" | "can:users.delete" | "csrf" | "installed" | "bakim" */
     public static function handle(string $rule, Request $request): void
     {
         [$name, $parameter] = array_pad(explode(':', $rule, 2), 2, null);
@@ -33,6 +33,7 @@ final class Middleware
             'can'       => self::can((string) $parameter, $request),
             'csrf'      => self::csrf($request),
             'installed' => self::installed(),
+            'bakim'     => self::maintenance(),
             default     => null,
         };
     }
@@ -110,6 +111,27 @@ final class Middleware
         }
 
         Response::redirect(Url::base() . '/kurulum/');
+    }
+
+    /**
+     * Bakım modu açıkken herkese açık YAZMA uçlarını kapatır.
+     *
+     * Bakım modu uzun süre yalnızca bir GÖRSEL ÖRTÜYDÜ: layouts/site
+     * içeriği gizliyordu ama form gönderimleri JSON uçlarına gidip
+     * layout'a hiç uğramadığı için iletişim mesajı kaydedilmeye,
+     * yeni üyeler kaydolmaya devam ediyordu. Kapıyı rotanın önüne
+     * koyuyoruz.
+     *
+     * Panele erişebilenler (dashboard.view) muaftır: bakım
+     * sırasında sistemi düzeltebilmeleri gerekir.
+     */
+    private static function maintenance(): void
+    {
+        if (!Setting::bool('sistem_bakim_modu', false) || Auth::can('dashboard.view')) {
+            return;
+        }
+
+        throw HttpException::maintenance();
     }
 
     /**

@@ -64,6 +64,29 @@ final class MessageRepository
     }
 
     /**
+     * Bu IP son $seconds saniyede kaç mesaj bıraktı?
+     *
+     * İletişim formunun hız sınırı bir zamanlar YALNIZCA oturuma
+     * bakıyordu; çerezleri saklamayan bir betik sınırı hiç görmeden
+     * istediği kadar kayıt açabiliyordu. Oturum ölçütü hâlâ ilk
+     * savunma (veritabanına gitmeden ucuzca eler), bu ise ikincisi.
+     */
+    public function countFromIp(string $ip, int $seconds): int
+    {
+        if ($ip === '') {
+            return 0;
+        }
+
+        $stmt = $this->db->prepare(
+            'SELECT COUNT(*) FROM mesajlar
+              WHERE ip = :ip AND created_at >= (NOW() - INTERVAL :saniye SECOND)'
+        );
+        $stmt->execute([':ip' => $ip, ':saniye' => max(1, $seconds)]);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
      * @param array<int,int> $ids
      * @return int Etkilenen kayıt sayısı
      */

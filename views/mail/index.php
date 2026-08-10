@@ -23,13 +23,9 @@ $canSend   = $canSend ?? false;
 $ilkSekme  = $canSend ? 'gonder' : 'gecmis';
 ?>
 
-<div class="cy-page-head">
-    <div>
-        <h2 class="cy-title">E-posta</h2>
-        <p class="cy-subtitle">Gönderen: <strong><?= e($gonderen ?? '') ?></strong></p>
-    </div>
-</div>
-
+<?php /* SAYFA BAŞLIĞI ÜST ÇUBUKTA yazar; burada tekrar edilmiyor.
+         "Gönderen" bilgisi de başlık altında değil, ait olduğu yerde:
+         aşağıdaki kartlardan birinde. */ ?>
 <div class="cy-stats">
     <div class="cy-stat">
         <span class="cy-stat__icon cy-stat__icon--brand"><?= icon('send') ?></span>
@@ -59,11 +55,16 @@ $ilkSekme  = $canSend ? 'gonder' : 'gecmis';
     </div>
 
     <div class="cy-stat">
-        <span class="cy-stat__icon cy-stat__icon--success"><?= icon('inbox') ?></span>
+        <span class="cy-stat__icon cy-stat__icon--<?= ($yapilandi ?? false) ? 'success' : 'warning' ?>"><?= icon('user') ?></span>
         <span>
-            <span class="cy-stat__label">Toplam Kayıt</span>
-            <span class="cy-stat__value"><?= (int) $stats['toplam'] ?></span>
-            <span class="cy-stat__hint">tüm geçmiş</span>
+            <span class="cy-stat__label">Gönderen</span>
+            <span class="cy-stat__value" style="font-size:.95rem; line-height:1.35; word-break:break-word">
+                <?= e($gonderen ?? '—') ?>
+            </span>
+            <span class="cy-stat__hint">
+                <?= ($yapilandi ?? false) ? 'gönderim açık' : 'yalnızca kayıt modu' ?> ·
+                <?= (int) $stats['toplam'] ?> kayıt
+            </span>
         </span>
     </div>
 </div>

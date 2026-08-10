@@ -53,6 +53,21 @@ $demoAccounts = $demoAccounts ?? [];
                                 <?php endif; ?>
                             </div>
 
+                            <?php /* BENİ HATIRLA
+                                     İşaretlenirse tarayıcıya 30 günlük, JavaScript'in
+                                     okuyamadığı (HttpOnly) bir jeton çerezi bırakılır.
+                                     Parola ya da e-posta çereze ASLA yazılmaz; çerez
+                                     her kullanımda yenilenir ve çıkış yapıldığında
+                                     sunucu tarafında iptal edilir. */ ?>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" value="1"
+                                       name="hatirla" id="hatirla" <?= old($old, 'hatirla') !== '' ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="hatirla">
+                                    Beni hatırla
+                                    <span class="cy-muted small d-block">Bu tarayıcıda 30 gün açık kalayım.</span>
+                                </label>
+                            </div>
+
                             <button type="submit" class="btn cy-btn cy-btn--primary cy-btn--block">
                                 <?= icon('logout', 'cy-icon cy-icon--sm') ?> Giriş Yap
                             </button>

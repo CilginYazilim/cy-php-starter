@@ -6,9 +6,12 @@
  *  Form "ayarlar" tablosundaki satırlardan OTOMATİK üretilir; her
  *  "tip" değeri farklı bir alana dönüşür.
  *
+ *  SAYFA BAŞLIĞI ÜST ÇUBUKTA yazar; burada tekrar edilmez. Bölümler
+ *  arası geçiş de sol menüdeki "Site Ayarları" alt menüsündedir —
+ *  aynı gezinmeyi iki kez çizmek ekranın üstünü boşa harcıyordu.
+ *
  *  @var string $grup, $baslik, $ikon
  *  @var array<int,array<string,mixed>> $rows
- *  @var array<int,array{anahtar:string,baslik:string,ikon:string,aktif:bool}> $komsular
  *  @var array<string,string> $errors, $old
  * =====================================================================
  */
@@ -18,39 +21,7 @@ use App\Core\Setting;
 $rows     = $rows ?? [];
 $errors   = $errors ?? [];
 $old      = $old ?? [];
-$komsular = $komsular ?? [];
 ?>
-
-<div class="cy-page-head">
-    <div>
-        <nav class="cy-breadcrumb" aria-label="Konum">
-            <a href="<?= e(url('panel/ayarlar')) ?>">Site Ayarları</a>
-            <?= icon('chevron', 'cy-icon cy-icon--sm') ?>
-            <span><?= e($baslik) ?></span>
-        </nav>
-
-        <h2 class="cy-title"><?= icon($ikon, 'cy-icon') ?> <?= e($baslik) ?></h2>
-        <p class="cy-subtitle"><?= e($subtitle ?? '') ?></p>
-    </div>
-
-    <div class="cy-page-head__actions">
-        <a class="btn cy-btn cy-btn--ghost cy-btn--sm" href="<?= e(url('panel/ayarlar')) ?>">
-            <?= icon('chevron', 'cy-icon cy-icon--sm cy-flip') ?> Tüm Bölümler
-        </a>
-    </div>
-</div>
-
-<?php /* Bölümler arası hızlı geçiş — sayfadan çıkmadan gezinme. */ ?>
-<div class="cy-groupnav" role="tablist" aria-label="Ayar bölümleri">
-    <?php foreach ($komsular as $komsu): ?>
-        <a class="cy-groupnav__item<?= $komsu['aktif'] ? ' is-active' : '' ?>"
-           href="<?= e(url('panel/ayarlar/' . $komsu['anahtar'])) ?>"
-           <?= $komsu['aktif'] ? 'aria-current="page"' : '' ?>>
-            <?= icon($komsu['ikon'], 'cy-icon cy-icon--sm') ?>
-            <span><?= e($komsu['baslik']) ?></span>
-        </a>
-    <?php endforeach; ?>
-</div>
 
 <?php if ($errors !== []): ?>
     <div class="cy-alert cy-alert--danger mb-3">
@@ -193,6 +164,100 @@ $komsular = $komsular ?? [];
                     </p>
                 </div>
             </div>
+
+            <?php /* FAVICON: logodan ayrı bir dosyadır. Sekmede görünen
+                     simge 16 pikseldir; yatay bir logo orada okunmaz. */ ?>
+            <div class="cy-card mt-3">
+                <div class="cy-card__header">
+                    <h3 class="cy-section-title mb-0"><?= icon('star', 'cy-icon cy-icon--sm') ?> Site Favicon</h3>
+                </div>
+                <div class="cy-card__body">
+                    <div class="text-center mb-3">
+                        <span class="cy-favicon-preview">
+                            <img src="<?= e(Setting::faviconUrl()) ?>" alt="Mevcut favicon">
+                        </span>
+                    </div>
+
+                    <form method="post" action="<?= e(url('panel/ayarlar/favicon')) ?>" enctype="multipart/form-data">
+                        <?= csrf_field() ?>
+                        <input type="file" name="favicon" class="form-control form-control-sm mb-2"
+                               accept="image/jpeg,image/png,image/gif,image/webp">
+                        <button type="submit" class="btn cy-btn cy-btn--primary cy-btn--block cy-btn--sm">
+                            <?= icon('upload', 'cy-icon cy-icon--sm') ?> Faviconu Güncelle
+                        </button>
+                    </form>
+
+                    <?php if (Setting::get('site_favicon') !== ''): ?>
+                        <form method="post" action="<?= e(url('panel/ayarlar/favicon-sil')) ?>" class="mt-2"
+                              data-confirm="Favicon kaldırılacak, varsayılan simge kullanılacak. Emin misiniz?">
+                            <?= csrf_field() ?>
+                            <button type="submit" class="btn cy-btn cy-btn--ghost cy-btn--block cy-btn--sm">
+                                <?= icon('trash', 'cy-icon cy-icon--sm') ?> Faviconu Kaldır
+                            </button>
+                        </form>
+                    <?php endif; ?>
+
+                    <p class="cy-muted small mt-3 mb-0">
+                        Kare bir görsel yükleyin; merkezden kırpılır ve 256 piksele indirilir.
+                        Kurulumla birlikte varsayılan bir favicon zaten tanımlıdır.
+                        Değişiklikten sonra tarayıcı eski simgeyi bir süre önbellekte tutabilir.
+                    </p>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($grup === 'iletisim'): ?>
+            <?php
+            $whatsapp = App\Http\Controllers\Site\HomeController::whatsappLink();
+            ?>
+            <div class="cy-card">
+                <div class="cy-card__header">
+                    <h3 class="cy-section-title mb-0"><?= icon('whatsapp', 'cy-icon cy-icon--sm') ?> WhatsApp Önizleme</h3>
+                </div>
+                <div class="cy-card__body">
+                    <?php if ($whatsapp === ''): ?>
+                        <p class="cy-muted small mb-0">
+                            Numara girip kaydettiğinizde ön yüzde alt bilgide, iletişim
+                            sayfasında ve sağ alt köşede bir WhatsApp düğmesi belirir.
+                        </p>
+                    <?php else: ?>
+                        <p class="cy-muted small mb-2">
+                            Ziyaretçi düğmeye bastığında aşağıdaki adres açılır ve hazır
+                            mesaj sohbet kutusuna yazılmış gelir.
+                        </p>
+                        <p class="cy-mono small text-break mb-3"><?= e($whatsapp) ?></p>
+                        <a class="btn cy-btn cy-btn--whatsapp cy-btn--block cy-btn--sm"
+                           href="<?= e($whatsapp) ?>" target="_blank" rel="noopener">
+                            <?= icon('whatsapp', 'cy-icon cy-icon--sm') ?> Şimdi Dene
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="cy-card mt-3">
+                <div class="cy-card__header">
+                    <h3 class="cy-section-title mb-0"><?= icon('inbox', 'cy-icon cy-icon--sm') ?> Mesajlar Nereye Gidiyor?</h3>
+                </div>
+                <div class="cy-card__body">
+                    <p class="cy-muted small mb-2">
+                        İletişim formundan gelen her mesaj <strong>her koşulda</strong>
+                        veritabanına yazılır ve <a class="cy-link" href="<?= e(url('panel/mesajlar')) ?>">Mesajlar</a>
+                        ekranında görünür.
+                    </p>
+                    <?php if (Setting::get('mail_surucu', 'kayit') === 'kayit'): ?>
+                        <p class="cy-alert cy-alert--warning small mb-0">
+                            <?= icon('alert', 'cy-icon cy-icon--sm') ?>
+                            E-posta yöntemi hâlâ “kayıt” modunda: bildirim mektubu
+                            <u>kimseye ulaşmıyor</u>.
+                            <a class="cy-link" href="<?= e(url('panel/ayarlar/eposta')) ?>">SMTP ayarlarını yapın</a>.
+                        </p>
+                    <?php else: ?>
+                        <p class="cy-muted small mb-0">
+                            Bildirim adresi: <strong><?= e(Setting::get('iletisim_eposta', 'tanımlı değil')) ?></strong>
+                        </p>
+                    <?php endif; ?>
+                </div>
+            </div>
         <?php endif; ?>
 
         <?php if ($grup === 'eposta' && can('settings.manage')): ?>
@@ -255,21 +320,76 @@ $komsular = $komsular ?? [];
         <?php endif; ?>
 
         <?php if ($grup === 'seo'): ?>
+            <?php
+            $indeksle = Setting::bool('seo_indeksleme', true);
+            $sitemap  = Setting::bool('seo_sitemap_aktif', true);
+
+            /* Site haritasına giren sayfa sayısı: yönetici "yeni sayfam
+             * haritada var mı?" sorusunu buradan tek bakışta yanıtlar. */
+            $sayfaAdedi = 0;
+
+            try {
+                $sayfaAdedi = count((new App\Repositories\PageRepository(App\Core\Database::connection()))->sitemap());
+            } catch (\Throwable) {
+                $sayfaAdedi = 0;
+            }
+            ?>
             <div class="cy-card">
                 <div class="cy-card__header">
                     <h3 class="cy-section-title mb-0"><?= icon('search', 'cy-icon cy-icon--sm') ?> Arama Motorları</h3>
                 </div>
                 <div class="cy-card__body">
-                    <dl class="cy-detail cy-detail--compact mb-0">
+                    <?php if (!$indeksle): ?>
+                        <div class="cy-alert cy-alert--warning small mb-3">
+                            <?= icon('alert', 'cy-icon cy-icon--sm') ?>
+                            <strong>Site aramaya kapalı.</strong> Her sayfaya
+                            <code class="cy-mono">noindex</code> ekleniyor ve robots.txt
+                            tüm siteyi engelliyor. Yayına çıkarken bu ayarı açmayı unutmayın.
+                        </div>
+                    <?php endif; ?>
+
+                    <dl class="cy-detail cy-detail--compact mb-3">
                         <dt>Site haritası</dt>
-                        <dd><a href="<?= e(url('sitemap.xml')) ?>" target="_blank" rel="noopener">sitemap.xml</a></dd>
+                        <dd>
+                            <?php if ($sitemap && $indeksle): ?>
+                                <a href="<?= e(url('sitemap.xml')) ?>" target="_blank" rel="noopener">sitemap.xml</a>
+                                <span class="cy-muted small d-block"><?= (int) $sayfaAdedi ?> içerik sayfası + ana sayfa</span>
+                            <?php else: ?>
+                                <span class="cy-muted">kapalı</span>
+                            <?php endif; ?>
+                        </dd>
+
                         <dt>robots.txt</dt>
                         <dd><a href="<?= e(url('robots.txt')) ?>" target="_blank" rel="noopener">robots.txt</a></dd>
                     </dl>
-                    <p class="cy-muted small mt-3 mb-0">
-                        İndeksleme kapalıyken her iki dosya da arama motorlarına
-                        “taramayın” der ve sayfalara <code class="cy-mono">noindex</code> eklenir.
+
+                    <p class="cy-muted small mb-0">
+                        Her iki dosya da <strong>anlık üretilir</strong>: yeni bir sayfa
+                        yayınladığınızda site haritasına kendiliğinden girer, taslağa
+                        aldığınızda düşer. Sunucuda elle dosya oluşturmanız gerekmez —
+                        varsa silin, yoksa <code class="cy-mono">.htaccess</code> gerçek
+                        dosyayı öncelikli sayar ve buradaki ayarlar hiç okunmaz.
                     </p>
+                </div>
+            </div>
+
+            <div class="cy-card mt-3">
+                <div class="cy-card__header">
+                    <h3 class="cy-section-title mb-0"><?= icon('external', 'cy-icon cy-icon--sm') ?> Paylaşım Önizlemesi</h3>
+                </div>
+                <div class="cy-card__body">
+                    <p class="cy-muted small mb-2">
+                        Bağlantı WhatsApp, X ya da LinkedIn'de paylaşıldığında böyle görünür.
+                    </p>
+
+                    <div class="cy-share-preview">
+                        <img src="<?= e(Setting::shareImage()) ?>" alt="">
+                        <div>
+                            <strong><?= e(Setting::get('site_adi', '')) ?></strong>
+                            <span><?= e(mb_strimwidth(Setting::get('site_aciklama'), 0, 110, '…', 'UTF-8')) ?></span>
+                            <small><?= e(parse_url(App\Core\Url::origin(), PHP_URL_HOST) ?: 'localhost') ?></small>
+                        </div>
+                    </div>
                 </div>
             </div>
         <?php endif; ?>

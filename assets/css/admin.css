@@ -76,18 +76,30 @@ body.is-collapsed .cy-main { margin-left: var(--cy-sidebar-w-collapsed); }
     flex-shrink: 0;
 }
 
+/* LOGO KUTUSU
+ *
+ * Buradaki görsel BİR ZAMANLAR "filter: brightness(0) invert(1)" ile
+ * bembeyaz siliyete çevriliyordu ve arkasına marka gradyanı
+ * konuyordu. Sonuç: yönetici panelden logosunu değiştiriyor, sol
+ * üstteki simge zerre kadar değişmiyordu — çünkü hangi logo
+ * yüklenirse yüklensin ekrana aynı beyaz leke düşüyordu.
+ *
+ * Artık logo OLDUĞU GİBİ gösteriliyor; arkasındaki yumuşak zemin
+ * yalnızca saydam PNG'lerin koyu temada kaybolmasını engelliyor. */
 .cy-sidebar__logo {
     display: grid;
     place-items: center;
-    width: 36px;
-    height: 36px;
-    padding: 5px;
+    width: 38px;
+    height: 38px;
+    padding: 4px;
     border-radius: var(--cy-radius-sm);
-    background: var(--cy-gradient);
+    background: var(--cy-surface-soft);
+    border: 1px solid var(--cy-border);
     flex-shrink: 0;
+    overflow: hidden;
 }
 
-.cy-sidebar__logo img { width: 100%; height: 100%; object-fit: contain; filter: brightness(0) invert(1); }
+.cy-sidebar__logo img { width: 100%; height: 100%; object-fit: contain; }
 
 .cy-sidebar__title {
     display: flex;
@@ -1446,4 +1458,243 @@ html, body { overflow-x: hidden; }
     .cy-setting-grid { grid-template-columns: 1fr; }
     .cy-groupnav__item span { display: none; }
     .cy-groupnav__item.is-active span { display: inline; }
+}
+
+/* =====================================================================
+ *  TABLO HÜCRE PARÇALARI
+ * ---------------------------------------------------------------------
+ *  Listelerde tekrar eden üç kalıp: başlık + rozetler, satır sonundaki
+ *  işlem düğmeleri ve durum rozetleri. Üç ayrı sayfada üç kez
+ *  yazılmasınlar diye burada bir kez tanımlanıyorlar.
+ * ================================================================== */
+.cy-cell-title {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    flex-wrap: wrap;
+    line-height: 1.3;
+}
+
+.cy-row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .25rem;
+}
+.cy-row-actions form { display: inline-flex; margin: 0; }
+
+.cy-badge--soft    { background: var(--cy-surface-soft); color: var(--cy-text-muted); border-color: transparent; }
+.cy-badge--success { background: var(--cy-success-soft); color: var(--cy-success); border-color: transparent; }
+.cy-badge--warning { background: var(--cy-warning-soft); color: var(--cy-warning); border-color: transparent; }
+.cy-badge--danger  { background: var(--cy-danger-soft);  color: var(--cy-danger);  border-color: transparent; }
+
+.cy-btn-icon--danger:hover { background: var(--cy-danger-soft); color: var(--cy-danger); }
+
+/* =====================================================================
+ *  ZENGİN METİN EDİTÖRÜ
+ * ---------------------------------------------------------------------
+ *  Hazır bir editör (TinyMCE, CKEditor…) YÜKLEMİYORUZ: en küçüğü bile
+ *  yüzlerce kilobayt ve çoğu CDN'den gelir — projenin "sıfır
+ *  bağımlılık, internetsiz de çalışır" sözünü bozardı. Araç çubuğu +
+ *  contenteditable ikilisi bir içerik sayfası için fazlasıyla yeterli.
+ * ================================================================== */
+.cy-editor {
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius);
+    background: var(--cy-surface);
+    overflow: hidden;
+}
+.cy-editor.is-focused { border-color: var(--cy-brand); box-shadow: 0 0 0 3px var(--cy-brand-100); }
+
+.cy-editor__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .2rem;
+    padding: .4rem;
+    background: var(--cy-surface-soft);
+    border-bottom: 1px solid var(--cy-border);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.cy-editor__btn {
+    display: inline-grid;
+    place-items: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 .45rem;
+    border: 1px solid transparent;
+    border-radius: var(--cy-radius-sm);
+    background: transparent;
+    color: var(--cy-text-muted);
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.cy-editor__btn:hover { background: var(--cy-surface); color: var(--cy-text); border-color: var(--cy-border); }
+.cy-editor__btn.is-active { background: var(--cy-brand-100); color: var(--cy-brand-600); border-color: transparent; }
+
+.cy-editor__sep { width: 1px; margin: .25rem .3rem; background: var(--cy-border); }
+
+.cy-editor__area {
+    min-height: 340px;
+    max-height: 65vh;
+    overflow-y: auto;
+    padding: 1.1rem 1.25rem;
+    outline: none;
+    line-height: 1.7;
+}
+.cy-editor__area:empty::before {
+    content: attr(data-placeholder);
+    color: var(--cy-text-muted);
+}
+.cy-editor__area > *:first-child { margin-top: 0; }
+.cy-editor__area h2 { font-size: 1.35rem; margin: 1.4rem 0 .6rem; }
+.cy-editor__area h3 { font-size: 1.15rem; margin: 1.2rem 0 .5rem; }
+.cy-editor__area h4 { font-size: 1rem;    margin: 1rem 0 .4rem; }
+.cy-editor__area p  { margin: 0 0 .9rem; }
+.cy-editor__area ul, .cy-editor__area ol { margin: 0 0 .9rem 1.25rem; }
+.cy-editor__area a  { color: var(--cy-brand); }
+.cy-editor__area img { max-width: 100%; height: auto; border-radius: var(--cy-radius-sm); }
+.cy-editor__area blockquote {
+    margin: 0 0 .9rem;
+    padding: .6rem 1rem;
+    border-left: 3px solid var(--cy-brand);
+    background: var(--cy-surface-soft);
+    border-radius: 0 var(--cy-radius-sm) var(--cy-radius-sm) 0;
+}
+.cy-editor__area pre {
+    padding: .75rem 1rem;
+    background: var(--cy-surface-soft);
+    border-radius: var(--cy-radius-sm);
+    overflow-x: auto;
+}
+
+.cy-editor__foot {
+    display: flex;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .45rem .75rem;
+    border-top: 1px solid var(--cy-border);
+    background: var(--cy-surface-soft);
+    font-size: .75rem;
+    color: var(--cy-text-muted);
+}
+
+/* Adres önizlemesi: "https://site.com/" + düzenlenebilir slug */
+.cy-slug {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius);
+    overflow: hidden;
+}
+.cy-slug__prefix {
+    display: flex;
+    align-items: center;
+    padding: 0 .6rem;
+    background: var(--cy-surface-soft);
+    border-right: 1px solid var(--cy-border);
+    font-size: .8rem;
+    color: var(--cy-text-muted);
+    white-space: nowrap;
+}
+.cy-slug input { border: 0; border-radius: 0; box-shadow: none !important; }
+
+/* Favicon önizlemesi: gerçek sekmedeki gibi küçük görünsün. */
+.cy-favicon-preview {
+    display: inline-grid;
+    place-items: center;
+    width: 72px;
+    height: 72px;
+    padding: .6rem;
+    border-radius: var(--cy-radius);
+    background: var(--cy-surface-soft);
+    border: 1px solid var(--cy-border);
+}
+.cy-favicon-preview img { width: 100%; height: 100%; object-fit: contain; image-rendering: auto; }
+
+/* Sosyal paylaşım kartı önizlemesi (Ayarlar → SEO) */
+.cy-share-preview {
+    display: flex;
+    gap: .75rem;
+    padding: .7rem;
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius);
+    background: var(--cy-surface-soft);
+}
+.cy-share-preview img {
+    width: 64px;
+    height: 64px;
+    flex: 0 0 auto;
+    object-fit: contain;
+    background: var(--cy-surface);
+    border-radius: var(--cy-radius-sm);
+    padding: .35rem;
+}
+.cy-share-preview div { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+.cy-share-preview strong { font-size: .875rem; }
+.cy-share-preview span   { font-size: .78rem; color: var(--cy-text-muted); line-height: 1.4; }
+.cy-share-preview small  { font-size: .7rem; color: var(--cy-text-muted); text-transform: uppercase; letter-spacing: .04em; }
+
+/* Panelde de WhatsApp düğmesi (ayar önizlemeleri) */
+.cy-btn--whatsapp { background: #25d366; border-color: #25d366; color: #fff; }
+.cy-btn--whatsapp:hover, .cy-btn--whatsapp:focus { background: #1da851; border-color: #1da851; color: #fff; }
+.cy-btn--whatsapp .cy-icon { color: #fff; }
+
+/* Araç çubuğunun sağ ucundaki birincil eylem ("Yeni Kullanıcı").
+   Filtre düğmesi "margin-left: auto" ile sağa itildiği için bu
+   düğme onun hemen yanına oturur. */
+.cy-toolbar__end { flex-shrink: 0; }
+
+@media (max-width: 575.98px) {
+    /* Dar ekranda arama tek satır, filtre + eylem alt satırda yan yana. */
+    .cy-filter-toggle { margin-left: 0; flex: 1 1 auto; justify-content: center; }
+    .cy-toolbar__end  { flex: 1 1 auto; justify-content: center; }
+}
+
+/* =====================================================================
+ *  MESAJ DETAY MODALI
+ * ---------------------------------------------------------------------
+ *  Eskiden her şey tek bir tanım listesiydi: gönderen, konu ve mesaj
+ *  aynı ağırlıkta görünüyor, göz nereye bakacağını bilemiyordu.
+ *  Artık üç katman var — kim yazdı, ne hakkında, ne yazdı.
+ * ================================================================== */
+.cy-msg-sender {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding-bottom: .9rem;
+    margin-bottom: .9rem;
+    border-bottom: 1px solid var(--cy-border);
+}
+.cy-msg-sender__body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.cy-msg-sender__body strong { font-size: .95rem; line-height: 1.3; }
+.cy-msg-sender__body a { text-decoration: none; overflow-wrap: anywhere; }
+
+.cy-msg-subject {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+    margin-bottom: .9rem;
+}
+.cy-msg-subject__label {
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--cy-text-muted);
+}
+.cy-msg-subject strong { font-size: 1.05rem; overflow-wrap: anywhere; }
+
+.cy-msg-body {
+    padding: .9rem 1rem;
+    background: var(--cy-surface-soft);
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.7;
+    font-size: .92rem;
 }

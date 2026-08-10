@@ -24,10 +24,12 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PwaController;
 use App\Http\Controllers\Site\ContactController;
 use App\Http\Controllers\Site\HomeController;
+use App\Http\Controllers\Site\PageController as SitePageController;
 use App\Http\Controllers\Site\SeoController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SystemController;
@@ -39,15 +41,16 @@ $router = new Router();
  *  ÖN YÜZ (herkese açık)
  * ------------------------------------------------------------------ */
 $router->get('',            HomeController::class,    'index', ['installed']);
-$router->get('hakkimizda',  HomeController::class,    'about', ['installed']);
 $router->get('manifest.webmanifest', PwaController::class, 'manifest', ['installed']);
 $router->get('sitemap.xml', SeoController::class, 'sitemap', ['installed']);
 $router->get('robots.txt',  SeoController::class, 'robots',  ['installed']);
 
 $router->get('cevrimdisi',          PwaController::class, 'offline',  ['installed']);
 
-$router->get('iletisim',    ContactController::class, 'show',  ['installed']);
-$router->post('api/iletisim/gonder', ContactController::class, 'send', ['installed', 'csrf']);
+// "bakim": bakım modu açıkken bu uç kapanır. Sayfanın kendisi
+// (GET iletisim) açık kalır — ziyaretçi bakım örtüsünü görür — ama
+// gönderim JSON ucu olduğu için layout'a hiç uğramaz; kapı burada.
+$router->post('api/iletisim/gonder', ContactController::class, 'send', ['installed', 'bakim', 'csrf']);
 
 /* ---------------------------------------------------------------------
  *  KİMLİK DOĞRULAMA
@@ -55,8 +58,10 @@ $router->post('api/iletisim/gonder', ContactController::class, 'send', ['install
 $router->get('giris',   AuthController::class, 'showLogin', ['installed', 'guest']);
 $router->post('giris',  AuthController::class, 'login',     ['installed', 'guest', 'csrf']);
 
-$router->get('kayit',   AuthController::class, 'showRegister', ['installed', 'guest']);
-$router->post('kayit',  AuthController::class, 'register',     ['installed', 'guest', 'csrf']);
+// Giriş bakım modunda da AÇIKTIR: yönetici siteyi düzeltebilmek için
+// panele girebilmelidir. Yeni kayıt ise kapanır.
+$router->get('kayit',   AuthController::class, 'showRegister', ['installed', 'bakim', 'guest']);
+$router->post('kayit',  AuthController::class, 'register',     ['installed', 'bakim', 'guest', 'csrf']);
 
 // Çıkış POST ile yapılır: bir <img> etiketinin oturumunuzu kapatmasını
 // engellemek için (CSRF koruması).
@@ -71,11 +76,23 @@ $router->get('panel/kullanicilar', UserController::class, 'index', ['installed',
 $router->get('panel/mesajlar',     MessageController::class, 'index', ['installed', 'auth', 'can:messages.view']);
 $router->get('panel/eposta',       MailController::class,    'index', ['installed', 'auth', 'can:mail.view']);
 
+// --- İÇERİK SAYFALARI ---
+// "yeni" SABİT bir rotadır ve "{id}" kalıbından önce yazılmıştır;
+// Router zaten sabitlere öncelik verir ama okurken de belli olsun.
+$router->get('panel/sayfalar',          PageController::class, 'index',   ['installed', 'auth', 'can:pages.view']);
+$router->get('panel/sayfalar/yeni',     PageController::class, 'create',  ['installed', 'auth', 'can:pages.manage']);
+$router->post('panel/sayfalar/yeni',    PageController::class, 'store',   ['installed', 'auth', 'csrf', 'can:pages.manage']);
+$router->get('panel/sayfalar/{id}',     PageController::class, 'edit',    ['installed', 'auth', 'can:pages.manage']);
+$router->post('panel/sayfalar/{id}',    PageController::class, 'update',  ['installed', 'auth', 'csrf', 'can:pages.manage']);
+$router->post('panel/sayfalar/{id}/sil', PageController::class, 'destroy', ['installed', 'auth', 'csrf', 'can:pages.manage']);
+
 // Ayarlar bölüm bölümdür: /panel/ayarlar genel bakış, /panel/ayarlar/eposta
 // yalnızca o grubu gösterir ve YALNIZCA onu kaydeder.
 $router->get('panel/ayarlar',            SettingsController::class, 'index',      ['installed', 'auth', 'can:settings.view']);
 $router->post('panel/ayarlar/logo',      SettingsController::class, 'uploadLogo', ['installed', 'auth', 'csrf', 'can:settings.manage']);
 $router->post('panel/ayarlar/logo-sil',  SettingsController::class, 'removeLogo', ['installed', 'auth', 'csrf', 'can:settings.manage']);
+$router->post('panel/ayarlar/favicon',     SettingsController::class, 'uploadFavicon', ['installed', 'auth', 'csrf', 'can:settings.manage']);
+$router->post('panel/ayarlar/favicon-sil', SettingsController::class, 'removeFavicon', ['installed', 'auth', 'csrf', 'can:settings.manage']);
 
 // "{grup}" kalıbı "logo" ve "logo-sil" adreslerini de yakalardı.
 // Sorun olmaz: Router önce SABİT rotalara bakar, parametreli olanları
@@ -130,6 +147,23 @@ $router->post('api/eposta/isle',     MailApiController::class, 'process',  ['ins
 
 $router->post('api/eposta/sinama',   MailApiController::class, 'test',    ['installed', 'auth', 'csrf', 'can:settings.manage']);
 $router->post('api/eposta/baglanti', MailApiController::class, 'verify',  ['installed', 'auth', 'csrf', 'can:settings.manage']);
+
+/* ---------------------------------------------------------------------
+ *  İÇERİK SAYFALARI (ön yüz) – EN SONA YAZILIR
+ * ---------------------------------------------------------------------
+ *  /hakkimizda, /iletisim, /gizlilik … hepsi buraya düşer ve
+ *  "sayfalar" tablosundan okunur.
+ *
+ *  NEDEN EN SONDA? Router parametreli rotaları yalnızca hiçbir SABİT
+ *  rota eşleşmediğinde dener; yani "giris" ya da "panel" buraya asla
+ *  gelmez. Yine de dosyanın en altında durması niyeti belli eder:
+ *  bu bir yakalayıcıdır, üstündeki her şey ondan önceliklidir.
+ *
+ *  Yayında olmayan ya da var olmayan bir adres 404 verir — sessizce
+ *  ana sayfaya yönlendirmek hem ziyaretçiyi hem arama motorunu
+ *  yanıltırdı.
+ * ------------------------------------------------------------------ */
+$router->get('{slug}', SitePageController::class, 'show', ['installed']);
 
 /* ---------------------------------------------------------------------
  *  BULUNAMAYAN ADRESLER

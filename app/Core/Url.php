@@ -110,6 +110,33 @@ final class Url
     }
 
     /**
+     * Yalnızca şema + alan adı: "https://ornek.com" (sonda bölü YOK).
+     *
+     * NE ZAMAN GEREKİR? Elinizde ZATEN taban yolunu içeren, köke
+     * göreli bir adres varsa (asset() ve Setting::logoUrl() böyle
+     * adresler üretir) onu absolute() ile mutlaklaştıramazsınız:
+     * absolute() taban yolunu bir kez DAHA ekler ve ortaya
+     *     http://localhost/proje/proje/assets/logo.png
+     * gibi çalışmayan bir adres çıkar. Böyle durumlarda adresin
+     * başına yalnızca bunu ekleyin.
+     */
+    public static function origin(): string
+    {
+        $configured = rtrim((string) Config::get('app.url', ''), '/');
+
+        if ($configured !== '') {
+            $parts = parse_url($configured);
+
+            if (!empty($parts['host'])) {
+                return ($parts['scheme'] ?? 'http') . '://' . $parts['host']
+                    . (isset($parts['port']) ? ':' . $parts['port'] : '');
+            }
+        }
+
+        return (Session::isHttps() ? 'https' : 'http') . '://' . (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    }
+
+    /**
      * assets/ altındaki dosyaya SÜRÜM DAMGALI adres üretir.
      *
      * filemtime() son değişiklik zamanını adrese ekler; dosya

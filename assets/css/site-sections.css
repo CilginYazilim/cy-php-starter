@@ -341,3 +341,165 @@ a.cy-contact-card:hover { border-color: var(--cy-brand); color: inherit; }
 
 /* Sayfa hiçbir zaman yatay kaymasın. */
 .cy-site { overflow-x: hidden; }
+
+/* --------------------------- ÜST ETİKET --------------------------- */
+.cy-eyebrow {
+    display: inline-block;
+    margin-bottom: .4rem;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--cy-brand);
+}
+
+/* ----------------------- HERO GÖRSEL KARTI ------------------------
+   Logo tek başına havada durunca sayfa yarım görünüyordu. Kart, ona
+   bir zemin ve bağlam veriyor; içerik yine tamamen ayarlardan gelir. */
+.cy-hero__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .5rem;
+    width: 100%;
+    max-width: 340px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    background: var(--cy-surface);
+    border: 1px solid var(--cy-border);
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, .10);
+}
+
+.cy-hero__card-name { font-weight: 700; font-size: 1.05rem; color: var(--cy-text); }
+.cy-hero__card-note { font-size: .82rem; color: var(--cy-text-muted); line-height: 1.55; }
+
+/* Bölüm başlığı ortalıdır; sola yaslamak isteyen bölüm için kaçış. */
+.cy-section__title.text-start { margin-left: 0; }
+
+/* --------------------------- ALT BİLGİ ---------------------------- */
+.cy-footer-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    font-size: .875rem;
+}
+
+.cy-footer-list a {
+    color: var(--cy-text-muted);
+    text-decoration: none;
+}
+.cy-footer-list a:hover { color: var(--cy-brand); text-decoration: underline; }
+
+.cy-footer-list--icons li {
+    display: flex;
+    align-items: flex-start;
+    gap: .5rem;
+    color: var(--cy-text-muted);
+}
+.cy-footer-list--icons .cy-icon { flex: 0 0 auto; margin-top: .15rem; color: var(--cy-brand); }
+
+/* ------------------------- SOSYAL İKONLAR -------------------------
+   Her marka üstüne gelindiğinde KENDİ rengine boyanır. Renkler
+   platformların resmi tonlarıdır; kullanıcı ikonu tanımadan önce
+   rengiyle tanır. */
+.cy-social { display: flex; flex-wrap: wrap; gap: .45rem; }
+
+.cy-social__link {
+    display: inline-grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--cy-surface-soft);
+    border: 1px solid var(--cy-border);
+    color: var(--cy-text-muted);
+    transition: background-color .15s, color .15s, transform .15s, border-color .15s;
+}
+
+.cy-social__link:hover { color: #fff; transform: translateY(-2px); border-color: transparent; }
+
+.cy-social__link--facebook:hover  { background: #1877f2; }
+.cy-social__link--x:hover         { background: #0f1419; }
+.cy-social__link--instagram:hover { background: linear-gradient(45deg, #f09433, #dc2743 45%, #bc1888); }
+.cy-social__link--linkedin:hover  { background: #0a66c2; }
+.cy-social__link--youtube:hover   { background: #ff0000; }
+.cy-social__link--github:hover    { background: #24292f; }
+.cy-social__link--whatsapp:hover  { background: #25d366; }
+
+/* --------------------------- WHATSAPP ----------------------------- */
+.cy-btn--whatsapp {
+    background: #25d366;
+    border-color: #25d366;
+    color: #fff;
+}
+.cy-btn--whatsapp:hover,
+.cy-btn--whatsapp:focus { background: #1da851; border-color: #1da851; color: #fff; }
+.cy-btn--whatsapp .cy-icon { color: #fff; }
+
+/* Sabit (yüzen) düğme. Mobilde yalnızca simge, geniş ekranda yazı da
+   görünür — küçük ekranda metin, ekranın yarısını kaplıyordu. */
+.cy-whatsapp-fab {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 1030;
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .7rem .9rem;
+    border-radius: 999px;
+    background: #25d366;
+    color: #fff;
+    font-weight: 600;
+    font-size: .9rem;
+    text-decoration: none;
+    box-shadow: 0 10px 28px rgba(37, 211, 102, .38);
+    transition: transform .15s, box-shadow .15s;
+}
+.cy-whatsapp-fab:hover { color: #fff; transform: translateY(-2px); box-shadow: 0 14px 34px rgba(37, 211, 102, .45); }
+.cy-whatsapp-fab .cy-icon { color: #fff; }
+
+@media (max-width: 575.98px) {
+    .cy-whatsapp-fab span { display: none; }
+    .cy-whatsapp-fab { padding: .8rem; }
+}
+
+/* ---------------------- ÖN YÜZ METİN BLOĞU ------------------------
+   Zengin metin editöründen gelen içerik. Editörde ne görünüyorsa
+   sitede de o görünmeli; bu yüzden kurallar editörünkiyle eştir. */
+.cy-prose h2 { font-size: clamp(1.25rem, 3vw, 1.6rem); font-weight: 700; margin: 1.75rem 0 .7rem; }
+.cy-prose h3 { font-size: clamp(1.1rem, 2.5vw, 1.3rem); font-weight: 650; margin: 1.5rem 0 .6rem; }
+.cy-prose h4 { font-size: 1.05rem; font-weight: 650; margin: 1.25rem 0 .5rem; }
+.cy-prose > *:first-child { margin-top: 0; }
+.cy-prose p  { margin: 0 0 1rem; }
+.cy-prose ul, .cy-prose ol { margin: 0 0 1rem 1.25rem; padding: 0; }
+.cy-prose li { margin-bottom: .35rem; }
+.cy-prose a  { color: var(--cy-brand); }
+.cy-prose img { max-width: 100%; height: auto; border-radius: 12px; }
+.cy-prose blockquote {
+    margin: 0 0 1rem;
+    padding: .85rem 1.15rem;
+    border-left: 3px solid var(--cy-brand);
+    background: var(--cy-brand-soft);
+    border-radius: 0 10px 10px 0;
+}
+.cy-prose pre {
+    padding: 1rem;
+    background: var(--cy-surface-soft);
+    border-radius: 10px;
+    overflow-x: auto;
+}
+.cy-prose table { width: 100%; margin-bottom: 1rem; border-collapse: collapse; }
+.cy-prose th, .cy-prose td { padding: .55rem .7rem; border: 1px solid var(--cy-border); text-align: left; }
+.cy-prose th { background: var(--cy-surface-soft); font-weight: 650; }
+
+.cy-card__body--roomy { padding: clamp(1.25rem, 4vw, 2.25rem); }
+
+/* Ön yüzde de kullanılan sıkı tanım listesi (künye kartları). */
+.cy-detail--compact { display: grid; grid-template-columns: auto 1fr; gap: .35rem .9rem; margin: 0; }
+.cy-detail--compact dt { font-size: .78rem; color: var(--cy-text-muted); font-weight: 600; }
+.cy-detail--compact dd { margin: 0; font-size: .88rem; color: var(--cy-text); overflow-wrap: anywhere; }

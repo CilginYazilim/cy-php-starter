@@ -19,13 +19,7 @@ if ($profile === null) {
 $value = static fn (string $field, string $fallback) => old($old, $field, $fallback);
 ?>
 
-<div class="cy-page-head">
-    <div>
-        <h2 class="cy-title">Hesabım</h2>
-        <p class="cy-subtitle">Kişisel bilgilerinizi ve parolanızı buradan güncelleyin.</p>
-    </div>
-</div>
-
+<?php /* SAYFA BAŞLIĞI ÜST ÇUBUKTA yazar; burada tekrar edilmez. */ ?>
 <div class="cy-profile-grid">
     <div class="cy-card cy-profile-card">
         <img class="cy-avatar cy-avatar--xl<?= $profile->avatarUrl() === '' ? ' d-none' : '' ?>" id="profile_preview"

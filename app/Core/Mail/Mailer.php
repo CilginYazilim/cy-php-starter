@@ -139,6 +139,15 @@ final class Mailer
      * E-postada "assets/images/logo.png" hiçbir şey ifade etmez;
      * mektup Gmail'de açıldığında tarayıcı o dosyayı gmail.com'da
      * arar. Bu yüzden her adres site köküyle birleştirilir.
+     *
+     * BAŞTAKİ BÖLÜ ÖNEMLİDİR. "/proje/assets/logo.png" gibi bölüyle
+     * başlayan bir yol SUNUCU KÖKÜNE göredir ve alt klasör adını
+     * zaten içerir; onu site_url ("http://sunucu/proje") ile
+     * birleştirmek klasör adını iki kez yazar:
+     *     http://sunucu/proje/proje/assets/logo.png
+     * Böyle yollar yalnızca şema + alan adıyla tamamlanır. Bu tam
+     * olarak Setting::logoUrl()'ün ürettiği biçimdir; hatanın belirtisi
+     * "mektuptaki logo kırık görünüyor" idi.
      */
     public static function absolute(string $path = ''): string
     {
@@ -158,6 +167,15 @@ final class Mailer
             // Adres hiç bilinmiyorsa göreli yolu olduğu gibi bırakırız;
             // mektup yine gider, yalnızca logo görünmeyebilir.
             return $path;
+        }
+
+        if (str_starts_with($path, '/')) {
+            $parts = parse_url($base);
+
+            if (!empty($parts['host'])) {
+                $base = ($parts['scheme'] ?? 'http') . '://' . $parts['host']
+                    . (isset($parts['port']) ? ':' . $parts['port'] : '');
+            }
         }
 
         return $path === '' ? $base . '/' : $base . '/' . ltrim($path, '/');

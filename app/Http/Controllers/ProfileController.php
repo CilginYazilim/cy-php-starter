@@ -14,10 +14,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Core\Auth;
+use App\Core\Csrf;
 use App\Core\Events\Events;
 use App\Core\Flash;
 use App\Core\Request;
 use App\Core\Response;
+use App\Core\Session;
 use App\Core\Uploader;
 use App\Core\Validator;
 use App\Events\FileUploaded;
@@ -89,10 +91,16 @@ final class ProfileController extends Controller
 
         $current = (string) ($_POST['mevcut_sifre'] ?? '');
 
+        /* Auth::user() parola özetini TAŞIMAZ (UserRepository::find()
+         * "sifre" sütununu okumaz). Doğrulamayı onun üzerinden yapmak
+         * her denemenin "mevcut parolanız hatalı" ile bitmesine yol
+         * açar; özeti bu iş için ayrıca okuyoruz. */
+        $hesap = $this->users()->findWithPassword($user->id);
+
         $validator = new Validator($_POST);
         $validator->password('yeni_sifre', true, 'yeni_sifre_tekrar');
 
-        if (!$user->verifyPassword($current)) {
+        if ($hesap === null || !$hesap->verifyPassword($current)) {
             $validator->addError('mevcut_sifre', 'Mevcut parolanız hatalı.');
         }
         if ($current !== '' && $current === (string) ($_POST['yeni_sifre'] ?? '')) {
@@ -106,6 +114,13 @@ final class ProfileController extends Controller
         }
 
         $this->users()->update($user->id, ['sifre' => (string) $validator->validated()['yeni_sifre']]);
+
+        /* Parola değişti: oturum kimliğini ve CSRF jetonunu yeniliyoruz.
+         * Parolasını değiştirmenin bir nedeni "birileri hesabıma
+         * girmiş olabilir" şüphesidir; eski oturum kimliği geçerli
+         * kalırsa bu işlem hiçbir şeyi düzeltmez. */
+        Session::regenerate();
+        Csrf::rotate();
 
         /* Parolanın kendisi olayda TAŞINMAZ. Bir dinleyici "parolanız
          * değişti" bilgilendirmesi gönderebilir — hesabı çalınan

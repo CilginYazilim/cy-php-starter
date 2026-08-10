@@ -8,21 +8,52 @@
 use App\Models\Role;
 
 $roles = $roles ?? Role::options();
+$ist   = $istatistik ?? ['toplam' => 0, 'aktif' => 0, 'pasif' => 0, 'yonetici' => 0, 'yeni' => 0];
 ?>
 
-<div class="cy-page-head">
-    <div>
-        <h2 class="cy-title">Kullanıcılar</h2>
-        <p class="cy-subtitle">Toplam <strong id="total_records">0</strong> kayıt listeleniyor.</p>
+<?php /* SAYFA BAŞLIĞI ÜST ÇUBUKTA yazar; burada tekrar edilmez —
+         aynı cümleyi iki kez okumak dikey alanı boşa harcıyor ve
+         mobilde tabloyu ekranın dışına itiyordu. Yerine, listeye
+         bakmadan önce bilinmesi gereken dört sayı duruyor.
+
+         "total_records" gizli olarak korunuyor: users.js her AJAX
+         yanıtında bu alanı güncelliyor ve kart da onunla canlı kalıyor. */ ?>
+<div class="cy-stats">
+    <div class="cy-stat">
+        <span class="cy-stat__icon cy-stat__icon--brand"><?= icon('users') ?></span>
+        <span>
+            <span class="cy-stat__label">Toplam Kullanıcı</span>
+            <span class="cy-stat__value" id="total_records"><?= (int) $ist['toplam'] ?></span>
+            <span class="cy-stat__hint">son 7 günde +<?= (int) $ist['yeni'] ?></span>
+        </span>
     </div>
 
-    <?php if (can('users.create')): ?>
-        <div class="cy-page-head__actions">
-            <button type="button" class="btn cy-btn cy-btn--primary" id="add_button">
-                <?= icon('plus', 'cy-icon cy-icon--sm') ?> Yeni Kullanıcı
-            </button>
-        </div>
-    <?php endif; ?>
+    <div class="cy-stat">
+        <span class="cy-stat__icon cy-stat__icon--success"><?= icon('check') ?></span>
+        <span>
+            <span class="cy-stat__label">Aktif Hesap</span>
+            <span class="cy-stat__value"><?= (int) $ist['aktif'] ?></span>
+            <span class="cy-stat__hint">giriş yapabiliyor</span>
+        </span>
+    </div>
+
+    <div class="cy-stat">
+        <span class="cy-stat__icon cy-stat__icon--warning"><?= icon('lock') ?></span>
+        <span>
+            <span class="cy-stat__label">Pasif / Askıda</span>
+            <span class="cy-stat__value"><?= (int) $ist['pasif'] ?></span>
+            <span class="cy-stat__hint">giriş yapamaz</span>
+        </span>
+    </div>
+
+    <div class="cy-stat">
+        <span class="cy-stat__icon cy-stat__icon--brand"><?= icon('shield') ?></span>
+        <span>
+            <span class="cy-stat__label">Yönetici</span>
+            <span class="cy-stat__value"><?= (int) $ist['yonetici'] ?></span>
+            <span class="cy-stat__hint">tam yetkili hesap</span>
+        </span>
+    </div>
 </div>
 
 <div class="cy-card">
@@ -42,6 +73,14 @@ $roles = $roles ?? Role::options();
             <span class="cy-badge cy-badge--count d-none" id="active_filter_count">0</span>
             <?= icon('chevron', 'cy-icon cy-icon--sm cy-filter-toggle__chevron') ?>
         </button>
+
+        <?php /* "Yeni Kullanıcı" araç çubuğunun sağ ucunda: eylem,
+                 üzerinde çalıştığı listenin yanında dursun. */ ?>
+        <?php if (can('users.create')): ?>
+            <button type="button" class="btn cy-btn cy-btn--primary cy-btn--sm cy-toolbar__end" id="add_button">
+                <?= icon('plus', 'cy-icon cy-icon--sm') ?> Yeni Kullanıcı
+            </button>
+        <?php endif; ?>
     </div>
 
     <div class="collapse" id="user_filters_panel">

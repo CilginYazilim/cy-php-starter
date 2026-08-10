@@ -27,9 +27,10 @@
 17. [PWA](#17-pwa)
 18. [Konsol (`php cy`)](#18-konsol-php-cy)
 19. [Arayüz ve tasarım](#19-arayüz-ve-tasarım)
-20. [Güvenlik](#20-güvenlik)
-21. [Yeni projeye başlarken](#21-yeni-projeye-başlarken)
-22. [Canlıya çıkış listesi](#22-canlıya-çıkış-listesi)
+20. [İçerik sayfaları ve zengin metin](#20-i̇çerik-sayfaları-ve-zengin-metin)
+21. [Güvenlik](#21-güvenlik)
+22. [Yeni projeye başlarken](#22-yeni-projeye-başlarken)
+23. [Canlıya çıkış listesi](#23-canlıya-çıkış-listesi)
 
 ---
 
@@ -153,7 +154,7 @@ cy-php-starter/
 │   │   ├── Schedule/       Schedule · Task
 │   │   ├── Storage/        Storage · Disk · StoredFile
 │   │   └── (Auth, Config, Csrf, Database, Env, ErrorHandler, Flash,
-│   │        Middleware, RateLimiter, Request, Response, Router,
+│   │        Html, Middleware, RateLimiter, Request, Response, Router,
 │   │        Session, Setting, Theme, Uploader, Url, Validator, View)
 │   │
 │   ├── Events/             Uygulamanın kendi olayları (UserRegistered…)
@@ -372,6 +373,35 @@ ederdi.
 - Oturum: `httponly` + `samesite=Lax` + HTTPS'te `secure`, tarayıcı
   parmak izi kontrolü, 30 dk hareketsizlik zaman aşımı, 15 dk'da bir
   kimlik yenileme.
+
+### "Beni hatırla"
+
+Oturum çerezi tarayıcı kapanınca ölür. Giriş ekranındaki kutu
+işaretlenirse — **yalnızca o zaman** — 30 günlük ayrı bir çerez bırakılır:
+
+```
+çerez  cy_remember = <64 karakterlik rastgele jeton>   (HttpOnly)
+tablo  kullanicilar.hatirla_token = sha256(jeton)
+       kullanicilar.hatirla_bitis  = NOW() + 30 gün
+```
+
+Parola ya da e-posta **çereze hiç yazılmaz**. Veritabanında yalnızca
+özet durur; sızsa bile kimse geçerli bir çerez üretemez — parola
+özetleriyle aynı mantık.
+
+Üç ayrıntı bilinçlidir:
+
+* **Jeton her kullanımda yenilenir.** Çalınan bir çerezin ömrü, gerçek
+  kullanıcının bir sonraki ziyaretiyle sona erer.
+* **Çıkış jetonu iptal eder.** Etmeseydi çıkış yapan kullanıcı bir
+  sonraki istekte çerez sayesinde yeniden içeri alınırdı — ortak
+  bilgisayarda tam bir açık.
+* **İşaretlenmemiş giriş de eski jetonu siler.** "Bu sefer hatırlama"
+  tercihi, önceki oturumdan kalan çerezi de geçersiz kılmalıdır.
+
+Çerezle açılan oturum da `session_regenerate_id()` ve CSRF jetonu
+yenilemesinden geçer; yani sabitleme saldırısına karşı normal girişle
+aynı korumaya sahiptir.
 
 ### Yetkiler
 
@@ -1099,7 +1129,75 @@ $router->get('panel/urunler', UrunController::class, 'index',
 
 ---
 
-## 20. Güvenlik
+## 20. İçerik sayfaları ve zengin metin
+
+"Hakkımızda" metni bir zamanlar tek bir ayar satırıydı (`site_hakkinda`).
+İkinci bir durağan sayfa — Gizlilik, KVKK, SSS — isteyen herkes kod
+yazmak zorundaydı. Artık sayfalar veritabanındadır ve panelden yazılır.
+
+### Tablo ve akış
+
+```
+sayfalar
+  slug        adresin son parçası: /hakkimizda, /gizlilik
+  icerik      SÜZÜLMÜŞ HTML (aşağıya bakın)
+  durum       taslak | yayin
+  menude      üst menüde görünsün mü?
+  korumali    1 → silinemez, adresi değiştirilemez
+  seo_baslik  / seo_aciklama   sayfa bazlı meta etiketleri
+```
+
+Tek bir rota hepsini karşılar ve **dosyanın en sonunda** durur:
+
+```php
+$router->get('{slug}', SitePageController::class, 'show', ['installed']);
+```
+
+Çakışma olmaz: Router önce **sabit** rotalara bakar, parametreli olanları
+yalnızca hiçbiri eşleşmezse dener. Yani `panel` ya da `giris` buraya hiç
+düşmez. Yine de yanlışlıkla erişilemez bir sayfa üretilmesin diye
+`PageRepository::AYRILMIS` listesindeki adresler slug olarak kabul
+edilmez ve kaydederken uyarı verilir.
+
+`iletisim` slug'ı özeldir: içeriği yine panelden yazılır ama çevresine
+form ve iletişim kartları eklenerek `ContactController` tarafından
+basılır.
+
+### Zengin metin editörü — ve neden güvenlik önlemi değildir
+
+`assets/js/editor.js` contenteditable bir alan + araç çubuğudur; hazır
+bir editör (TinyMCE, CKEditor) **yüklenmez**, çünkü en küçüğü bile
+birkaç yüz kilobayttır ve çoğu örnekte CDN'den gelir — projenin "sıfır
+bağımlılık, internetsiz de çalışır" sözünü bozardı.
+
+Editör tarayıcıda HTML üretir. **Tarayıcıda üretilen HTML'e asla
+güvenilmez**: araya girip `<script>` eklemek, istek gövdesini
+değiştirmek kadar kolaydır. Asıl savunma sunucudadır:
+
+```php
+App\Core\Html::sanitize($html);   // izin verilenler listesi (allowlist)
+```
+
+* Tanımadığı **her** etiketi ve **her** özniteliği atar.
+* `<script> <style> <iframe> <form> <object>` içerikleriyle birlikte silinir.
+* `href` / `src` yalnızca `http https mailto tel` ve göreli adresler kabul eder — `javascript:` ve `data:` elenir.
+* `target="_blank"` bağlantılara `rel="noopener noreferrer"` **zorla** eklenir (tabnabbing).
+
+Süzme, denetleyicide değil `PageRepository::bind()` içinde çağrılır:
+kaydetmenin tek yolu depodan geçtiği için "bir yerde `sanitize` çağırmayı
+unutmak" yapısal olarak imkânsızdır. İçerik ekrana **kaçışlanmadan**
+basılır — kaçışlansaydı ziyaretçi HTML etiketlerini metin olarak görürdü.
+
+### Menü, alt bilgi ve site haritası
+
+Üst menü ve alt bilgi bağlantıları `menude = 1` olan yayındaki
+sayfalardan üretilir; `sitemap.xml` de yayındaki tüm sayfaları
+`lastmod` tarihiyle listeler. Yeni bir sayfayı yayınladığınızda üçü de
+kendiliğinden güncellenir — dosya düzenlemek gerekmez.
+
+---
+
+## 21. Güvenlik
 
 | Tehdit | Önlem |
 |---|---|
@@ -1108,6 +1206,8 @@ $router->get('panel/urunler', UrunController::class, 'index',
 | CSRF | Her POST'ta token (form alanı **veya** `X-CSRF-Token` başlığı) |
 | Oturum çalma | `httponly` + `samesite` + `secure`, parmak izi, periyodik yenileme |
 | Oturum sabitleme | Girişte `session_regenerate_id(true)` |
+| "Beni hatırla" çalınması | Çerezde ham jeton, veritabanında yalnızca SHA-256 özeti; `HttpOnly`; her kullanımda jeton yenilenir; çıkışta iptal |
+| Zengin metinle XSS | `Html::sanitize()` izin verilenler listesi — etiket, öznitelik ve adres şeması denetimi |
 | Kaba kuvvet | Hız sınırı + kilit (kimlik+IP) |
 | Kullanıcı sayımı | Sabit süreli yanıt, genel hata mesajı |
 | Path traversal | Segment bazlı doğrulama + `realpath()` |
@@ -1162,7 +1262,7 @@ gerçek ziyaretçilerin mesajları bot sanılıp sessizce çöpe atıldı —
 
 ---
 
-## 21. Yeni projeye başlarken
+## 22. Yeni projeye başlarken
 
 ```bash
 # 1. Kopyala
@@ -1197,7 +1297,7 @@ Sonra:
 
 ---
 
-## 22. Canlıya çıkış listesi
+## 23. Canlıya çıkış listesi
 
 ```bash
 # .env

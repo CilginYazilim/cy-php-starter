@@ -9,7 +9,12 @@
  *
  *  ROLLER
  *    admin  → Yönetici. Her şeyi yapabilir.
- *    editor → Editör. Kullanıcı ekler/düzenler ama silemez, rol veremez.
+ *    editor → Editör. Mesajları ve giden e-posta geçmişini yönetir;
+ *             KULLANICI EKRANINA HİÇ GİREMEZ (aşağıdaki listede
+ *             users.* yoktur). Editöre kullanıcı yönetimi vermek
+ *             isterseniz ABILITIES listesine users.view / users.create
+ *             / users.update ekleyin — yan menü zaten yetkiye göre
+ *             çizildiği için başka bir yere dokunmanız gerekmez.
  *    uye    → Üye. Yalnızca kendi profilini görür ve düzenler.
  * =====================================================================
  */
@@ -30,6 +35,7 @@ final class Role
             'dashboard.view', 'dashboard.stats',
             'users.view', 'users.create', 'users.update', 'users.delete', 'users.role', 'users.status',
             'messages.view', 'messages.manage',
+            'pages.view', 'pages.manage',
             'mail.view', 'mail.send',
             'settings.view', 'settings.manage',
             'system.view', 'system.manage',
@@ -38,6 +44,9 @@ final class Role
         self::EDITOR => [
             'dashboard.view', 'dashboard.stats',
             'messages.view', 'messages.manage',
+            // İçerik sayfaları editörün asıl işidir: yazabilir,
+            // düzenleyebilir, yayınlayabilir.
+            'pages.view', 'pages.manage',
             // Editör giden e-postaların geçmişini görebilir ama
             // toplu duyuru gönderemez (mail.send yalnızca yöneticide).
             'mail.view',

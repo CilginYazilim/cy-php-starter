@@ -18,17 +18,15 @@
 
 $ozet           = $ozet ?? [];
 $checks         = $checks ?? [];
+$ayarChecks     = $ayarChecks ?? [];
 $moduller       = $moduller ?? [];
 $basarisizIsler = $basarisizIsler ?? [];
-$sorunlu        = array_filter($checks, static fn (array $c): bool => !$c['ok']);
+
+$sorunlu     = array_filter($checks, static fn (array $c): bool => !$c['ok']);
+$ayarSorunlu = array_filter($ayarChecks, static fn (array $c): bool => !$c['ok']);
 ?>
 
-<div class="cy-page-head">
-    <div>
-        <h2 class="cy-title">Sistem Bilgisi</h2>
-        <p class="cy-subtitle">Kurulum durumu, sağlık kontrolleri ve canlıya çıkış listesi.</p>
-    </div>
-</div>
+<?php /* SAYFA BAŞLIĞI ÜST ÇUBUKTA yazar; burada tekrar edilmez. */ ?>
 
 <!-- ÖZET KARTLARI -->
 <div class="cy-stats">
@@ -44,11 +42,57 @@ $sorunlu        = array_filter($checks, static fn (array $c): bool => !$c['ok'])
     <?php endforeach; ?>
 </div>
 
-<?php if ($sorunlu !== []): ?>
+<?php if ($sorunlu !== [] || $ayarSorunlu !== []): ?>
     <div class="cy-alert cy-alert--warning mb-3">
-        <strong><?= count($sorunlu) ?> konu dikkatinizi bekliyor.</strong>
-        Aşağıdaki denetim listesinde turuncu işaretli maddelere bakın —
-        her biri sorunun nasıl çözüleceğini de yazıyor.
+        <strong><?= count($sorunlu) + count($ayarSorunlu) ?> konu dikkatinizi bekliyor.</strong>
+        Aşağıdaki listelerde turuncu işaretli maddelere bakın — her biri
+        sorunun nasıl çözüleceğini de yazıyor.
+
+        <?php if ($ayarSorunlu !== []): ?>
+            <span class="d-block mt-2">
+                <strong>Eksik yapılandırma:</strong>
+                <?= e(implode(' · ', array_map(static fn (array $c): string => $c['label'], $ayarSorunlu))) ?>
+            </span>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
+
+<!-- YAPILANDIRMA DENETİMİ
+     Güvenlik denetiminden ayrı: orası "sunucu güvenli mi?", burası
+     "site kullanılabilir durumda mı?" sorusunu yanıtlar. Her madde
+     düzeltmenin yapılacağı ekrana bağlantı verir. -->
+<?php if ($ayarChecks !== []): ?>
+    <div class="cy-card mb-3">
+        <div class="cy-card__header">
+            <div>
+                <h3 class="cy-section-title mb-0"><?= icon('settings', 'cy-icon cy-icon--sm') ?> Yapılandırma Denetimi</h3>
+                <p class="cy-muted small mb-0">Yayına çıkmadan önce tamamlanması gerekenler.</p>
+            </div>
+            <span class="cy-badge <?= $ayarSorunlu === [] ? 'cy-badge--success' : 'cy-badge--warning' ?>">
+                <?= count($ayarChecks) - count($ayarSorunlu) ?> / <?= count($ayarChecks) ?> tamam
+            </span>
+        </div>
+        <div class="cy-card__body">
+            <ul class="cy-checklist">
+                <?php foreach ($ayarChecks as $check): ?>
+                    <li class="cy-checklist__item<?= $check['ok'] ? '' : ' is-warning' ?>">
+                        <span class="cy-checklist__mark">
+                            <?= icon($check['ok'] ? 'check' : 'alert', 'cy-icon cy-icon--sm') ?>
+                        </span>
+                        <span class="cy-checklist__body">
+                            <strong><?= e($check['label']) ?></strong>
+                            <span><?= e($check['detail']) ?></span>
+
+                            <?php if (!$check['ok'] && ($check['yol'] ?? '') !== ''): ?>
+                                <a class="cy-link small d-inline-block mt-1" href="<?= e(url($check['yol'])) ?>">
+                                    <?= e($check['baglanti']) ?> <?= icon('chevron', 'cy-icon cy-icon--sm') ?>
+                                </a>
+                            <?php endif; ?>
+                        </span>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
     </div>
 <?php endif; ?>
 

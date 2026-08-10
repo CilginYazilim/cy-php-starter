@@ -25,6 +25,16 @@ final class Auth
 {
     private const SESSION_KEY = '_auth_user_id';
 
+    /**
+     * "Beni hatırla" çerezi.
+     *
+     * Oturum çerezi tarayıcı kapanınca (ya da session.gc_maxlifetime
+     * dolunca) ölür. Bu çerez ondan bağımsızdır ve KULLANICI AÇIKÇA
+     * İSTEDİĞİNDE yazılır — varsayılan olarak asla.
+     */
+    private const REMEMBER_COOKIE = 'cy_remember';
+    private const REMEMBER_DAYS   = 30;
+
     private static ?User $cached = null;
     private static bool  $resolved = false;
 
@@ -39,7 +49,8 @@ final class Auth
         $id = Session::get(self::SESSION_KEY);
 
         if (!is_int($id) && !is_numeric($id)) {
-            return self::$cached = null;
+            /* Oturumda kimlik yok — "beni hatırla" çerezi var mı? */
+            return self::$cached = self::fromRememberCookie();
         }
 
         $user = (new UserRepository(Database::connection()))->find((int) $id);
@@ -78,7 +89,7 @@ final class Auth
      *
      * @return array{ok:bool,message:string,user:?User}
      */
-    public static function attempt(string $identifier, string $password, Request $request): array
+    public static function attempt(string $identifier, string $password, Request $request, bool $remember = false): array
     {
         $db      = Database::connection();
         $users   = new UserRepository($db);
@@ -159,6 +170,16 @@ final class Auth
         self::login($user);
         $users->touchLogin($user->id, $request->ip());
 
+        /* "Beni hatırla" YALNIZCA kullanıcı istediğinde. İşaretlenmemiş
+         * bir girişte eski jetonu da temizliyoruz: kullanıcının
+         * "bu sefer hatırlama" tercihi, önceki oturumdan kalan çerezi
+         * de geçersiz kılmalı. */
+        if ($remember) {
+            self::rememberUser($user);
+        } else {
+            self::forgetRemember($user->id);
+        }
+
         Logger::info('Giriş yapıldı', [
             'kullanici' => $user->id,
             'rol'       => $user->rol,
@@ -213,6 +234,12 @@ final class Auth
         if (self::$cached !== null) {
             Logger::info('Çıkış yapıldı', ['kullanici' => self::$cached->id], 'auth');
 
+            /* Çıkış, "beni hatırla" jetonunu da İPTAL ETMELİDİR.
+             * Etmeseydi çıkış yapan kullanıcı bir sonraki istekte
+             * çerez sayesinde yeniden içeri alınırdı — ortak
+             * bilgisayarda tam bir güvenlik açığı. */
+            self::forgetRemember(self::$cached->id);
+
             Events::dispatch(new UserLoggedOut(self::$cached->id));
         }
 
@@ -220,6 +247,104 @@ final class Auth
 
         self::$cached   = null;
         self::$resolved = true;
+    }
+
+    /* =================================================================
+     *  "BENİ HATIRLA"
+     * -----------------------------------------------------------------
+     *  ÇALIŞMA BİÇİMİ
+     *   1. Giriş anında rastgele 32 baytlık bir jeton üretilir.
+     *   2. HAM jeton çereze, SHA-256 ÖZETİ veritabanına yazılır.
+     *   3. Sonraki ziyarette çerezdeki jetonun özeti aranır; eşleşen
+     *      ve süresi dolmamış AKTİF bir kullanıcı varsa oturum açılır.
+     *   4. Her kullanımda jeton YENİLENİR (rotation): çalınan bir
+     *      çerezin ömrü, gerçek kullanıcının bir sonraki ziyaretiyle
+     *      sona erer.
+     *
+     *  Parola ya da e-posta ÇEREZE HİÇ YAZILMAZ.
+     * ============================================================== */
+
+    private static function fromRememberCookie(): ?User
+    {
+        $ham = (string) ($_COOKIE[self::REMEMBER_COOKIE] ?? '');
+
+        if ($ham === '' || !preg_match('/^[a-f0-9]{64}$/', $ham)) {
+            return null;
+        }
+
+        $users = new UserRepository(Database::connection());
+        $user  = $users->findByRememberToken(hash('sha256', $ham));
+
+        if ($user === null) {
+            /* Geçersiz ya da süresi dolmuş çerez: tarayıcıdan silelim,
+             * yoksa her istekte boş yere bir sorgu daha çalışır. */
+            self::clearRememberCookie();
+
+            return null;
+        }
+
+        Session::regenerate();
+        Session::set(self::SESSION_KEY, $user->id);
+        Csrf::rotate();
+
+        self::rememberUser($user);
+
+        Logger::info('Oturum "beni hatırla" çereziyle açıldı', ['kullanici' => $user->id], 'auth');
+
+        return $user;
+    }
+
+    private static function rememberUser(User $user): void
+    {
+        $ham = bin2hex(random_bytes(32));
+
+        (new UserRepository(Database::connection()))
+            ->setRememberToken($user->id, hash('sha256', $ham), self::REMEMBER_DAYS);
+
+        self::setRememberCookie($ham);
+    }
+
+    private static function forgetRemember(int $userId): void
+    {
+        (new UserRepository(Database::connection()))->clearRememberToken($userId);
+
+        self::clearRememberCookie();
+    }
+
+    private static function setRememberCookie(string $value): void
+    {
+        if (headers_sent()) {
+            return;
+        }
+
+        setcookie(self::REMEMBER_COOKIE, $value, [
+            'expires'  => time() + self::REMEMBER_DAYS * 86400,
+            'path'     => Url::base() !== '' ? Url::base() . '/' : '/',
+            'secure'   => Session::isHttps(),
+            // JavaScript bu çereze ERİŞEMEZ: bir XSS açığı jetonu okuyup
+            // saldırgana gönderemesin.
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+
+        $_COOKIE[self::REMEMBER_COOKIE] = $value;
+    }
+
+    private static function clearRememberCookie(): void
+    {
+        unset($_COOKIE[self::REMEMBER_COOKIE]);
+
+        if (headers_sent()) {
+            return;
+        }
+
+        setcookie(self::REMEMBER_COOKIE, '', [
+            'expires'  => time() - 3600,
+            'path'     => Url::base() !== '' ? Url::base() . '/' : '/',
+            'secure'   => Session::isHttps(),
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
     }
 
     private static function forget(): void

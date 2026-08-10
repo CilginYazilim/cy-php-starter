@@ -204,4 +204,44 @@ final class Setting
 
         return $url !== '' ? $url : Url::asset('images/logo.png');
     }
+
+    /**
+     * Sekme simgesinin (favicon) adresi.
+     *
+     * Yönetici ayrı bir favicon yüklemediyse KURULUMLA GELEN
+     * varsayılan kullanılır: assets/images/favicon.png, logonun
+     * 32 piksele indirilmiş hâli. Logoyu doğrudan favicon olarak
+     * vermek cazip görünür ama 1000×1000'lik bir PNG'yi her sayfada
+     * indirtir; sekmede 16 piksel olarak görünecek bir görsel için
+     * bu tam bir israftır.
+     */
+    public static function faviconUrl(): string
+    {
+        $url = Uploader::url(self::get('site_favicon'));
+
+        return $url !== '' ? $url : Url::asset('images/favicon.png');
+    }
+
+    /**
+     * Paylaşım görseli (Open Graph). Sırayla: SEO ayarı → logo.
+     *
+     * Ayara tam bir adres de yazılabilir (başka bir alan adındaki
+     * görsel), upload/ altındaki dosya adı da.
+     */
+    public static function shareImage(): string
+    {
+        $deger = trim(self::get('seo_og_gorsel'));
+
+        if ($deger === '') {
+            return self::logoUrl();
+        }
+
+        if (str_starts_with($deger, 'http://') || str_starts_with($deger, 'https://')) {
+            return $deger;
+        }
+
+        $url = Uploader::url($deger);
+
+        return $url !== '' ? $url : self::logoUrl();
+    }
 }

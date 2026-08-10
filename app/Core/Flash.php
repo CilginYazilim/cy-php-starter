@@ -39,7 +39,32 @@ final class Flash
     public static function withInput(array $errors, array $old = []): void
     {
         $_SESSION['_errors'] = $errors;
-        $_SESSION['_old']    = $old;
+        $_SESSION['_old']    = self::withoutSecrets($old);
+    }
+
+    /**
+     * Formu yeniden doldurmak için saklanan girdiden PAROLA ALANLARINI
+     * ayıklar.
+     *
+     * Çağıranların çoğu buraya doğrudan $_POST veriyor. Parola alanı
+     * zaten hiçbir formda geri basılmaz; saklandığında tek yaptığı
+     * kullanıcının düz metin parolasını oturum dosyasında —
+     * sunucunun geçici klasöründe, düz metin olarak — bırakmaktır.
+     *
+     * @param array<string,mixed> $old
+     * @return array<string,mixed>
+     */
+    private static function withoutSecrets(array $old): array
+    {
+        foreach (array_keys($old) as $key) {
+            $name = mb_strtolower((string) $key);
+
+            if (str_contains($name, 'sifre') || str_contains($name, 'password') || str_contains($name, 'parola')) {
+                unset($old[$key]);
+            }
+        }
+
+        return $old;
     }
 
     /** @return array<string,string> */

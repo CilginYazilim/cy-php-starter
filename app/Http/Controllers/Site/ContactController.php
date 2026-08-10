@@ -23,16 +23,31 @@ use App\Core\Setting;
 use App\Core\Validator;
 use App\Events\ContactMessageReceived;
 use App\Http\Controller;
+use App\Models\Page;
+use App\Repositories\PageRepository;
 
 final class ContactController extends Controller
 {
-    public function show(Request $request): void
+    /**
+     * İletişim sayfası.
+     *
+     * Sayfanın ÜST METNİ artık kodda değil, "sayfalar" tablosundaki
+     * "iletisim" kaydındadır; yönetici panelden düzenler. Rota bu
+     * metotu doğrudan çağırmaz — Site\PageController slug'ı çözer ve
+     * sayfayı buraya devreder (bkz. routes/web.php → "{slug}").
+     */
+    public function show(Request $request, ?Page $sayfa = null): void
     {
+        $sayfa ??= (new PageRepository($this->db))->findPublished('iletisim');
+
         $this->view('site/contact', [
-            'title'   => 'İletişim',
-            'errors'  => \App\Core\Flash::errors(),
-            'old'     => \App\Core\Flash::old(),
-            'scripts' => ['contact.js'],
+            'title'      => $sayfa?->baslikSeo() ?? 'İletişim',
+            'ogAciklama' => $sayfa?->aciklamaSeo() ?? Setting::get('site_aciklama'),
+            'sayfa'      => $sayfa,
+            'iletisim'   => HomeController::contactCards(),
+            'errors'     => \App\Core\Flash::errors(),
+            'old'        => \App\Core\Flash::old(),
+            'scripts'    => ['contact.js'],
         ], 'layouts/site');
     }
 
@@ -81,14 +96,27 @@ final class ContactController extends Controller
             Response::success('Mesajınız alındı. Teşekkür ederiz.');
         }
 
-        /* --- HIZ SINIRI ---
-         * Aynı oturumdan 60 saniye içinde ikinci mesaja izin verilmez. */
+        /* --- HIZ SINIRI (İKİ KATMAN) ---
+         * 1) Oturum: aynı tarayıcıdan 60 saniye içinde ikinci mesaj yok.
+         *    Ucuzdur, veritabanına hiç gitmez.
+         * 2) IP: saatte en fazla 5 mesaj. Birincisi TEK BAŞINA yetmez —
+         *    çerezleri saklamayan bir betik her istekte yeni oturum
+         *    açar ve oturum sayacını hiç görmez. */
         $lastSent = (int) Session::get('_last_message_at', 0);
         $cooldown = 60;
 
         if ($lastSent > 0 && (time() - $lastSent) < $cooldown) {
             $remaining = $cooldown - (time() - $lastSent);
             Response::error('Çok hızlı gönderiyorsunuz. Lütfen ' . $remaining . ' saniye bekleyin.', 429);
+        }
+
+        if ($this->messages()->countFromIp($request->ip(), 3600) >= 5) {
+            Logger::security('İletişim formu: IP saatlik sınırı aşıldı', [
+                'ip'       => $request->ip(),
+                'tarayici' => $request->userAgent(),
+            ]);
+
+            Response::error('Bu adresten çok fazla mesaj gönderildi. Lütfen bir süre sonra tekrar deneyin.', 429);
         }
 
         $validator = new Validator($_POST);

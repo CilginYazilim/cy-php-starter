@@ -90,6 +90,21 @@ final class HttpException extends RuntimeException
         );
     }
 
+    /**
+     * 503 – Site bakımda.
+     *
+     * 200 ile "bakımdayız" sayfası basmak arama motorlarına "sitenin
+     * içeriği artık bu" der ve gerçek sayfalar dizinden düşer. 503,
+     * "geçici, sonra tekrar gel" demenin standart yoludur.
+     */
+    public static function maintenance(string $message = ''): self
+    {
+        return new self(
+            503,
+            $message !== '' ? $message : 'Site şu anda bakımda. Kısa süre içinde geri döneceğiz.'
+        );
+    }
+
     /** @param array<string,mixed> $context */
     public static function serverError(string $message = '', array $context = [], ?Throwable $previous = null): self
     {
@@ -144,6 +159,7 @@ final class HttpException extends RuntimeException
             405     => 'Geçersiz İstek',
             419     => 'Oturum Süresi Doldu',
             429     => 'Çok Fazla İstek',
+            503     => 'Bakım Çalışması',
             default => 'Sunucu Hatası',
         };
     }
@@ -159,6 +175,7 @@ final class HttpException extends RuntimeException
             419     => 'Güvenlik doğrulaması başarısız oldu.',
             422     => 'Gönderilen bilgiler geçerli değil.',
             429     => 'Çok fazla istek gönderdiniz.',
+            503     => 'Site şu anda bakımda. Kısa süre içinde geri döneceğiz.',
             default => 'Beklenmeyen bir hata oluştu. Lütfen daha sonra tekrar deneyin.',
         };
     }

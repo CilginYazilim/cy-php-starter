@@ -83,21 +83,49 @@ jQuery(function ($) {
 
         $.ajax({ url: API.fetch, method: 'POST', dataType: 'json', data: { id: id, csrf_token: CY.token() } })
             .done(function (response) {
+                var konu = response.konu || '(konusuz)';
+
                 $('#msg_ad').text(response.ad);
                 $('#msg_eposta').text(response.eposta);
-                $('#msg_konu').text(response.konu || '(konusuz)');
+                $('#msg_eposta_link').attr('href', 'mailto:' + response.eposta);
+                $('#msg_konu').text(konu);
                 $('#msg_tarih').text(response.tarih);
                 $('#msg_uye').text(response.uye || '—');
                 $('#msg_ip').text(response.ip || '—');
                 $('#msg_metin').text(response.mesaj);
-                $('#msg_reply').attr('href', 'mailto:' + response.eposta);
+
+                // Baş harf: gönderen adının ilk karakteri.
+                $('#msg_bashari').text((response.ad || '?').charAt(0).toLocaleUpperCase('tr-TR'));
+
+                // Mesaj artık okundu sayılır; rozet bunu yansıtsın.
+                $('#msg_durum').text('Okundu').removeClass('cy-badge--warning').addClass('cy-badge--success');
+
+                /* POSTA PROGRAMI BAĞLANTISI
+                 * Konu ve alıntılanan mesaj da taşınır: kullanıcı boş bir
+                 * pencereye "neydi bu?" diye bakmasın. mailto: yalnızca
+                 * işletim sisteminde kayıtlı bir posta istemcisi varsa
+                 * çalışır; olmadığında yandaki "Adresi Kopyala" devreye
+                 * girer (bkz. modal). */
+                var govde = '\n\n----- Gelen mesaj -----\n' + (response.mesaj || '');
+
+                /* Adres KAÇIŞLANMAZ: "@" karakterini %40'a çevirmek
+                 * bazı posta istemcilerinde alıcı alanını boş bırakıyor.
+                 * Konu ve gövde ise mutlaka kaçışlanmalı. */
+                $('#msg_reply').attr(
+                    'href',
+                    'mailto:' + response.eposta
+                        + '?subject=' + encodeURIComponent('Re: ' + konu)
+                        + '&body=' + encodeURIComponent(govde)
+                );
+
+                $('#msg_copy').data('eposta', response.eposta);
 
                 // Panelden yanıtlama: alıcı ve konu, e-posta merkezinin
                 // formuna adres satırından taşınır (bkz. MailController).
                 var $panelReply = $('#msg_reply_panel');
 
                 if ($panelReply.length) {
-                    var konu = response.konu ? 'Re: ' + response.konu : 'Mesajınız hakkında';
+                    var yanitKonusu = response.konu ? 'Re: ' + response.konu : 'Mesajınız hakkında';
                     var base = CY.url('panel/eposta');
 
                     // "Temiz adres" ayarı açıkken adreste henüz "?" yoktur,
@@ -114,6 +142,47 @@ jQuery(function ($) {
                 reload(false);
             })
             .fail(function (xhr) { CY.ajaxError(xhr, 'Mesaj getirilemedi.'); });
+    });
+
+    /* ADRESİ KOPYALA
+     *
+     * "Posta Programım" düğmesi mailto: kullanır ve işletim sisteminde
+     * kayıtlı bir posta istemcisi yoksa HİÇBİR ŞEY YAPMAZ — kullanıcı
+     * da düğmenin bozuk olduğunu sanır. Bu düğme her koşulda çalışan
+     * alternatiftir: adresi panoya alır, kişi kendi webmail'ine
+     * yapıştırır.
+     *
+     * navigator.clipboard yalnızca güvenli bağlamda (https ya da
+     * localhost) tanımlıdır; olmadığı yerde eski execCommand yoluna
+     * düşüyoruz. */
+    $('#msg_copy').on('click', function () {
+        var adres = $(this).data('eposta');
+
+        if (!adres) { return; }
+
+        function bildir() { CY.notify(adres + ' panoya kopyalandı.', 'success'); }
+
+        if (window.navigator.clipboard && window.isSecureContext) {
+            window.navigator.clipboard.writeText(adres).then(bildir, yedek);
+            return;
+        }
+
+        yedek();
+
+        function yedek() {
+            var $gecici = $('<textarea>').val(adres).css({ position: 'fixed', opacity: 0 }).appendTo('body');
+
+            $gecici[0].select();
+
+            try {
+                document.execCommand('copy');
+                bildir();
+            } catch (e) {
+                CY.notify('Kopyalanamadı: ' + adres, 'warning');
+            }
+
+            $gecici.remove();
+        }
     });
 
     $('#message_table').on('click', '.js-toggle-read', function () {

@@ -8,24 +8,49 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
             </div>
             <div class="modal-body">
-                <dl class="cy-detail mb-3">
-                    <dt>Gönderen</dt> <dd id="msg_ad"></dd>
-                    <dt>E-posta</dt>  <dd id="msg_eposta"></dd>
-                    <dt>Konu</dt>     <dd id="msg_konu"></dd>
-                    <dt>Tarih</dt>    <dd id="msg_tarih"></dd>
-                    <dt>Üye</dt>      <dd id="msg_uye"></dd>
-                    <dt>IP</dt>       <dd id="msg_ip"></dd>
+                <?php /* GÖNDEREN ŞERİDİ: baş harf + ad + adres. Tanım
+                        listesinin ilk iki satırı olarak durduğunda
+                        mesajın kimden geldiği gözden kaçıyordu. */ ?>
+                <div class="cy-msg-sender">
+                    <span class="cy-avatar cy-avatar--sm cy-avatar--initial" id="msg_bashari">?</span>
+                    <div class="cy-msg-sender__body">
+                        <strong id="msg_ad"></strong>
+                        <a class="cy-link small" id="msg_eposta_link" href="#"><span id="msg_eposta"></span></a>
+                    </div>
+                    <span class="cy-badge" id="msg_durum">—</span>
+                </div>
+
+                <div class="cy-msg-subject">
+                    <span class="cy-msg-subject__label">Konu</span>
+                    <strong id="msg_konu"></strong>
+                </div>
+
+                <div class="cy-msg-body" id="msg_metin"></div>
+
+                <dl class="cy-detail cy-detail--compact mt-3 mb-0">
+                    <dt>Tarih</dt> <dd id="msg_tarih"></dd>
+                    <dt>Üye</dt>   <dd id="msg_uye"></dd>
+                    <dt>IP</dt>    <dd id="msg_ip"></dd>
                 </dl>
-                <hr class="cy-divider">
-                <p class="mb-0" id="msg_metin" style="white-space:pre-wrap"></p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn cy-btn cy-btn--ghost" data-bs-dismiss="modal">Kapat</button>
 
-                <?php /* İki yanıt yolu: kendi posta programınızla (mailto)
-                        ya da panelin e-posta merkeziyle. İkincisi mektubu
-                        site kimliğiyle gönderir ve geçmişe kaydeder. */ ?>
-                <a class="btn cy-btn cy-btn--ghost" id="msg_reply" href="#">
+                <?php /* ÜÇ YANIT YOLU.
+                        "Posta Programım" bir mailto: bağlantısıdır ve
+                        yalnızca işletim sisteminde KAYITLI bir posta
+                        istemcisi varsa çalışır. Geliştirme makinelerinin
+                        çoğunda yoktur; düğmeye basılır, hiçbir şey olmaz
+                        ve düğme "bozuk" sanılır. Bu yüzden yanına
+                        "Adresi Kopyala" eklendi: her koşulda çalışan,
+                        aynı işi gören bir çıkış yolu. */ ?>
+                <button type="button" class="btn cy-btn cy-btn--ghost" id="msg_copy"
+                        title="Gönderenin e-posta adresini panoya kopyala">
+                    <?= icon('copy', 'cy-icon cy-icon--sm') ?> Adresi Kopyala
+                </button>
+
+                <a class="btn cy-btn cy-btn--ghost" id="msg_reply" href="#"
+                   title="Bilgisayarınızdaki posta programında yeni ileti açar">
                     <?= icon('mail', 'cy-icon cy-icon--sm') ?> Posta Programım
                 </a>
 

@@ -57,6 +57,7 @@ final class Session
         } elseif (!hash_equals((string) $_SESSION['_fingerprint'], $fingerprint)) {
             self::destroy();
             session_start();
+            self::$started = true;
             $_SESSION['_fingerprint'] = $fingerprint;
         }
 
@@ -65,6 +66,7 @@ final class Session
 
             self::destroy();
             session_start();
+            self::$started = true;
             $_SESSION['_expired'] = true;
         }
 
@@ -129,6 +131,12 @@ final class Session
         }
 
         session_destroy();
+
+        /* Bayrağı da indiriyoruz: aksi halde destroy()'dan sonra
+         * çağrılan Session::start() "zaten başlamıştı" diye erken
+         * dönerdi ve o noktadan sonra $_SESSION'a yazılan her şey
+         * (çıkış bildirimi gibi) sessizce kaybolurdu. */
+        self::$started = false;
     }
 
     public static function isHttps(): bool

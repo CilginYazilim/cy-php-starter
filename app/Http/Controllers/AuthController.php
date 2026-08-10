@@ -68,11 +68,11 @@ final class AuthController extends Controller
         }
 
         if ($errors !== []) {
-            Flash::withInput($errors, ['identifier' => $identifier]);
+            Flash::withInput($errors, ['identifier' => $identifier, 'hatirla' => $request->bool('hatirla') ? '1' : '']);
             Response::redirect(url('giris'));
         }
 
-        $result = Auth::attempt($identifier, $password, $request);
+        $result = Auth::attempt($identifier, $password, $request, $request->bool('hatirla'));
 
         if (!$result['ok']) {
             Flash::error($result['message']);

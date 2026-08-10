@@ -66,13 +66,26 @@ final class Uploader
     }
 
     /**
+     * Site faviconu: KARE kırpılır ve küçültülür.
+     *
+     * Tarayıcı sekmesindeki alan 16–32 pikseldir; kare olmayan bir
+     * görsel orada ezilir. 256 piksel, "ana ekrana ekle" kısayolu
+     * dahil her kullanım için fazlasıyla yeter ve dosyayı küçük tutar.
+     */
+    public static function favicon(array $file): string
+    {
+        return self::image($file, 'favicon', true, 256);
+    }
+
+    /**
      * Görseli doğrular, kaydeder ve yeniden üretir.
      *
-     * @param string $kind   Alt klasör adı ("avatar", "logo"…); boşsa disk köküne.
-     * @param bool   $square Doğruysa görsel merkezden kare kırpılır.
+     * @param string   $kind   Alt klasör adı ("avatar", "logo"…); boşsa disk köküne.
+     * @param bool     $square Doğruysa görsel merkezden kare kırpılır.
+     * @param int|null $boyut  En uzun kenar sınırı; null ise türe göre varsayılan.
      * @return string upload/ köküne GÖRELİ yol ("img/avatar/ab12….png")
      */
-    public static function image(array $file, string $kind = '', bool $square = false): string
+    public static function image(array $file, string $kind = '', bool $square = false, ?int $boyut = null): string
     {
         $mime = self::validateImage($file);
 
@@ -87,9 +100,9 @@ final class Uploader
             throw new RuntimeException('Görsel kaydedilemedi.', 0, $e);
         }
 
-        $maxDimension = $kind === 'avatar'
+        $maxDimension = $boyut ?? ($kind === 'avatar'
             ? (int) Config::get('upload.avatar_dimension', 480)
-            : (int) Config::get('upload.max_dimension', 1200);
+            : (int) Config::get('upload.max_dimension', 1200));
 
         self::sanitize($disk->path($relative, true), $mime, $square, $maxDimension);
 

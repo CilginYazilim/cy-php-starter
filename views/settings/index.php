@@ -16,21 +16,59 @@ $kartlar = $kartlar ?? [];
 $uyarili = array_filter($kartlar, static fn (array $k): bool => (bool) $k['uyari']);
 ?>
 
-<div class="cy-page-head">
-    <div>
-        <h2 class="cy-title">Site Ayarları</h2>
-        <p class="cy-subtitle">
-            <strong><?= (int) ($toplam ?? 0) ?></strong> ayar, <strong><?= count($kartlar) ?></strong> bölümde.
-            Düzenlemek istediğiniz bölümü seçin.
-        </p>
+<?php /* SAYFA BAŞLIĞI ÜST ÇUBUKTA yazar; burada tekrar edilmez.
+         Yerine, açmadan önce bilinmesi gereken üç sayı duruyor. */ ?>
+<div class="cy-stats">
+    <div class="cy-stat">
+        <span class="cy-stat__icon cy-stat__icon--brand"><?= icon('settings') ?></span>
+        <span>
+            <span class="cy-stat__label">Toplam Ayar</span>
+            <span class="cy-stat__value"><?= (int) ($toplam ?? 0) ?></span>
+            <span class="cy-stat__hint"><?= count($kartlar) ?> bölümde</span>
+        </span>
+    </div>
+
+    <div class="cy-stat">
+        <span class="cy-stat__icon cy-stat__icon--<?= $uyarili === [] ? 'success' : 'warning' ?>">
+            <?= icon($uyarili === [] ? 'check' : 'alert') ?>
+        </span>
+        <span>
+            <span class="cy-stat__label">Bekleyen Konu</span>
+            <span class="cy-stat__value"><?= count($uyarili) ?></span>
+            <span class="cy-stat__hint"><?= $uyarili === [] ? 'her şey tamam' : 'turuncu kartlara bakın' ?></span>
+        </span>
+    </div>
+
+    <div class="cy-stat">
+        <?php $smtpTamam = App\Core\Setting::get('mail_surucu', 'kayit') !== 'kayit'; ?>
+        <span class="cy-stat__icon cy-stat__icon--<?= $smtpTamam ? 'success' : 'danger' ?>"><?= icon('send') ?></span>
+        <span>
+            <span class="cy-stat__label">E-posta</span>
+            <span class="cy-stat__value" style="font-size:1.05rem"><?= $smtpTamam ? 'Gönderiyor' : 'Kapalı' ?></span>
+            <span class="cy-stat__hint">
+                <?= $smtpTamam ? e(App\Core\Setting::get('mail_host', 'PHP mail()')) : 'SMTP tanımlı değil' ?>
+            </span>
+        </span>
+    </div>
+
+    <div class="cy-stat">
+        <?php $yayinda = !App\Core\Setting::bool('sistem_bakim_modu', false); ?>
+        <span class="cy-stat__icon cy-stat__icon--<?= $yayinda ? 'success' : 'warning' ?>"><?= icon('globe') ?></span>
+        <span>
+            <span class="cy-stat__label">Site Durumu</span>
+            <span class="cy-stat__value" style="font-size:1.05rem"><?= $yayinda ? 'Yayında' : 'Bakımda' ?></span>
+            <span class="cy-stat__hint">
+                <?= App\Core\Setting::bool('seo_indeksleme', true) ? 'aramaya açık' : 'aramaya kapalı' ?>
+            </span>
+        </span>
     </div>
 </div>
 
 <?php if ($uyarili !== []): ?>
     <div class="cy-alert cy-alert--warning mb-3">
-        <strong><?= count($uyarili) ?> bölüm dikkatinizi bekliyor.</strong>
-        Turuncu işaretli kartlara bakın — yayına çıkmadan önce
-        tamamlanması gereken ayarlar var.
+        <strong><?= count($uyarili) ?> bölüm dikkatinizi bekliyor:</strong>
+        <?= e(implode(', ', array_map(static fn (array $k): string => $k['baslik'], $uyarili))) ?>.
+        Turuncu işaretli kartların altındaki cümle sorunun ne olduğunu da yazıyor.
     </div>
 <?php endif; ?>
 

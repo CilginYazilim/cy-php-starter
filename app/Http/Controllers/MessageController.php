@@ -16,10 +16,17 @@ final class MessageController extends Controller
 {
     public function index(Request $request): void
     {
+        $messages = $this->messages();
+
         $this->view('messages/index', [
-            'title'    => 'Mesajlar',
-            'subtitle' => 'İletişim formundan gelen mesajları yönetin.',
-            'scripts'  => ['messages.js'],
+            'title'      => 'Mesajlar',
+            'subtitle'   => 'İletişim formundan gelen mesajları yönetin.',
+            'scripts'    => ['messages.js'],
+            'istatistik' => [
+                'toplam'     => $messages->countAll(),
+                'okunmamis'  => $messages->countUnread(),
+                'bugun'      => $messages->countToday(),
+            ],
         ]);
     }
 }

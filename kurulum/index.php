@@ -657,10 +657,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && ($_POST['islem'] ?? ''
                     }
 
                     $settingsStmt = $pdo->prepare('UPDATE ayarlar SET deger = :deger WHERE anahtar = :anahtar');
+                    /* "site_url" AYAR SATIRI YOKTUR: adres artık yalnızca
+                     * .env → APP_URL içinde tutulur. İki yerde durduğu
+                     * sürece hangisinin geçerli olduğu belirsizdi ve
+                     * panelden değiştirilen değer .env'i güncellemediği
+                     * için hiçbir işe yaramıyordu. */
                     foreach ([
                         'site_adi'        => $site['site_adi'],
                         'site_aciklama'   => $site['site_aciklama'],
-                        'site_url'        => $site['site_url'],
                         'iletisim_eposta' => $admin_eposta,
                     ] as $anahtar => $deger) {
                         $settingsStmt->execute([':deger' => $deger, ':anahtar' => $anahtar]);

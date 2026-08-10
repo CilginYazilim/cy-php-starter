@@ -29,5 +29,8 @@ if (!Setting::bool('pwa_aktif', false)) {
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="apple-touch-icon" href="<?= e(Setting::logoUrl()) ?>">
+<?php /* apple-touch-icon BURADA DEĞİL, düzenlerde basılır: favicon ile
+         aynı kaynaktan (Setting::faviconUrl) gelmeli ve PWA kapalıyken
+         de bulunmalı. Burada da basıldığında iki farklı simge
+         tanımlanıyor ve hangisinin kazandığı tarayıcıya kalıyordu. */ ?>
 <meta name="cy-sw" content="<?= e(Url::base() . '/sw.js') ?>">

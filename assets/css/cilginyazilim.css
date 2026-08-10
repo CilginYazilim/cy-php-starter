@@ -50,6 +50,19 @@
     --cy-brand-100: #e7f1fc;
     --cy-brand-50:  #f4f9ff;
 
+    /* KISA ADLAR.
+     *
+     * Ön yüz bölümleri (site-sections.css) baştan beri "--cy-brand" ve
+     * "--cy-brand-soft" yazıyordu ama bu iki token HİÇ TANIMLI DEĞİLDİ:
+     * hero'nun arka plan lekesi, özellik ikonlarının zemini, iç sayfa
+     * başlığı ve "alt" bölümlerin tamamı sessizce renksiz kalıyordu —
+     * ana sayfanın soluk görünmesinin asıl sebebi buydu.
+     *
+     * var() ile takma ad veriyoruz: koyu temada --cy-brand-50 yeniden
+     * tanımlandığı için bu iki değer de kendiliğinden onu izler. */
+    --cy-brand:      var(--cy-brand-600);
+    --cy-brand-soft: var(--cy-brand-50);
+
     --cy-accent:     #0ea5e9;
     --cy-accent-600: #0284c7;
 

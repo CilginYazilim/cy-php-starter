@@ -96,4 +96,24 @@ abstract class Migration
 
         return (int) $statement->fetchColumn() > 0;
     }
+
+    /**
+     * İndeks zaten var mı?
+     *
+     * MySQL'de "ADD KEY IF NOT EXISTS" YOKTUR: aynı adlı indeksi
+     * ikinci kez eklemek hata verir. Var olan bir tabloya indeks
+     * ekleyen migration'lar bu yüzden önce buraya sormalıdır —
+     * yoksa migration daha önce elle indeks açmış bir kurulumda
+     * çöker ve o sunucuda tüm sonraki migration'lar takılır.
+     */
+    protected function indexExists(string $table, string $index): bool
+    {
+        $statement = $this->db->prepare(
+            'SELECT COUNT(*) FROM information_schema.STATISTICS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :tablo AND INDEX_NAME = :indeks'
+        );
+        $statement->execute([':tablo' => $table, ':indeks' => $index]);
+
+        return (int) $statement->fetchColumn() > 0;
+    }
 }

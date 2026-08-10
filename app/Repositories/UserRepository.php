@@ -50,6 +50,24 @@ final class UserRepository
         return $row ? User::fromRow($row) : null;
     }
 
+    /**
+     * Parola özetiyle BİRLİKTE getirir.
+     *
+     * find() bilerek "sifre" sütununu okumaz: oturum boyunca bellekte
+     * taşınan User nesnesinin parola özetini içermesi gereksiz bir
+     * risktir. Ama "mevcut parolanızı doğrulayın" gibi bir işlem özet
+     * olmadan yapılamaz — o an bu metot kullanılır.
+     */
+    public function findWithPassword(int $id): ?User
+    {
+        $stmt = $this->db->prepare('SELECT ' . self::COLUMNS . ', sifre FROM kullanicilar WHERE id = :id LIMIT 1');
+        $stmt->execute([':id' => $id]);
+
+        $row = $stmt->fetch();
+
+        return $row ? User::fromRow($row) : null;
+    }
+
     /** Giriş için: e-posta VEYA kullanıcı adıyla arar, parola özetini de çeker. */
     public function findForLogin(string $identifier): ?User
     {
@@ -400,6 +418,58 @@ final class UserRepository
     {
         $stmt = $this->db->prepare('UPDATE kullanicilar SET tema = :tema WHERE id = :id');
         $stmt->execute([':tema' => $tema, ':id' => $id]);
+    }
+
+    /* =================================================================
+     *  "BENİ HATIRLA" JETONU
+     * -----------------------------------------------------------------
+     *  Çerezde HAM jeton, veritabanında yalnızca SHA-256 ÖZETİ durur.
+     *  Veritabanı sızsa bile kimse geçerli bir çerez üretemez —
+     *  parola özetleriyle tamamen aynı mantık.
+     * ============================================================== */
+
+    /** Jetonun özetini ve son kullanma tarihini yazar. */
+    public function setRememberToken(int $id, string $hash, int $days): void
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE kullanicilar
+                SET hatirla_token = :token, hatirla_bitis = (NOW() + INTERVAL :gun DAY)
+              WHERE id = :id'
+        );
+        $stmt->execute([':token' => $hash, ':gun' => max(1, $days), ':id' => $id]);
+    }
+
+    public function clearRememberToken(int $id): void
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE kullanicilar SET hatirla_token = NULL, hatirla_bitis = NULL WHERE id = :id'
+        );
+        $stmt->execute([':id' => $id]);
+    }
+
+    /**
+     * Özete karşılık gelen AKTİF kullanıcı — süresi dolmuşsa null.
+     *
+     * Süre kontrolü SQL'de yapılır: PHP tarafında karşılaştırmak,
+     * sunucu ile veritabanının saat dilimi farklı olduğunda sessizce
+     * yanlış sonuç verirdi.
+     */
+    public function findByRememberToken(string $hash): ?User
+    {
+        $stmt = $this->db->prepare(
+            'SELECT ' . self::COLUMNS . '
+               FROM kullanicilar
+              WHERE hatirla_token = :token
+                AND hatirla_bitis IS NOT NULL
+                AND hatirla_bitis > NOW()
+                AND durum = \'aktif\'
+              LIMIT 1'
+        );
+        $stmt->execute([':token' => $hash]);
+
+        $row = $stmt->fetch();
+
+        return $row ? User::fromRow($row) : null;
     }
 
     public function touchLogin(int $id, string $ip): void

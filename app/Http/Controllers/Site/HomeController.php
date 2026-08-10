@@ -1,11 +1,12 @@
 <?php
 /**
  * =====================================================================
- *  HomeController – Ana sayfa ve Hakkımızda (ön yüz)
+ *  HomeController – Ana sayfa (ön yüz)
  * ---------------------------------------------------------------------
- *  ÖN YÜZ TAMAMEN AYARLARDAN BESLENİR. Sayfadaki hiçbir metin koda
- *  gömülü değildir: site adı, slogan, hakkımızda yazısı, iletişim
- *  bilgileri ve sosyal bağlantılar "ayarlar" tablosundan gelir.
+ *  ÖN YÜZ TAMAMEN PANELDEN BESLENİR. Sayfadaki hiçbir metin koda
+ *  gömülü değildir: site adı, slogan, iletişim bilgileri ve sosyal
+ *  bağlantılar "ayarlar" tablosundan, tanıtım metni ise "sayfalar"
+ *  tablosundaki Hakkımızda sayfasından gelir.
  *
  *  Sebep: bu bir ŞABLON. Yeni bir projede ana sayfayı düzenlemek için
  *  PHP dosyası açmak zorunda kalmamalısınız — panelden yazın, yeter.
@@ -20,30 +21,26 @@ namespace App\Http\Controllers\Site;
 use App\Core\Request;
 use App\Core\Setting;
 use App\Http\Controller;
+use App\Repositories\PageRepository;
 
 final class HomeController extends Controller
 {
     public function index(Request $request): void
     {
         $this->view('site/home', [
-            'title'       => '',
-            'ozellikler'  => $this->features(),
-            'iletisim'    => $this->contactCards(),
-            'istatistik'  => $this->highlights(),
-        ], 'layouts/site');
-    }
-
-    public function about(Request $request): void
-    {
-        $this->view('site/about', [
-            'title'      => 'Hakkımızda',
-            'iletisim'   => $this->contactCards(),
-            'ozellikler' => $this->features(),
+            'title'      => '',
+            'ozellikler' => self::features(),
+            'iletisim'   => self::contactCards(),
+            'istatistik' => $this->highlights(),
+            'hakkinda'   => (new PageRepository($this->db))->findPublished('hakkimizda'),
         ], 'layouts/site');
     }
 
     /* =================================================================
      *  İÇERİK PARÇALARI
+     * -----------------------------------------------------------------
+     *  Statik: aynı kartları Hakkımızda ve İletişim sayfaları da
+     *  kullanıyor. Üç denetleyicide üç kopya tutmaktansa tek kaynak.
      * ============================================================== */
 
     /**
@@ -54,7 +51,7 @@ final class HomeController extends Controller
      *
      * @return array<int,array{ikon:string,renk:string,baslik:string,metin:string}>
      */
-    private function features(): array
+    public static function features(): array
     {
         return [
             [
@@ -76,10 +73,10 @@ final class HomeController extends Controller
                 'metin'  => 'SMTP, kuyruk ve toplu gönderim hazır; giden her mektup kayıt altında.',
             ],
             [
-                'ikon'   => 'server',
+                'ikon'   => 'edit',
                 'renk'   => 'brand',
-                'baslik' => 'Modüler',
-                'metin'  => 'Tek komutla modül üretin; açıp kapatın, çekirdeğe hiç dokunmayın.',
+                'baslik' => 'İçerik Yönetimi',
+                'metin'  => 'Sayfalarınızı zengin metin editörüyle yazın; adres ve SEO alanları otomatik.',
             ],
             [
                 'ikon'   => 'activity',
@@ -104,7 +101,7 @@ final class HomeController extends Controller
      *
      * @return array<int,array{ikon:string,etiket:string,deger:string,link:string}>
      */
-    private function contactCards(): array
+    public static function contactCards(): array
     {
         $kartlar = [];
 
@@ -127,7 +124,27 @@ final class HomeController extends Controller
                 'etiket' => 'Telefon',
                 'deger'  => $telefon,
                 // tel: bağlantısında boşluk ve parantez sorun çıkarır.
-                'link'   => 'tel:' . preg_replace('/[^0-9+]/', '', $telefon),
+                'link'   => 'tel:' . self::digits($telefon),
+            ];
+        }
+
+        if (self::whatsappNumber() !== '') {
+            $kartlar[] = [
+                'ikon'   => 'whatsapp',
+                'etiket' => 'WhatsApp',
+                'deger'  => Setting::get('iletisim_whatsapp'),
+                'link'   => self::whatsappLink(),
+            ];
+        }
+
+        $saatler = Setting::get('iletisim_saatler');
+
+        if ($saatler !== '') {
+            $kartlar[] = [
+                'ikon'   => 'clock',
+                'etiket' => 'Çalışma Saatleri',
+                'deger'  => $saatler,
+                'link'   => '',
             ];
         }
 
@@ -135,14 +152,46 @@ final class HomeController extends Controller
 
         if ($adres !== '') {
             $kartlar[] = [
-                'ikon'   => 'globe',
+                'ikon'   => 'map',
                 'etiket' => 'Adres',
                 'deger'  => $adres,
-                'link'   => '',
+                'link'   => Setting::get('iletisim_harita'),
             ];
         }
 
         return $kartlar;
+    }
+
+    /**
+     * WhatsApp numarasının yalnızca rakamları.
+     *
+     * wa.me adresi "+", boşluk ve parantez KABUL ETMEZ; ülke koduyla
+     * bitişik rakam ister (905415090583). Yönetici numarayı okunur
+     * biçimde yazsın diye dönüşümü burada yapıyoruz.
+     */
+    public static function whatsappNumber(): string
+    {
+        return self::digits(Setting::get('iletisim_whatsapp'));
+    }
+
+    /** Hazır mesajı da taşıyan tam WhatsApp sohbet adresi. */
+    public static function whatsappLink(): string
+    {
+        $numara = self::whatsappNumber();
+
+        if ($numara === '') {
+            return '';
+        }
+
+        $mesaj = trim(Setting::get('iletisim_whatsapp_mesaj'));
+
+        return 'https://wa.me/' . $numara
+            . ($mesaj !== '' ? '?text=' . rawurlencode($mesaj) : '');
+    }
+
+    private static function digits(string $value): string
+    {
+        return preg_replace('/\D+/', '', $value) ?? '';
     }
 
     /**
@@ -153,10 +202,10 @@ final class HomeController extends Controller
     private function highlights(): array
     {
         return [
-            ['deger' => '0',   'etiket' => 'Bağımlılık'],
-            ['deger' => '20',  'etiket' => 'Konsol komutu'],
+            ['deger' => '0',    'etiket' => 'Bağımlılık'],
+            ['deger' => '20',   'etiket' => 'Konsol komutu'],
             ['deger' => '8.1+', 'etiket' => 'PHP sürümü'],
-            ['deger' => 'MIT', 'etiket' => 'Lisans'],
+            ['deger' => 'MIT',  'etiket' => 'Lisans'],
         ];
     }
 }

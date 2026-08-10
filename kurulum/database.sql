@@ -42,6 +42,7 @@ USE `yeni_proje`;
 DROP TABLE IF EXISTS `mail_kayitlari`;
 DROP TABLE IF EXISTS `mesajlar`;
 DROP TABLE IF EXISTS `login_attempts`;
+DROP TABLE IF EXISTS `sayfalar`;
 DROP TABLE IF EXISTS `kullanicilar`;
 DROP TABLE IF EXISTS `ayarlar`;
 
@@ -78,16 +79,25 @@ INSERT INTO `ayarlar`
 ('site_adi',        'Yeni Proje', 'genel', 'metin',      'Site Adı',        'Tarayıcı sekmesinde ve başlıkta görünür.', NULL, 10),
 ('site_aciklama',   'Çılgın Yazılım örnek uygulaması', 'genel', 'uzun_metin', 'Site Açıklaması', 'Arama motorları için kısa tanıtım.', NULL, 20),
 ('site_slogan',     '',           'genel', 'metin',      'Slogan',          'Başlığın altında görünecek kısa cümle.', NULL, 30),
-('site_hakkinda',   '',           'genel', 'uzun_metin', 'Hakkımızda Metni','"Hakkımızda" sayfasında görünür. Boş bırakırsanız örnek metin gösterilir.', NULL, 35),
-('site_url',        '',           'genel', 'url',        'Site Adresi',     'Örn: https://ornek.com', NULL, 40),
 ('site_dil',        'tr',         'genel', 'secim',      'Dil',             'HTML lang özniteliği.', '["tr","en"]', 50),
-('site_logo',       '',           'genel', 'metin',      'Logo Dosyası',    'upload/ klasöründeki dosya adı. Boşsa varsayılan logo kullanılır.', NULL, 60),
+
+-- "site_logo" ve "site_favicon" GÖRÜNMEZ ("dahili" grubu) çünkü ikisi
+-- de dosya adı tutar ve elle yazılacak değerler değildir: Genel
+-- ayarlar sayfasının yan sütunundaki YÜKLEME KARTLARINDAN değişirler.
+-- Formda düz metin alanı olarak dursalardı kullanıcı upload/ altındaki
+-- dosya adını bilmek zorunda kalırdı; boş bir kaydetme de logoyu
+-- sessizce silerdi.
+('site_logo',       '',                   'dahili', 'metin', 'Logo Dosyası',    NULL, NULL, 60),
+('site_favicon',    '',                   'dahili', 'metin', 'Favicon Dosyası', NULL, NULL, 65),
 
 -- ---- İLETİŞİM ----
-('iletisim_eposta', '',           'iletisim', 'eposta',  'İletişim E-postası', 'Formlardan gelen mesajlar buraya gider.', NULL, 10),
-('iletisim_telefon','',           'iletisim', 'metin',   'Telefon',            NULL, NULL, 20),
-('iletisim_adres',  '',           'iletisim', 'uzun_metin', 'Adres',           NULL, NULL, 30),
+('iletisim_eposta', '',           'iletisim', 'eposta',  'İletişim E-postası', 'İletişim formundan gelen mesajların bildirimi bu adrese gider.', NULL, 10),
+('iletisim_telefon','',           'iletisim', 'metin',   'Telefon',            'Ön yüzde tıklanabilir bağlantı olur. Örn: +90 212 000 00 00', NULL, 20),
+('iletisim_whatsapp','+90 541 509 05 83', 'iletisim', 'metin', 'WhatsApp Numarası',  'Ülke koduyla yazın: +90 541 509 05 83. Boşsa WhatsApp düğmesi hiç görünmez.', NULL, 25),
+('iletisim_whatsapp_mesaj', 'Merhaba, siteniz üzerinden yazıyorum. Bilgi almak istiyorum.', 'iletisim', 'uzun_metin', 'WhatsApp Hazır Mesajı', 'Ziyaretçi düğmeye bastığında sohbet kutusuna hazır gelecek metin.', NULL, 27),
+('iletisim_adres',  '',           'iletisim', 'uzun_metin', 'Adres',           'Alt bilgide ve iletişim sayfasında görünür.', NULL, 30),
 ('iletisim_saatler','',           'iletisim', 'metin',   'Çalışma Saatleri',   'Örn: Hafta içi 09:00 – 18:00', NULL, 40),
+('iletisim_harita', '',           'iletisim', 'uzun_metin', 'Harita Bağlantısı', 'Google Haritalar "paylaş" adresi. Boşsa harita kartı görünmez.', NULL, 50),
 
 -- ---- E-POSTA ----
 --  "mail_surucu" üç değer alır:
@@ -119,13 +129,23 @@ INSERT INTO `ayarlar`
 ('sosyal_github',    'https://github.com/CilginYazilim',                        'sosyal', 'url', 'GitHub',      NULL, NULL, 60),
 
 -- ---- SEO ----
+('seo_baslik_sablonu',    '%sayfa% · %site%', 'seo', 'metin', 'Başlık Şablonu', 'Sekmede görünecek biçim. %sayfa% ve %site% yer tutucularını kullanın.', NULL, 5),
 ('seo_anahtar_kelimeler', '',     'seo', 'uzun_metin', 'Anahtar Kelimeler', 'Virgülle ayırın.', NULL, 10),
-('seo_analytics',         '',     'seo', 'uzun_metin', 'Analytics Kodu',    'Google Analytics vb. izleme kodu.', NULL, 20),
-('seo_indeksleme',        '1',    'seo', 'onay',       'Arama Motoru İndekslemesi', 'Kapatırsanız robots meta etiketi "noindex" olur.', NULL, 30),
+('seo_analytics',         '',     'seo', 'uzun_metin', 'Analytics Kodu',    'Google Analytics vb. izleme kodu. Olduğu gibi <head> içine basılır.', NULL, 20),
+('seo_indeksleme',        '1',    'seo', 'onay',       'Arama Motoru İndekslemesi', 'Kapatırsanız hem sayfalara "noindex" eklenir hem de robots.txt tüm siteyi kapatır.', NULL, 30),
+('seo_google_dogrulama',  '',     'seo', 'metin',      'Google Site Doğrulama', 'Search Console''un verdiği "content" değeri. Yalnızca kod, etiketin tamamı değil.', NULL, 40),
+('seo_og_gorsel',         '',     'seo', 'metin',      'Paylaşım Görseli',  'upload/ altındaki dosya adı ya da tam adres. Boşsa site logosu kullanılır.', NULL, 50),
+('seo_sitemap_aktif',     '1',    'seo', 'onay',       'Site Haritası',     'sitemap.xml üretilsin mi? Yayınlanan sayfalar haritaya otomatik girer.', NULL, 60),
+('seo_robots_ek',         '',     'seo', 'uzun_metin', 'robots.txt Ek Kuralları', 'Otomatik üretilen robots.txt dosyasının SONUNA eklenir. Her satır bir kural.', NULL, 70),
 
 -- ---- SİSTEM ----
 ('sistem_bakim_modu',     '0',    'sistem', 'onay',  'Bakım Modu',           'Açıkken siteyi sadece yöneticiler görebilir.', NULL, 10),
-('sistem_kayit_acik',     '0',    'sistem', 'onay',  'Yeni Kayıtlara Açık',  'Ziyaretçiler kendi hesabını oluşturabilsin mi?', NULL, 20),
+-- Kurulum sonrası AÇIK gelir: yeni bir siteyi ilk kez gezen kişinin
+-- "Kayıt Ol" düğmesini görebilmesi beklenen davranıştır. Kapalı bir
+-- sistem isteyen yönetici bunu tek tıkla kapatır; tersi durumda
+-- (kapalı gelseydi) kayıt bağlantısının neden yok olduğu ayarlar
+-- ekranı taranmadan anlaşılmıyordu.
+('sistem_kayit_acik',     '1',    'sistem', 'onay',  'Yeni Kayıtlara Açık',  'Ziyaretçiler kendi hesabını oluşturabilsin mi?', NULL, 20),
 ('sistem_iletisim_formu', '1',    'sistem', 'onay',  'İletişim Formu Açık',  'Kapatırsanız iletişim sayfasında sadece bilgiler görünür.', NULL, 25),
 ('sistem_sayfa_basina',   '10',   'sistem', 'sayi',  'Sayfa Başına Kayıt',   'Listelerde varsayılan sayfa boyutu.', NULL, 30),
 ('sistem_zaman_dilimi',   'Europe/Istanbul', 'sistem', 'metin', 'Zaman Dilimi', 'Örn: Europe/Istanbul', NULL, 40),
@@ -152,6 +172,10 @@ CREATE TABLE `kullanicilar` (
   `avatar`        VARCHAR(191) NOT NULL DEFAULT '',
   `telefon`       VARCHAR(30)  NOT NULL DEFAULT '',
   `hakkinda`      TEXT NULL,
+  -- "Beni hatırla" jetonunun SHA-256 özeti. Çerezde ham jeton durur,
+  -- burada yalnızca özeti: veritabanı sızsa bile çerez üretilemez.
+  `hatirla_token` CHAR(64) NULL DEFAULT NULL,
+  `hatirla_bitis` DATETIME NULL DEFAULT NULL,
   `son_giris`     TIMESTAMP NULL DEFAULT NULL,
   `son_giris_ip`  VARCHAR(45)  NOT NULL DEFAULT '',
   `giris_sayisi`  INT UNSIGNED NOT NULL DEFAULT 0,
@@ -161,8 +185,9 @@ CREATE TABLE `kullanicilar` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_kullanicilar_eposta` (`eposta`),
   UNIQUE KEY `uq_kullanicilar_kadi`   (`kullanici_adi`),
-  KEY `idx_kullanicilar_rol`   (`rol`),
-  KEY `idx_kullanicilar_durum` (`durum`)
+  KEY `idx_kullanicilar_rol`     (`rol`),
+  KEY `idx_kullanicilar_durum`   (`durum`),
+  KEY `idx_kullanicilar_hatirla` (`hatirla_token`)
 ) ENGINE=InnoDB
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_turkish_ci;
@@ -202,6 +227,64 @@ CREATE TABLE `login_attempts` (
 ) ENGINE=InnoDB
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ===============================================================
+--  4.5) SAYFALAR TABLOSU (içerik sayfaları)
+-- ---------------------------------------------------------------
+--  "Hakkımızda", "Gizlilik", "KVKK" gibi DURAĞAN sayfalar. Eskiden
+--  Hakkımızda metni tek bir ayar satırıydı; ikinci bir sayfa
+--  isteyen herkes kod yazmak zorundaydı. Artık panelden sayfa
+--  açılır, içerik zengin metin editöründen yazılır.
+--
+--  "slug" adresin son parçasıdır: /hakkimizda, /gizlilik…
+--  Çekirdek adreslerle (giris, panel…) çakışması PageRepository
+--  tarafından engellenir; router zaten önce SABİT rotalara bakar.
+--
+--  "korumali = 1" olan satırlar SİLİNEMEZ: menüde ve ön yüzde
+--  adları geçen sayfaların (hakkimizda, iletisim) yanlışlıkla yok
+--  edilmesi siteyi kırık bağlantılarla bırakırdı.
+-- ===============================================================
+CREATE TABLE `sayfalar` (
+  `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `baslik`        VARCHAR(190) NOT NULL,
+  `slug`          VARCHAR(190) NOT NULL COLLATE utf8mb4_unicode_ci,
+  `ozet`          VARCHAR(255) NOT NULL DEFAULT '',
+  `icerik`        MEDIUMTEXT NULL,
+  `kapak`         VARCHAR(191) NOT NULL DEFAULT '',
+  `durum`         ENUM('taslak','yayin') NOT NULL DEFAULT 'taslak',
+  `menude`        TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Üst menüde görünsün mü?',
+  `korumali`      TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Silinemeyen çekirdek sayfa',
+  `sira`          SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  `seo_baslik`    VARCHAR(190) NOT NULL DEFAULT '',
+  `seo_aciklama`  VARCHAR(255) NOT NULL DEFAULT '',
+  `yazar_id`      INT UNSIGNED NULL DEFAULT NULL,
+  `created_at`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_sayfalar_slug` (`slug`),
+  KEY `idx_sayfalar_durum` (`durum`, `sira`),
+
+  CONSTRAINT `fk_sayfalar_yazar`
+    FOREIGN KEY (`yazar_id`) REFERENCES `kullanicilar` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_turkish_ci;
+
+-- Kurulumla birlikte gelen iki sayfa. İçerikleri örnek metindir;
+-- yönetici panelden düzenler. "korumali = 1" oldukları için
+-- silinemezler — üst menü ve alt bilgi onlara bağlantı verir.
+INSERT INTO `sayfalar` (`baslik`, `slug`, `ozet`, `icerik`, `durum`, `menude`, `korumali`, `sira`) VALUES
+('Hakkımızda', 'hakkimizda',
+ 'Kim olduğumuzu, ne yaptığımızı ve nasıl çalıştığımızı anlatan kısa bir tanıtım.',
+ '<h2>Biz kimiz?</h2><p>Bu metni <strong>Panel → Sayfalar → Hakkımızda</strong> ekranından değiştirebilirsiniz. Zengin metin editörü başlık, kalın/italik yazı, listeler, bağlantılar ve alıntı desteği sunar.</p><h3>Ne yapıyoruz?</h3><ul><li>İhtiyaca göre kurumsal web çözümleri geliştiriyoruz.</li><li>Var olan sistemleri bakım ve destek altına alıyoruz.</li><li>Sürecin her adımında ölçülebilir sonuç hedefliyoruz.</li></ul><h3>Neden biz?</h3><p>İşimizi sade, hızlı ve sürdürülebilir yapmaya çalışıyoruz. Sorularınız için <a href="iletisim">iletişim sayfamızdan</a> bize yazabilirsiniz.</p>',
+ 'yayin', 1, 1, 10),
+('İletişim', 'iletisim',
+ 'Bize ulaşmanın tüm yolları: telefon, e-posta, adres ve iletişim formu.',
+ '<p>Sorularınız, teklif talepleriniz ve iş birliği önerileriniz için aşağıdaki formu doldurabilir ya da doğrudan iletişim bilgilerimizi kullanabilirsiniz. Mesajlarınıza <strong>en geç bir iş günü içinde</strong> dönüş yapıyoruz.</p>',
+ 'yayin', 1, 1, 20);
 
 
 -- ===============================================================

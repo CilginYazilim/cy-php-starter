@@ -49,7 +49,7 @@ Events::dispatch(new UserRegistered($user));
 | Katman | İçerik |
 |---|---|
 | **Kurulum** | Adım adım sihirbaz · `.env` üretimi · tabloları **ve migration'ları** kurar · yönetici hesabı · isteğe bağlı örnek veri · tek tuşla kendini silme |
-| **Kimlik** | Giriş/kayıt/çıkış · rol-yetki · kaba kuvvet koruması · sertleştirilmiş oturum |
+| **Kimlik** | Giriş/kayıt/çıkış · **beni hatırla** · rol-yetki · kaba kuvvet koruması · sertleştirilmiş oturum |
 | **Yönlendirme** | Temiz SEO adresleri · `{parametre}` · GET/POST/PUT/PATCH/DELETE · gruplar |
 | **Hata yönetimi** | Merkezi işleyici · ölümcül hata yakalama · geliştirici ekranı · güvenli 404/403/419/500 |
 | **Günlük** | Kanal bazlı (`app` `error` `security` `auth` `mail` `queue`) · parola maskeleme · rotasyon |
@@ -63,8 +63,10 @@ Events::dispatch(new UserRegistered($user));
 | **REST API** | Standart yanıt zarfı · Bearer anahtarı · hız sınırı · sayfalama |
 | **Modüller** | Aç/kapa · kendi rotaları, tabloları, görünümleri, menüsü |
 | **PWA** | Dinamik manifest · servis çalışanı · çevrimdışı sayfa |
-| **SEO** | Temiz adresler · canonical · Open Graph · dinamik sitemap.xml & robots.txt |
-| **Ayarlar** | Bölüm bölüm sayfalar · durum özetli genel bakış · kapsamlı kaydetme |
+| **İçerik** | **Sayfa yönetimi** — zengin metin editörü · adres (slug) üretimi · taslak/yayın · menü · sayfa bazlı SEO |
+| **SEO** | Temiz adresler · canonical · Open Graph · başlık şablonu · dinamik sitemap.xml & robots.txt (panelden ek kural) |
+| **Ayarlar** | Bölüm bölüm sayfalar · durum özetli genel bakış · kapsamlı kaydetme · logo **ve favicon** yükleme |
+| **İletişim** | Form + spam koruması · **WhatsApp düğmesi** (hazır mesajla) · sosyal medya bağlantıları |
 | **Tema** | Tek renk seçin, panelin ve sitenin tamamı yeniden renklensin |
 | **Konsol** | `php cy` — 20 komut, üreteçler dahil |
 

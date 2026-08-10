@@ -80,6 +80,13 @@ if ($modulOgeleri !== []) {
 }
 
 $menu[] = [
+    'label' => 'İçerik',
+    'items' => [
+        ['route' => 'panel/sayfalar', 'icon' => 'files', 'label' => 'Sayfalar', 'can' => 'pages.view'],
+    ],
+];
+
+$menu[] = [
     'label' => 'İletişim',
     'items' => [
         ['route' => 'panel/mesajlar', 'icon' => 'inbox', 'label' => 'Mesajlar', 'can' => 'messages.view', 'badge' => $unread],

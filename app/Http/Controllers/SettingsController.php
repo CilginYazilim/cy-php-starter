@@ -46,11 +46,11 @@ final class SettingsController extends Controller
      * @var array<string,array{ikon:string,aciklama:string}>
      */
     private const GROUP_META = [
-        'genel'    => ['ikon' => 'settings', 'aciklama' => 'Site adı, açıklama, logo, dil ve adres.'],
-        'iletisim' => ['ikon' => 'phone',    'aciklama' => 'İletişim formunun gideceği adres, telefon ve konum.'],
+        'genel'    => ['ikon' => 'settings', 'aciklama' => 'Site adı, açıklama, slogan, dil, logo ve favicon.'],
+        'iletisim' => ['ikon' => 'phone',    'aciklama' => 'E-posta, telefon, WhatsApp, adres ve çalışma saatleri.'],
         'eposta'   => ['ikon' => 'send',     'aciklama' => 'SMTP bilgileri, gönderen adresi ve otomatik bildirimler.'],
         'sosyal'   => ['ikon' => 'globe',    'aciklama' => 'Alt bilgide görünecek sosyal medya bağlantıları.'],
-        'seo'      => ['ikon' => 'search',   'aciklama' => 'Arama motoru görünürlüğü ve indeksleme.'],
+        'seo'      => ['ikon' => 'search',   'aciklama' => 'İndeksleme, site haritası, robots.txt ve paylaşım görseli.'],
         'sistem'   => ['ikon' => 'server',   'aciklama' => 'Bakım modu, kayıt açık/kapalı, tema rengi, PWA.'],
     ];
 
@@ -95,14 +95,20 @@ final class SettingsController extends Controller
     {
         return match ($group) {
             'genel'    => Setting::get('site_adi', '—'),
-            'iletisim' => Setting::get('iletisim_eposta', 'Adres tanımlı değil'),
+            'iletisim' => Setting::get('iletisim_eposta') === ''
+                ? 'İletişim e-postası tanımlı değil'
+                : Setting::get('iletisim_eposta')
+                    . (Setting::get('iletisim_whatsapp') !== '' ? ' · WhatsApp açık' : ''),
             'eposta'   => match (Setting::get('mail_surucu', 'kayit')) {
                 'smtp'  => 'SMTP · ' . Setting::get('mail_host', '—'),
                 'php'   => 'PHP mail()',
                 default => 'Kayıt modu — mektuplar gönderilmiyor',
             },
             'sosyal'   => $this->socialCount() . ' bağlantı tanımlı',
-            'seo'      => Setting::bool('seo_indeksleme', true) ? 'Arama motorlarına açık' : 'Arama motorlarına kapalı',
+            'seo'      => Setting::bool('seo_indeksleme', true)
+                ? 'Arama motorlarına açık'
+                . (Setting::bool('seo_sitemap_aktif', true) ? ' · site haritası üretiliyor' : ' · site haritası kapalı')
+                : 'Arama motorlarına KAPALI — yayına çıkmadan açın',
             'sistem'   => Setting::bool('sistem_bakim_modu', false) ? 'Bakım modu açık' : 'Site yayında',
             default    => '',
         };
@@ -149,7 +155,6 @@ final class SettingsController extends Controller
             'baslik'   => $labels[$grup] ?? ucfirst($grup),
             'ikon'     => self::GROUP_META[$grup]['ikon'] ?? 'settings',
             'rows'     => $rows,
-            'komsular' => $this->neighbours($grup),
             'errors'   => Flash::errors(),
             'old'      => Flash::old(),
             'scripts'  => ['settings.js'],
@@ -172,27 +177,13 @@ final class SettingsController extends Controller
         return $groups[$grup];
     }
 
-    /**
-     * Diğer gruplar — sayfanın üstündeki hızlı geçiş çubuğu için.
+    /* HIZLI GEÇİŞ ÇUBUĞU KALDIRILDI.
      *
-     * @return array<int,array{anahtar:string,baslik:string,ikon:string,aktif:bool}>
-     */
-    private function neighbours(string $current): array
-    {
-        $labels = Setting::groupLabels();
-        $liste  = [];
-
-        foreach (array_keys(Setting::grouped($this->db)) as $key) {
-            $liste[] = [
-                'anahtar' => $key,
-                'baslik'  => $labels[$key] ?? ucfirst($key),
-                'ikon'    => self::GROUP_META[$key]['ikon'] ?? 'settings',
-                'aktif'   => $key === $current,
-            ];
-        }
-
-        return $liste;
-    }
+     * Her ayar sayfasının üstünde altı bölümü de listeleyen bir düğme
+     * satırı vardı. Sol menüde "Site Ayarları" zaten aynı altı alt
+     * bağlantıyı açıyor; aynı gezinmeyi iki kez çizmek ekranın üst
+     * şeridini gereksiz yere dolduruyor, mobilde ise formun kendisini
+     * kaydırma gerektiren bir yere itiyordu. */
 
     /* =================================================================
      *  KAYDETME
@@ -274,10 +265,60 @@ final class SettingsController extends Controller
         $mevcut = Setting::get('site_logo');
 
         if ($mevcut !== '') {
-            Setting::set($this->db, 'site_logo', '');
+            Setting::set($this->db, 'site_logo', '', 'dahili');
             Uploader::delete($mevcut);
 
             Flash::success('Logo kaldırıldı; varsayılan logo kullanılacak.');
+        }
+
+        Response::redirect(url('panel/ayarlar/genel'));
+    }
+
+    /* =================================================================
+     *  FAVICON
+     * -----------------------------------------------------------------
+     *  Logodan AYRI bir dosyadır ve öyle olmalıdır: sekmede görünen
+     *  simge 16 pikseldir, yatay bir logo orada okunmaz. Yüklenen
+     *  görsel kare kırpılıp 256 piksele indirilir.
+     * ============================================================== */
+
+    public function uploadFavicon(Request $request): void
+    {
+        $geri = url('panel/ayarlar/genel');
+
+        if (!$request->hasFile('favicon')) {
+            Flash::error('Dosya seçilmedi.');
+            Response::redirect($geri);
+        }
+
+        try {
+            $yeni = Uploader::favicon((array) $request->file('favicon'));
+        } catch (RuntimeException $e) {
+            Flash::error($e->getMessage());
+            Response::redirect($geri);
+        }
+
+        $eski = Setting::get('site_favicon');
+
+        Setting::set($this->db, 'site_favicon', $yeni, 'dahili');
+
+        if ($eski !== '' && $eski !== $yeni) {
+            Uploader::delete($eski);
+        }
+
+        Flash::success('Favicon güncellendi. Tarayıcı eski simgeyi önbellekte tutabilir; sayfayı Ctrl+F5 ile yenileyin.');
+        Response::redirect($geri);
+    }
+
+    public function removeFavicon(Request $request): void
+    {
+        $mevcut = Setting::get('site_favicon');
+
+        if ($mevcut !== '') {
+            Setting::set($this->db, 'site_favicon', '', 'dahili');
+            Uploader::delete($mevcut);
+
+            Flash::success('Favicon kaldırıldı; varsayılan simge kullanılacak.');
         }
 
         Response::redirect(url('panel/ayarlar/genel'));
