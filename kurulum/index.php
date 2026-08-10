@@ -820,11 +820,33 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
 
             <?php if ($kilitli): ?>
                 <!-- ============ KİLİTLİ: kurulum zaten tamamlanmış ============ -->
-                <div class="cy-alert cy-alert--info mb-3">
-                    Kurulum daha önce tamamlanmış. Yeniden kurmak isterseniz
-                    <code>?yeniden=1</code> ekleyerek zorlayabilirsiniz (verileriniz üzerine yazılabilir, dikkatli olun).
+                <h2 class="cy-title mb-1">Kurulum zaten tamamlanmış</h2>
+                <p class="cy-subtitle mb-3">Sihirbaz kendini kilitledi; kimse buradan veritabanınızı sıfırlayamaz.</p>
+
+                <?php /* Bu ekranda da silme düğmesi VARDIR. Kullanıcı kurulumu
+                         bitirip tarayıcıyı kapatmış, sonra "klasörü silmeyi
+                         unutmuştum" diye geri dönmüş olabilir. Düğme yalnızca
+                         son ekranda olsaydı, tam da en çok gereken durumda
+                         ortada olmazdı. */ ?>
+                <div class="cy-alert cy-alert--warning mb-3">
+                    <strong>Bu klasör hâlâ sunucuda.</strong> Güvenlik için silin.
+                    Kilit açık olsa bile, bu dosyanın var olması sunucunuz hakkında
+                    gereksiz bilgi verir.
                 </div>
-                <a class="btn cy-btn cy-btn--primary" href="../index.php">Siteye Git</a>
+
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <form method="post" action="index.php">
+                        <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                        <input type="hidden" name="islem" value="temizle">
+                        <button type="submit" class="btn cy-btn cy-btn--danger">Kurulum Klasörünü Sil</button>
+                    </form>
+                    <a class="btn cy-btn cy-btn--primary" href="../index.php">Siteye Git</a>
+                </div>
+
+                <p class="cy-subtitle mb-0">
+                    Sıfırdan yeniden kurmak isterseniz adrese <code>?yeniden=1</code> ekleyin —
+                    <strong>mevcut verilerinizin üzerine yazılır</strong>, dikkatli olun.
+                </p>
 
             <?php elseif ($adim === 'gereksinimler'): ?>
                 <!-- ============ ADIM 1 ============ -->
