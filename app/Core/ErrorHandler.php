@@ -137,12 +137,18 @@ final class ErrorHandler
             ob_end_clean();
         }
 
+        /* Tarayıcıya giden kod ile UYGULAMA İÇİ kod farklı olabilir:
+         * 419 gibi kayıtlı olmayan bir durum kodunu Apache 500'e
+         * çevirir (bkz. HttpException::wireStatus). Metin, başlık ve
+         * görünüm hâlâ gerçek durumu anlatır. */
+        $wire = $http?->wireStatus() ?? $status;
+
         if (!headers_sent()) {
-            http_response_code($status);
+            http_response_code($wire);
         }
 
         if (self::wantsJson()) {
-            self::respondJson($e, $status);
+            self::respondJson($e, $status, $wire, $http);
         }
 
         self::respondHtml($e, $http, $status);
@@ -202,9 +208,17 @@ final class ErrorHandler
      * sonuçlardır, her AJAX çağrısına yığın bilgisi iliştirmek
      * yalnızca gürültü yapar.
      */
-    private static function respondJson(Throwable $e, int $status): never
+    private static function respondJson(Throwable $e, int $status, ?int $wire = null, ?HttpException $http = null): never
     {
         $extra = [];
+
+        /* JavaScript "oturum düştü mü?" sorusunu durum koduna bakarak
+         * yanıtlayamaz artık (419 telde 403'e dönüşüyor). Bayrağı
+         * yanıtın içine koyuyoruz; app.js bunu görünce sayfayı
+         * kendiliğinden tazeliyor. */
+        if ($http !== null && $http->isExpired()) {
+            $extra['expired'] = true;
+        }
 
         if (self::$debug && !$e instanceof HttpException) {
             $extra['debug'] = [
@@ -214,7 +228,7 @@ final class ErrorHandler
             ];
         }
 
-        Response::error(self::publicMessage($e, $status), $status, $extra);
+        Response::error(self::publicMessage($e, $status), $wire ?? $status, $extra);
     }
 
     /**

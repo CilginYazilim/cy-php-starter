@@ -233,7 +233,11 @@ window.CY = (function ($) {
     CY.ajaxError = function (xhr, fallback) {
         var res = (xhr && xhr.responseJSON) || {};
 
-        if (xhr && (xhr.status === 401 || xhr.status === 419)) {
+        /* "expired" bayrağı sunucudan gelir (bkz. ErrorHandler).
+         * Yalnızca durum koduna bakmak yetmiyor: 419 kayıtlı bir HTTP
+         * kodu olmadığı için Apache onu 403'e/500'e çevirebiliyor ve
+         * oturum düşmesi sıradan bir hata gibi görünüyordu. */
+        if (res.expired === true || (xhr && (xhr.status === 401 || xhr.status === 419))) {
             CY.notify(res.description || 'Oturumunuz sonlandı. Sayfa yenileniyor…', 'warning');
             window.setTimeout(function () { window.location.reload(); }, 1500);
             return;

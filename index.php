@@ -54,6 +54,21 @@ if (Env::exists(CY_BASE . '/.env')) {
     }
 }
 
+/* KURULUM SİHİRBAZININ SON SÖZÜ
+ *
+ * Sihirbaz kendini sildikten sonra buraya "?kurulum=temizlendi" ile
+ * döner. Eskiden hiçbir şey göstermiyorduk: kullanıcı "Kurulum
+ * Klasörünü Sil ve Bitir" düğmesine basıyor, sıradan bir ana sayfaya
+ * düşüyor ve klasörün gerçekten silinip silinmediğini anlamıyordu.
+ * Tek seferlik bir bildirim, o belirsizliği ortadan kaldırıyor. */
+if (isset($_GET['kurulum']) && $_GET['kurulum'] === 'temizlendi') {
+    App\Core\Flash::success(
+        is_dir(CY_BASE . '/kurulum')
+            ? 'Kurulum tamamlandı ancak "kurulum/" klasörü silinemedi — lütfen sunucudan elle silin.'
+            : 'Kurulum tamamlandı ve "kurulum/" klasörü silindi. Siteniz yayında!'
+    );
+}
+
 /* Güvenlik başlıkları ayarlardan SONRA gönderilir: İçerik Güvenliği
  * Politikası, panele girilen analytics kodunun adreslerini de
  * kapsamak zorundadır (bkz. Response::csp). Buraya kadar hiçbir

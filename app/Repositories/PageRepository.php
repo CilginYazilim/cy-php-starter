@@ -30,8 +30,25 @@ final class PageRepository
         'sitemap', 'robots', 'manifest', 'cevrimdisi', 'storage', 'modules',
     ];
 
+    /**
+     * Menü sorgusunun istek içi belleği.
+     *
+     * Statiktir çünkü depo her çağrıldığında yeniden kurulur
+     * (nav bir örnek, alt bilgi başka bir örnek yaratır); önbelleği
+     * örnekte tutmak hiçbir işe yaramazdı.
+     *
+     * @var array<int,Page>|null
+     */
+    private static ?array $menuCache = null;
+
     public function __construct(private PDO $db)
     {
+    }
+
+    /** Sayfa yazıldığında menü belleği geçersizleşir. */
+    public static function flushMenu(): void
+    {
+        self::$menuCache = null;
     }
 
     public function find(int $id): ?Page
@@ -95,17 +112,25 @@ final class PageRepository
     /**
      * Üst menüye girecek yayındaki sayfalar.
      *
+     * İSTEK BOYUNCA BİR KEZ okunur. Menü hem üst çubukta hem alt
+     * bilgide çiziliyor; belleğe almasaydık her sayfa görüntülemesi
+     * aynı sorguyu iki kez çalıştırırdı.
+     *
      * @return array<int,Page>
      */
     public function menu(): array
     {
+        if (self::$menuCache !== null) {
+            return self::$menuCache;
+        }
+
         $rows = $this->db->query(
             "SELECT * FROM sayfalar
               WHERE durum = 'yayin' AND menude = 1
            ORDER BY sira ASC, baslik ASC"
         )->fetchAll();
 
-        return array_map(static fn (array $row): Page => Page::fromRow($row), $rows);
+        return self::$menuCache = array_map(static fn (array $row): Page => Page::fromRow($row), $rows);
     }
 
     /**
@@ -163,6 +188,8 @@ final class PageRepository
 
         $stmt->execute($this->bind($data));
 
+        self::flushMenu();
+
         return (int) $this->db->lastInsertId();
     }
 
@@ -186,6 +213,8 @@ final class PageRepository
         unset($params[':yazar_id']);
 
         $stmt->execute($params + [':id' => $id]);
+
+        self::flushMenu();
     }
 
     /**
@@ -220,6 +249,8 @@ final class PageRepository
         $stmt = $this->db->prepare('DELETE FROM sayfalar WHERE id = :id AND korumali = 0');
         $stmt->execute([':id' => $id]);
 
+        self::flushMenu();
+
         return $stmt->rowCount() > 0;
     }
 
@@ -227,6 +258,8 @@ final class PageRepository
     {
         $stmt = $this->db->prepare('UPDATE sayfalar SET durum = :durum WHERE id = :id');
         $stmt->execute([':durum' => $durum === 'yayin' ? 'yayin' : 'taslak', ':id' => $id]);
+
+        self::flushMenu();
     }
 
     /**

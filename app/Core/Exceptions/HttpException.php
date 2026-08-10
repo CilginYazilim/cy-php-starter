@@ -141,6 +141,36 @@ final class HttpException extends RuntimeException
     }
 
     /** Hangi görünüm dosyası basılacak? Karşılığı yoksa 500'e düşer. */
+    /**
+     * TELDEN GİDECEK durum kodu.
+     *
+     * 419 ("Page Expired") Laravel'in icadıdır; IANA'da KAYITLI
+     * DEĞİLDİR. Apache, tanımadığı bir durum kodu gördüğünde yanıtı
+     * 500'e çevirir — yani "oturumunuz düştü, sayfayı yenileyin"
+     * demeye çalışırken kullanıcıya "sunucu hatası" gösteriyorduk.
+     * Daha kötüsü: panelin AJAX katmanı 419'u görüp sayfayı
+     * tazeleyecekken 500 görüp "Bir hata oluştu" diyor, kullanıcı
+     * neyi düzelteceğini bilemiyordu.
+     *
+     * Bu yüzden kablodaki kod standart karşılığına indirgenir; 419
+     * bilgisi UYGULAMA İÇİNDE korunur (başlık, metin ve görünüm hâlâ
+     * "Oturum Süresi Doldu" der, JSON yanıtı da "expired" bayrağı
+     * taşır).
+     */
+    public function wireStatus(): int
+    {
+        return match ($this->status) {
+            419     => 403,   // CSRF/bayat sayfa → Forbidden
+            default => $this->status,
+        };
+    }
+
+    /** Yeniden giriş/yenileme gerektiren durum mu? (401, 419) */
+    public function isExpired(): bool
+    {
+        return in_array($this->status, [401, 419], true);
+    }
+
     public function view(): string
     {
         return match ($this->status) {
