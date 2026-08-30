@@ -133,7 +133,10 @@ final class SystemController extends Controller
 
         return [
             'Uygulama'       => (string) Config::get('app.name'),
-            'Sürüm'          => Setting::get('sistem_surum', '1.0.0'),
+            // Sürüm KODDAN okunur (config/app.php). Veritabanındaki eski
+            // "sistem_surum" ayarı kaldırıldı: şablonu güncelleyen kişi
+            // migration çalıştırana kadar burada eski numara duruyordu.
+            'Sürüm'          => (string) Config::get('app.version', '1.0.0'),
             'Ortam'          => $env === 'production' ? 'Yayın (production)' : 'Geliştirme (' . $env . ')',
             'Hata ayıklama'  => Config::isDebug() ? 'AÇIK' : 'Kapalı',
             'Adres biçimi'   => Config::get('app.pretty_urls', true) ? 'Temiz adres (SEO uyumlu)' : 'index.php?r=…',

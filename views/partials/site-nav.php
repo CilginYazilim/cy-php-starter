@@ -3,10 +3,21 @@
  * =====================================================================
  *  PARÇA: Ön yüz üst menü
  * ---------------------------------------------------------------------
- *  Menü ARTIK SABİT DEĞİLDİR: "Ana Sayfa" dışındaki bağlantılar
- *  "sayfalar" tablosundan gelir (durum = yayin ve "menüde göster"
- *  işaretli olanlar). Panelden yeni bir sayfa açan kişi menüye de
- *  eklemek için kod düzenlemek zorunda kalmaz.
+ *  Menü SABİT DEĞİLDİR: "Ana Sayfa" dışındaki bağlantılar "sayfalar"
+ *  tablosundan gelir (durum = yayin ve "menüde göster" işaretli
+ *  olanlar). Panelden yeni bir sayfa açan kişi menüye eklemek için
+ *  kod düzenlemek zorunda kalmaz.
+ *
+ *  MOBİL DÜZEN
+ *  -----------
+ *  Tema düğmesi HAMBURGERİN DIŞINDA durur. İçeride olduğu sürece
+ *  temayı değiştirmek "menüyü aç → aşağı kaydır → düğmeyi bul"
+ *  demekti; en sık kullanılan ikinci eylem için fazla yol. Artık
+ *  marka ile hamburger arasında, tek dokunuşluk mesafede.
+ *
+ *  Hamburger simgesi menü açıkken çarpıya döner (CSS, aria-expanded
+ *  özniteliğine bakar) — düğmenin ikinci basışta ne yapacağı
+ *  simgeden okunur.
  * =====================================================================
  */
 
@@ -29,18 +40,29 @@ try {
     // Menü kritik değildir; hata görünümü bozmasın.
 }
 ?>
-<nav class="navbar navbar-expand-lg cy-site-nav">
+<nav class="navbar navbar-expand-lg cy-site-nav" id="cy_site_nav">
     <div class="container">
         <a class="navbar-brand cy-site-nav__brand" href="<?= e(url('')) ?>">
             <img src="<?= e(Setting::logoUrl()) ?>" alt="">
             <span><?= e(Setting::get('site_adi', $appName ?? '')) ?></span>
         </a>
 
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#cySiteNav" aria-label="Menüyü aç/kapat">
-            <?= icon('menu') ?>
-        </button>
+        <div class="cy-site-nav__tools order-lg-3 ms-lg-2">
+            <button type="button" class="cy-topbar__toggle" id="cy_theme_toggle"
+                    aria-label="Açık/koyu tema" title="Açık/koyu tema">
+                <span class="cy-theme-icon cy-theme-icon--light"><?= icon('moon') ?></span>
+                <span class="cy-theme-icon cy-theme-icon--dark d-none"><?= icon('sun') ?></span>
+            </button>
 
-        <div class="collapse navbar-collapse" id="cySiteNav">
+            <button class="navbar-toggler d-lg-none" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#cySiteNav"
+                    aria-controls="cySiteNav" aria-expanded="false" aria-label="Menüyü aç/kapat">
+                <?= icon('menu', 'cy-icon cy-nav-icon--open') ?>
+                <?= icon('close', 'cy-icon cy-nav-icon--close') ?>
+            </button>
+        </div>
+
+        <div class="collapse navbar-collapse order-lg-2" id="cySiteNav">
             <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
                 <?php foreach ($links as $link): ?>
                     <li class="nav-item">
@@ -66,13 +88,6 @@ try {
                         </li>
                     <?php endif; ?>
                 <?php endif; ?>
-
-                <li class="nav-item">
-                    <button type="button" class="cy-topbar__toggle ms-lg-2" id="cy_theme_toggle" aria-label="Açık/koyu tema" title="Açık/koyu tema">
-                        <span class="cy-theme-icon cy-theme-icon--light"><?= icon('moon') ?></span>
-                        <span class="cy-theme-icon cy-theme-icon--dark d-none"><?= icon('sun') ?></span>
-                    </button>
-                </li>
             </ul>
         </div>
     </div>

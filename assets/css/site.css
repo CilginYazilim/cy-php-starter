@@ -1,70 +1,113 @@
 /* ==================================================================
- *  ÇILGIN YAZILIM – ÖN YÜZ (SİTE) STİLLERİ
+ *  ÇILGIN YAZILIM – ÖN YÜZ (SİTE) KABUK STİLLERİ
  * ------------------------------------------------------------------
  *  Genel tasarım token'ları "cilginyazilim.css" dosyasındadır.
- *  Bu dosya SADECE ziyaretçi sayfalarına (ana sayfa, hakkımızda,
- *  iletişim, giriş, kayıt) özgü yerleşim ve bileşenleri tanımlar.
+ *  Bu dosya SADECE ziyaretçi sayfalarının KABUĞUNU tanımlar:
+ *  üst menü, alt bilgi, giriş/kayıt ekranı, bakım örtüsü.
+ *
+ *  İÇERİK BÖLÜMLERİ (hero, özellik kartları, iletişim kartları,
+ *  metin blokları) "site-sections.css" dosyasındadır. İkisi ayrıdır
+ *  ve BİRBİRİNİN KURALINI TEKRAR ETMEZ:
+ *
+ *    Eskiden .cy-hero, .cy-hero__title, .cy-hero__logo, .cy-prose ve
+ *    .cy-section__title hem burada hem orada tanımlıydı. İki dosya
+ *    aynı özelliği farklı değerlerle yazınca yükleme sırası kazanıyor,
+ *    hangi kuralın geçerli olduğu okunamaz hale geliyordu. En görünür
+ *    sonucu şuydu: buradaki
+ *        @media (max-width: 767.98px) { .cy-hero__logo { display:none } }
+ *    satırı TELEFONDA hero kartındaki logoyu tamamen siliyor, kart
+ *    logosuz bir kutu olarak kalıyordu. Tekrarların hepsi kaldırıldı.
  *
  *  Yükleme sırası: bootstrap.min.css → cilginyazilim.css → site.css
+ *                  → site-sections.css
  * ================================================================== */
 
 body.cy-site { background: var(--cy-bg); }
 
 /* ------------------------------------------------------------------
  *  ÜST MENÜ
+ * ------------------------------------------------------------------
+ *  Menü YAPIŞKANDIR (sticky): uzun bir sayfanın ortasındayken başka
+ *  bir sayfaya geçmek için en yukarı kaydırmak gerekmez. Telefonda
+ *  bu, gezinmenin en çok hissedilen farkıdır.
  * ------------------------------------------------------------------ */
 .cy-site-nav {
+    position: sticky;
+    top: 0;
+    z-index: 1035;   /* Sabit WhatsApp düğmesinin (1030) üstünde */
     background: var(--cy-surface);
     border-bottom: 1px solid var(--cy-border);
-    padding: .75rem 0;
+    padding: .6rem 0;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
 }
+
+/* Sayfa aşağı kaydırılınca menü hafifçe "kalkar". Sınıfı app.js ekler. */
+.cy-site-nav.is-stuck { box-shadow: var(--cy-shadow-sm); }
 
 .cy-site-nav__brand {
     display: inline-flex;
     align-items: center;
     gap: .6rem;
+    min-width: 0;
+    max-width: 100%;
     font-weight: 700;
     color: var(--cy-text);
     text-decoration: none;
 }
 
-.cy-site-nav__brand img { width: 34px; height: 34px; object-fit: contain; }
+.cy-site-nav__brand img { width: 34px; height: 34px; flex: 0 0 auto; object-fit: contain; }
+
+/* Uzun site adları dar ekranda menü düğmesini ezmesin. */
+.cy-site-nav .navbar-brand span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 
 .cy-site-nav .nav-link {
     color: var(--cy-text-soft);
     font-weight: 500;
     font-size: .875rem;
+    border-radius: var(--cy-radius-sm);
 }
+.cy-site-nav .nav-link:hover  { color: var(--cy-brand); }
 .cy-site-nav .nav-link.active { color: var(--cy-brand-600); font-weight: 700; }
-.cy-site-nav .navbar-toggler { border: 1px solid var(--cy-border); border-radius: var(--cy-radius-sm); padding: .35rem; }
+
+.cy-site-nav .navbar-toggler {
+    display: inline-grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius-sm);
+}
+.cy-site-nav .navbar-toggler:focus { box-shadow: var(--cy-focus); }
 .cy-site-nav .navbar-toggler .cy-icon { width: 22px; height: 22px; color: var(--cy-text-soft); }
 
-/* ------------------------------------------------------------------
- *  HERO (ana sayfa üst bölüm)
- * ------------------------------------------------------------------ */
-.cy-hero {
-    background: linear-gradient(180deg, var(--cy-brand-50), var(--cy-bg));
-    border-bottom: 1px solid var(--cy-border);
-}
+/* Menü açıkken hamburger simgesi çarpıya döner: açık/kapalı durumu
+   simgenin kendisinden okunur. */
+.cy-site-nav .navbar-toggler .cy-nav-icon--close { display: none; }
+.cy-site-nav .navbar-toggler[aria-expanded="true"] .cy-nav-icon--open  { display: none; }
+.cy-site-nav .navbar-toggler[aria-expanded="true"] .cy-nav-icon--close { display: block; }
 
-.cy-hero__title {
-    font-size: clamp(1.75rem, 4vw, 2.75rem);
-    font-weight: 800;
-    letter-spacing: -.03em;
-    line-height: 1.15;
-    margin-bottom: 1rem;
-}
-
-.cy-hero__lead { font-size: 1.0625rem; color: var(--cy-text-soft); max-width: 46ch; }
-.cy-hero__logo { width: 180px; max-width: 60%; object-fit: contain; }
-
-.cy-section__title { font-size: 1.5rem; font-weight: 700; letter-spacing: -.02em; }
-.cy-section__lead   { color: var(--cy-text-muted); max-width: 56ch; }
+/* Menünün sağ ucu. Tema düğmesi mobilde de HAMBURGERİN DIŞINDA kalır:
+   menüyü açmadan temayı değiştirmek tek dokunuşa iner. */
+.cy-site-nav__tools { display: flex; align-items: center; gap: .4rem; }
 
 /* ------------------------------------------------------------------
- *  METİN İÇERİK (Hakkımızda vb.)
+ *  BAKIM MODU
  * ------------------------------------------------------------------ */
-.cy-prose { color: var(--cy-text-soft); line-height: 1.75; font-size: .95rem; }
+.cy-maintenance {
+    display: grid;
+    place-items: center;
+    min-height: 70vh;
+    padding: 2rem 1.25rem;
+}
+
+.cy-maintenance__box { text-align: center; max-width: 32rem; }
+.cy-maintenance__box .cy-icon { color: var(--cy-brand-600); margin-bottom: 1rem; }
 
 /* ------------------------------------------------------------------
  *  ALT BİLGİ
@@ -75,33 +118,6 @@ body.cy-site { background: var(--cy-bg); }
     padding: 3rem 0 1.75rem;
     margin-top: 3rem;
 }
-
-/* ------------------------------------------------------------------
- *  BAKIM MODU
- * ------------------------------------------------------------------ */
-.cy-maintenance {
-    display: grid;
-    place-items: center;
-    min-height: 70vh;
-    padding: 2rem;
-}
-
-.cy-maintenance__box { text-align: center; max-width: 32rem; }
-.cy-maintenance__box .cy-icon { color: var(--cy-brand-600); margin-bottom: 1rem; }
-
-/* ------------------------------------------------------------------
- *  AYARLAR SAYFASI SEKMELERİ (Bootstrap nav-pills'i yumuşatır)
- * ------------------------------------------------------------------ */
-.cy-card__header--tabs { padding-bottom: 0; border-bottom: 0; }
-
-.cy-tabnav .nav-link {
-    color: var(--cy-text-muted);
-    font-size: .8125rem;
-    font-weight: 600;
-    padding: .5rem .85rem;
-    border-radius: var(--cy-radius-sm) var(--cy-radius-sm) 0 0;
-}
-.cy-tabnav .nav-link.active { color: var(--cy-brand-600); background: var(--cy-brand-100); }
 
 /* ------------------------------------------------------------------
  *  GİRİŞ / KAYIT EKRANI
@@ -182,13 +198,102 @@ body.cy-site { background: var(--cy-bg); }
 .cy-quick-login__hint { margin: .85rem 0 0; color: var(--cy-text-muted); font-size: .6875rem; line-height: 1.5; }
 .cy-quick-login__hint code { font-size: .6875rem; }
 
-/* ------------------------------------------------------------------
+
+/* ==================================================================
  *  MOBİL UYUM
- * ------------------------------------------------------------------ */
+ * ------------------------------------------------------------------
+ *  Ölçütler panelinkiyle (admin.css) aynıdır; iki yüz arasında gidip
+ *  gelen kullanıcı aynı dokunma hissini bulmalı:
+ *    - Dokunma hedefi en az 44×44 piksel (Apple/Google önerisi)
+ *    - Form alanları 16 piksel — küçüğünde iOS sayfayı yakınlaştırır
+ *    - Çentikli ekranlarda güvenli alan payı
+ * ================================================================== */
+
+/* --- 992px altı: menü açılır panele döner --- */
+@media (max-width: 991.98px) {
+    /* Açılan menü, üst çubuğun altına yapışan bir panel gibi durur ve
+       KENDİ İÇİNDE kayar: menü bağlantıları panelden eklendiği için
+       sayıları bilinmez; on sayfalık bir menü ekranı taşırmamalı. */
+    .cy-site-nav .navbar-collapse {
+        max-height: calc(100vh - 5.5rem);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: .6rem -.25rem -.25rem;
+        padding: 0 .25rem .25rem;
+        border-top: 1px solid var(--cy-border);
+    }
+
+    .cy-site-nav .navbar-nav { gap: .15rem; padding-top: .5rem; }
+
+    /* Parmakla rahat seçilen satırlar. */
+    .cy-site-nav .nav-link {
+        display: flex;
+        align-items: center;
+        min-height: 46px;
+        padding: .55rem .75rem;
+        font-size: .9375rem;
+    }
+    .cy-site-nav .nav-link.active { background: var(--cy-brand-soft); }
+
+    /* Menüdeki düğmeler (Giriş / Kayıt / Panele Git) tam genişlik. */
+    .cy-site-nav .navbar-nav .cy-btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 46px;
+        margin-top: .35rem;
+    }
+}
+
+/* --- 768px altı: TELEFON --- */
 @media (max-width: 767.98px) {
-    .cy-hero__title { font-size: 1.75rem; }
-    .cy-hero__logo { display: none; }
+    /* Dokunma hedefleri */
+    .cy-site .cy-btn     { min-height: 44px; padding: .6rem 1.1rem; }
+    .cy-site .cy-btn--sm { min-height: 38px; }
+
+    /* Ana sayfadaki eylem düğmeleri tek sütun: yan yana sıkışan üç
+       düğmenin hiçbiri parmakla güvenle seçilemiyordu. */
+    .cy-hero__actions { flex-direction: column; align-items: stretch; }
+    .cy-hero__actions .cy-btn { width: 100%; justify-content: center; }
+
+    .cy-cta__actions { width: 100%; }
+    .cy-cta__actions .cy-btn { flex: 1 1 auto; justify-content: center; }
+
+    /* İletişim formunun gönder düğmesi tam genişlik olur ve gizlilik
+       notu altına iner: sayfanın tek amacı bu düğmeye basmak. */
+    .cy-contact-actions { flex-direction: column; align-items: stretch !important; }
+    .cy-contact-actions .cy-btn { width: 100%; justify-content: center; }
+    .cy-contact-actions > span { text-align: center; }
+
+    /* iOS ZOOM SORUNU: 16px'ten küçük bir alana dokunulunca Safari
+       sayfayı otomatik yakınlaştırır ve düzen bozulur. Panelde de
+       aynı kural var (admin.css); ön yüzde admin.css YÜKLENMEDİĞİ
+       için burada ayrıca tanımlanmak zorunda. */
+    .cy-site .form-control,
+    .cy-site .form-select { font-size: 16px; }
+
     .cy-site-footer { padding: 2rem 0 1.25rem; }
-    .cy-auth-page { padding: 2rem 0; }
+
+    /* Sabit WhatsApp düğmesi alt bilginin son satırının SAĞ UCUNU
+       kapatıyordu ("cilginyazilim.com ile geliştirildi" yazısı düğmenin
+       altında kalıyordu). Telefonda satırı sola yaslayıp düğmeye pay
+       bırakıyoruz. */
+    .cy-site-footer__bottom { flex-direction: column; padding-right: 4.5rem; }
+
+    .cy-auth-page   { padding: 2rem 0; min-height: 0; }
     .cy-quick-login__grid { grid-template-columns: 1fr; }
+
+    /* Bildirimler üstte ve tam genişlikte — panelle aynı davranış. */
+    .cy-site .cy-toast-container { left: .5rem; right: .5rem; top: .5rem; }
+    .cy-site .cy-toast { max-width: none; width: 100%; }
+}
+
+/* --- 400px altı: çok dar telefonlar --- */
+@media (max-width: 399.98px) {
+    .cy-site-nav__brand span { font-size: .9375rem; }
+    .cy-site-nav__brand img  { width: 30px; height: 30px; }
+}
+
+/* --- Çentikli ekranlar (iPhone) için güvenli alan --- */
+@supports (padding: max(0px)) {
+    .cy-site-footer { padding-bottom: max(1.75rem, env(safe-area-inset-bottom)); }
 }

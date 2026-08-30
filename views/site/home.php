@@ -160,7 +160,7 @@ $whatsapp   = HomeController::whatsappLink();
                 <p>Formu doldurun, en kısa sürede dönüş yapalım.</p>
             </div>
 
-            <div class="d-flex flex-wrap gap-2">
+            <div class="cy-cta__actions d-flex flex-wrap gap-2">
                 <a class="btn cy-btn cy-btn--primary" href="<?= e(url('iletisim')) ?>">
                     <?= icon('mail', 'cy-icon cy-icon--sm') ?> İletişim Formu
                 </a>

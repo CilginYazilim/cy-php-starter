@@ -42,7 +42,11 @@ $baslik   = $sayfa?->baslik ?? 'İletişim';
     <div class="container">
         <div class="row g-4">
             <!-- ============ SOL: BİLGİLER ============ -->
-            <div class="col-12 col-lg-5">
+            <?php /* MOBİLDE FORM ÖNCE GELİR. Bu sayfaya gelen kişinin
+                     amacı yazmaktır; telefonda önce iki ekran boyu
+                     iletişim kartı okutmak, formu görünmez kılıyordu.
+                     Geniş ekranda sıra korunur (order-lg-*). */ ?>
+            <div class="col-12 col-lg-5 order-2 order-lg-1">
                 <?php if ($iletisim !== []): ?>
                     <div class="cy-card mb-3">
                         <div class="cy-card__header">
@@ -93,7 +97,7 @@ $baslik   = $sayfa?->baslik ?? 'İletişim';
             </div>
 
             <!-- ============ SAĞ: FORM ============ -->
-            <div class="col-12 col-lg-7">
+            <div class="col-12 col-lg-7 order-1 order-lg-2">
                 <?php if ($formOpen): ?>
                     <div class="cy-card">
                         <div class="cy-card__header">
@@ -180,7 +184,7 @@ $baslik   = $sayfa?->baslik ?? 'İletişim';
                                     </div>
                                 </div>
 
-                                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">
+                                <div class="cy-contact-actions d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">
                                     <button type="submit" class="btn cy-btn cy-btn--primary" id="contact_submit">
                                         <span class="spinner-border spinner-border-sm me-1 d-none" id="contact_spinner"></span>
                                         <?= icon('send', 'cy-icon cy-icon--sm') ?> <span id="contact_submit_label">Gönder</span>

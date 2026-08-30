@@ -150,7 +150,6 @@ INSERT INTO `ayarlar`
 ('sistem_sayfa_basina',   '10',   'sistem', 'sayi',  'Sayfa Başına Kayıt',   'Listelerde varsayılan sayfa boyutu.', NULL, 30),
 ('sistem_zaman_dilimi',   'Europe/Istanbul', 'sistem', 'metin', 'Zaman Dilimi', 'Örn: Europe/Istanbul', NULL, 40),
 ('sistem_tema_rengi',     '#0b5cb5', 'sistem', 'renk', 'Tema Rengi',          'Panelin ve sitenin ana rengi. Butonlar, bağlantılar, aktif menü ve gradyanlar bu renkten türetilir; kaydettiğiniz anda her yerde geçerli olur.', NULL, 50),
-('sistem_surum',          '2.1.0', 'sistem', 'metin', 'Sürüm',                'Şablon sürümü.', NULL, 90),
 
 -- ---- UYGULAMA (PWA) ----
 -- Künye (manifest) alanlarının hepsi BOŞ gelir. Bu bir eksiklik DEĞİL,
@@ -181,7 +180,6 @@ INSERT INTO `ayarlar`
 -- sayfasının yan sütunundaki YÜKLEME KARTINDAN değişir, elle yazılmaz.
 ('pwa_simge',      '',  'dahili', 'metin', 'Uygulama Simgesi', NULL, NULL, 95);
 
-UPDATE `ayarlar` SET `duzenlenebilir` = 0 WHERE `anahtar` = 'sistem_surum';
 
 
 -- ===============================================================

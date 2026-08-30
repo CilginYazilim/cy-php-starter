@@ -6,14 +6,15 @@
 
 **Kurulum sihirbazı · rol tabanlı panel · konsol · migration · kuyruk · olay · modül sistemi · REST API · PWA — hepsi hazır.**
 
+[![Sürüm](https://img.shields.io/badge/Sürüm-1.1.0-0b5cb5?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/releases)
 [![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://php.net)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.2-7952B3?style=flat-square&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 [![Bağımlılık](https://img.shields.io/badge/Bağımlılık-Sıfır-16a34a?style=flat-square)](#)
 [![License](https://img.shields.io/badge/Lisans-MIT-16a34a?style=flat-square)](LICENSE)
 
-[cilginyazilim.com](https://cilginyazilim.com)
-
-**[📖 Ayrıntılı Sistem Kılavuzu → SISTEM.md](SISTEM.md)**
+**[📖 Sistem Kılavuzu → SISTEM.md](SISTEM.md)**
+· **[💡 Örnek kodlar → Kod Kütüphanesi](https://cilginyazilim.com/kutuphane)**
+· **[📦 Şablonun sayfası](https://cilginyazilim.com/kutuphane/php-baslangic-sablonu)**
 
 </div>
 
@@ -68,6 +69,7 @@ Events::dispatch(new UserRegistered($user));
 | **Ayarlar** | Bölüm bölüm sayfalar · durum özetli genel bakış · kapsamlı kaydetme · logo **ve favicon** yükleme |
 | **İletişim** | Form + spam koruması · **WhatsApp düğmesi** (hazır mesajla) · sosyal medya bağlantıları |
 | **Tema** | Tek renk seçin, panelin ve sitenin tamamı yeniden renklensin |
+| **Mobil** | Ön yüz ve panelin tamamı mobil öncelikli · 44px dokunma hedefleri · yapışkan menü · iOS yakınlaştırma ve çentik payı çözülmüş |
 | **Konsol** | `php cy` — 20 komut, üreteçler dahil |
 
 ---
@@ -241,6 +243,43 @@ ApiResponse::paginated($items, $total, $page, $perPage);
 
 ---
 
+## Örnek kodlar ve belgeler
+
+Şablonun her parçası için çalışan örnek kod, açıklamalı anlatım ve
+kopyalanabilir parçacıklar **Çılgın Yazılım Kod Kütüphanesi**'nde:
+
+| Kaynak | Adres |
+|---|---|
+| Kod kütüphanesi (tüm konular) | <https://cilginyazilim.com/kutuphane> |
+| Bu şablonun sayfası | <https://cilginyazilim.com/kutuphane/php-baslangic-sablonu> |
+| Depo ve sürümler | <https://github.com/CilginYazilim/cy-php-starter> |
+| Mimari ve genişletme rehberi | [SISTEM.md](SISTEM.md) |
+
+Bu bağlantılar sitenin **alt bilgisinde de sabit durur** (Örnek Kodlar
+sütunu); kurduğunuz projede gezinirken bir tık uzaktadır.
+
+---
+
+## Mobil
+
+Ön yüz ve panel **ayrı ayrı mobil için tasarlanmıştır** — masaüstü
+düzeninin küçültülmüş hâli değildir.
+
+| Konu | Ön yüz | Panel |
+|---|---|---|
+| Menü | Yapışkan üst çubuk; hamburger açılır panel, kendi içinde kayar | Sol menü off-canvas çekmeceye döner (arka plan örtüsü + ESC) |
+| Tema düğmesi | Hamburgerin **dışında** — menüyü açmadan tek dokunuş | Üst çubukta sabit |
+| Dokunma hedefleri | Düğmeler ≥ 44px, menü satırları 46px | Düğmeler ≥ 44px, sayfalama 40px |
+| Formlar | Alanlar 16px — iOS'un otomatik yakınlaştırması engellenir | Aynı |
+| Yerleşim | Hero eylemleri tek sütun; iletişimde **form önce** gelir | Özet kartlar 2 sütun; tablolarda ikincil sütunlar ad hücresine iner |
+| Modallar | — | Alttan açılan sayfa görünümü, gövde kendi içinde kayar |
+| Çentikli ekran | `env(safe-area-inset-*)` payları | Aynı |
+
+Kırılma noktaları iki yüzde de aynıdır: `992px` (tablet) ve `768px`
+(telefon); `360px` altı için ayrıca sadeleştirme vardır.
+
+---
+
 ## Güvenlik
 
 | Tehdit | Önlem |
@@ -314,10 +353,62 @@ rengini kendinize göre ayarlayın; arayüz anında yeni renginizi alır.
 
 ---
 
+## Sürüm
+
+Sürüm numarası **kodda, tek yerde** durur:
+
+```php
+// config/app.php
+'version' => '1.1.0',
+```
+
+`Panel → Sistem Bilgisi` sayfası bu değeri okur. Şablonu güncellediğinizde
+numara kendiliğinden gelir; veritabanında ayrıca tutulmaz.
+
+### 1.1.0
+
+**Mobil**
+
+- Ön yüz menüsü yapışkan hâle geldi; hamburger açılır panel kendi içinde
+  kayıyor, simgesi açıkken çarpıya dönüyor
+- Tema düğmesi hamburgerin dışına alındı — menüyü açmadan erişilebiliyor
+- Ön yüzdeki düğme ve menü satırları 44–46px dokunma hedefine çıkarıldı
+- Ön yüz form alanlarına 16px kuralı eklendi (iOS'un otomatik
+  yakınlaştırması artık düzeni bozmuyor); daha önce yalnızca panelde vardı
+- Ana sayfadaki hero eylemleri telefonda tek sütuna iniyor
+- İletişim sayfasında telefonda **form önce**, bilgi kartları sonra geliyor
+- Alt bilgi sütunları telefonda alt alta diziliyor; sabit WhatsApp düğmesi
+  artık alt bilginin son satırını kapatmıyor
+- Panelde özet kartların tek sütuna inme sınırı 400px'ten 360px'e çekildi —
+  eski sınır iPhone 12/13/14 (390px) ve SE (375px) dahil neredeyse her
+  telefonu kapsıyor, kontrol paneli gereksiz yere uzuyordu
+
+**Düzeltmeler**
+
+- `site.css` ile `site-sections.css` arasındaki çakışan kurallar
+  temizlendi. Bunlardan biri telefonda hero kartının logosunu tamamen
+  gizliyordu (`.cy-hero__logo { display: none }`)
+- Sürüm numarası tek kaynağa indirildi. Üç farklı yerde üç farklı değer
+  duruyordu: `kurulum/database.sql` "2.1.0", Sistem Bilgisi varsayılanı
+  "1.0.0", GitHub sürüm etiketi "v1.0.0"
+
+**Eklenenler**
+
+- Alt bilgide **Örnek Kodlar** sütunu: kod kütüphanesi, şablonun sayfası
+  ve depo bağlantısı
+- `icon()` yardımcısına `book` ve `code` simgeleri
+
+> **Güncelliyorsanız:** `php cy migrate` çalıştırın. Tek migration var,
+> veritabanındaki ölü `sistem_surum` ayarını siler.
+
+---
+
 <div align="center">
 
 **Ayrıntılı mimari, tasarım kararları ve genişletme rehberi için:
 [SISTEM.md](SISTEM.md)**
+
+**Örnek kodlar: [cilginyazilim.com/kutuphane](https://cilginyazilim.com/kutuphane)**
 
 MIT Lisansı · **Çılgın Yazılım** · [cilginyazilim.com](https://cilginyazilim.com)
 

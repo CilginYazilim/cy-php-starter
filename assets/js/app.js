@@ -463,6 +463,39 @@ window.CY = (function ($) {
 
             reader.readAsDataURL(file);
         });
+
+        /* =========================================================
+         *  6) ÖN YÜZ ÜST MENÜSÜ
+         * ---------------------------------------------------------
+         *  Menü yapışkandır (CSS: position: sticky). Sayfanın en
+         *  üstündeyken düz durması, kaydırıldığında ise içerikten
+         *  ayrıldığının belli olması gerekir; yoksa altındaki kart
+         *  menüye yapışık görünür. Gölgeyi CSS tek başına veremez —
+         *  "yapıştı mı" bilgisi yalnızca kaydırma konumundan gelir.
+         *
+         *  Panelde bu menü yoktur; eleman bulunamazsa blok hiç
+         *  çalışmaz.
+         * ======================================================= */
+        var siteNav = document.getElementById('cy_site_nav');
+
+        if (siteNav) {
+            var stuck = false;
+
+            var paintNav = function () {
+                var now = window.scrollY > 4;
+
+                if (now !== stuck) {
+                    stuck = now;
+                    siteNav.classList.toggle('is-stuck', stuck);
+                }
+            };
+
+            paintNav();
+
+            // passive: tarayıcı kaydırmayı beklemeden sürdürebilsin —
+            // mobilde akıcılığın farkı buradan gelir.
+            window.addEventListener('scroll', paintNav, { passive: true });
+        }
     });
 
     return CY;

@@ -21,6 +21,9 @@ config/config.local.php
 # --- Editör ve işletim sistemi artıkları ----------------------------
 .vscode/
 .idea/
+# VS Code çalışma alanı dosyası: yalnızca o makinedeki klasör düzenini
+# tarif eder, projeye ait bir bilgi taşımaz.
+*.code-workspace
 *.swp
 *.swo
 Thumbs.db

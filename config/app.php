@@ -15,6 +15,25 @@ use App\Core\Env;
 return [
     'name'  => Env::get('APP_NAME', 'Yeni Proje'),
     'brand' => 'Çılgın Yazılım',
+
+    /* -----------------------------------------------------------------
+     *  ŞABLON SÜRÜMÜ  —  TEK DOĞRU KAYNAK
+     * -----------------------------------------------------------------
+     *  Sürüm KODLA BİRLİKTE gelir; bu yüzden yeri koddur.
+     *
+     *  Eskiden veritabanındaki "sistem_surum" ayarında duruyordu ve iki
+     *  numara birbirini tutmuyordu: kurulum/database.sql "2.1.0",
+     *  Sistem Bilgisi sayfasının varsayılanı "1.0.0", GitHub sürümü ise
+     *  "v1.0.0" diyordu. Üstelik veritabanındaki bir değer, şablonu
+     *  güncelleyen kişi migration çalıştırmadıkça ESKİ SÜRÜMÜ göstermeye
+     *  devam ederdi — yani tam olarak yanıltması en kolay yerdeydi.
+     *
+     *  Numaralandırma GitHub sürüm etiketleriyle aynı çizgidedir
+     *  (github.com/CilginYazilim/cy-php-starter/releases) ve anlamsal
+     *  sürümleme kullanır: BÜYÜK.KÜÇÜK.YAMA
+     * -------------------------------------------------------------- */
+    'version' => '1.1.0',
+
     'desc'  => Env::get('APP_DESCRIPTION', 'Çılgın Yazılım örnek uygulaması'),
     'url'   => Env::get('APP_URL', ''),
 

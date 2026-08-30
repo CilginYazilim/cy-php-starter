@@ -1066,9 +1066,23 @@ body.is-sidebar-open .cy-backdrop { opacity: 1; visibility: visible; }
 
 /* --- 400px altı: çok dar telefonlar --- */
 @media (max-width: 399.98px) {
-    .cy-stats { grid-template-columns: 1fr; }
     .cy-hide-xs { display: none !important; }
     .cy-auth__panel { padding: 1.5rem 1rem; }
+}
+
+/* --- 360px altı: özet kartlar tek sütuna iner ---
+ *
+ *  Bu kural ÖNCEDEN 400px'te uygulanıyordu ve yanlıştı: iPhone 12/13/14
+ *  (390px), iPhone SE 2/3 (375px) ve yaygın Android telefonların çoğu
+ *  400'ün ALTINDA kalır. Yani "çok dar telefonlar için" yazılmış istisna,
+ *  pratikte NEREDEYSE HER TELEFONDA çalışıyor; dört özet kart alt alta
+ *  dizilince kontrol paneli ilk bakışta bir ekrana sığmıyordu.
+ *
+ *  360px, iki sütunun gerçekten sıkıştığı sınırdır (Galaxy Fold kapalı
+ *  hâli, eski iPhone SE). Tipik telefon artık iki sütun görür.
+ * ------------------------------------------------------------------ */
+@media (max-width: 359.98px) {
+    .cy-stats { grid-template-columns: 1fr; }
 }
 
 /* --- Yatay (landscape) mobil: dikey alan azdır, boşlukları küçült --- */
