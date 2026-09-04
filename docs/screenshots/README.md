@@ -1,21 +1,14 @@
 # Ekran Görüntüleri
 
-Bu klasör **boştur**. Eski görseller şablonun prosedürel sürümüne
-aitti; sol menü, koyu tema ve panel tabloları geldikten sonra artık
-ürünü doğru göstermiyorlardı, bu yüzden depodan çıkarıldılar.
-
-Yanlış bir ekran görüntüsü, hiç ekran görüntüsü olmamasından daha
-kötüdür: insanlar okumadıkları şeye değil, gördükleri şeye inanır.
-
-## Yeni görsel eklemek isterseniz
-
-Kurulumu tamamlayın, panele girin ve aşağıdaki adları kullanın:
+Bu klasördeki kareler, **bu depodaki kodun kurulduktan sonraki hâlidir**.
+Hepsi `kurulum/` sihirbazı tamamlandıktan sonra, sihirbazın yüklediği
+örnek veriyle çekilmiştir — gerçek müşteri verisi yoktur.
 
 | Dosya | İçerik |
 |---|---|
 | `01-anasayfa.png` | Ön yüz ana sayfa |
-| `02-kurulum-gereksinimler.png` | Kurulum sihirbazı — 1. adım |
-| `03-kurulum-veritabani.png` | Kurulum sihirbazı — 2. adım |
+| `02-kurulum-gereksinimler.png` | Kurulum sihirbazı — 1. adım (gereksinim denetimi) |
+| `03-kurulum-veritabani.png` | Kurulum sihirbazı — 2. adım (veritabanı) |
 | `04-giris.png` | Giriş ekranı |
 | `05-panel-ozet.png` | Kontrol paneli |
 | `06-panel-kullanicilar.png` | Kullanıcı yönetimi |
@@ -35,3 +28,5 @@ Kurulumu tamamlayın, panele girin ve aşağıdaki adları kullanın:
 - Örnek veriyle çekin (demo kullanıcılar listeyi dolu gösterir),
   gerçek müşteri verisiyle değil.
 - Şablonun tasarımı değiştiğinde görselleri **yenileyin ya da silin**.
+  Yanlış bir ekran görüntüsü, hiç ekran görüntüsü olmamasından daha
+  kötüdür: insanlar okumadıkları şeye değil, gördükleri şeye inanır.

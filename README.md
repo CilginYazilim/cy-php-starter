@@ -12,11 +12,101 @@
 [![Bağımlılık](https://img.shields.io/badge/Bağımlılık-Sıfır-16a34a?style=flat-square)](#)
 [![License](https://img.shields.io/badge/Lisans-MIT-16a34a?style=flat-square)](LICENSE)
 
+[**▶ Canlı Demo**](https://cilginyazilim.com/kutuphane/uygulama/cy-php-starter/) · [Kaynak Kütüphanesi](https://cilginyazilim.com/kutuphane/php-baslangic-sablonu) · [cilginyazilim.com](https://cilginyazilim.com)
+
 **[📖 Sistem Kılavuzu → SISTEM.md](SISTEM.md)**
 · **[💡 Örnek kodlar → Kod Kütüphanesi](https://cilginyazilim.com/kutuphane)**
 · **[📦 Şablonun sayfası](https://cilginyazilim.com/kutuphane/php-baslangic-sablonu)**
 
 </div>
+
+---
+
+<div align="center">
+
+## Canlı Demo
+
+**Kurulum yok, kayıt yok, indirme yok — tarayıcınızdan 3 saniyede deneyin.**
+
+<a href="https://cilginyazilim.com/kutuphane/uygulama/cy-php-starter/"><img src="https://img.shields.io/badge/CANLI_DEMOYU_A%C3%87-0b5cb5?style=for-the-badge&logo=googlechrome&logoColor=white&labelColor=061321" alt="Canlı Demoyu Aç" height="42"></a>
+<a href="https://cilginyazilim.com/kutuphane/php-baslangic-sablonu"><img src="https://img.shields.io/badge/KAYNAK_KODU_%C4%B0NCELE-0ea5e9?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=061321" alt="Kaynak Kodu İncele" height="42"></a>
+<a href="https://github.com/CilginYazilim/cy-php-starter/archive/refs/heads/main.zip"><img src="https://img.shields.io/badge/ZIP_%C4%B0ND%C4%B0R-16a34a?style=for-the-badge&logo=github&logoColor=white&labelColor=061321" alt="ZIP İndir" height="42"></a>
+
+<br><br>
+
+<a href="https://cilginyazilim.com/kutuphane/uygulama/cy-php-starter/" title="Canlı demoyu açmak için tıklayın">
+  <img src="docs/screenshots/05-panel-ozet.png" alt="PHP başlangıç şablonu kontrol paneli canlı demo önizlemesi" width="860">
+</a>
+
+<sub>▲ Görsele tıklayarak demoyu açabilirsiniz</sub>
+
+</div>
+
+> **`kurulum/` adresini açın; dört adımda çalışan bir site ve panel elde edin.**
+
+---
+
+## Ekran Görüntüleri
+
+Aşağıdaki kareler bu depodaki kodun **kurulduktan sonraki** hâlidir; hepsi
+`kurulum/` sihirbazı tamamlandıktan sonra, örnek veriyle çekilmiştir.
+
+### Kurulum sihirbazı
+
+Şablonun ayırt edici yanı burada başlar: `.env` dosyasını elle yazmaz,
+veritabanını elle açmazsınız. Sihirbaz önce sunucunuzu denetler, sonra
+şemayı kurar ve `.env` dosyasını sizin için üretir.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/02-kurulum-gereksinimler.png" alt="Kurulum sihirbazı: PHP sürümü ve eklenti denetimi"></td>
+<td width="50%"><img src="docs/screenshots/03-kurulum-veritabani.png" alt="Kurulum sihirbazı: veritabanı bağlantı adımı"></td>
+</tr>
+<tr>
+<td align="center"><sub><b>1. adım</b> — gereksinim denetimi</sub></td>
+<td align="center"><sub><b>2. adım</b> — veritabanı bağlantısı</sub></td>
+</tr>
+</table>
+
+### Panel
+
+<img src="docs/screenshots/05-panel-ozet.png" alt="Kontrol paneli: özet kartları, kayıt hareketi grafiği ve son mesajlar" width="100%">
+
+<sub>Kontrol paneli. Kartlar, 14 günlük kayıt grafiği ve son mesajlar — hepsi veritabanından, sahte veri yok.</sub>
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/06-panel-kullanicilar.png" alt="Kullanıcı yönetimi: sunucu taraflı tablo, rol rozetleri"></td>
+<td width="50%"><img src="docs/screenshots/07-panel-mesajlar.png" alt="Mesaj yönetimi: okundu durumu ve toplu işlem"></td>
+</tr>
+<tr>
+<td align="center"><sub>Kullanıcılar — rol rozetleri, arama, toplu işlem</sub></td>
+<td align="center"><sub>Mesajlar — iletişim formundan gelen kayıtlar</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/08-panel-ayarlar.png" alt="Site ayarları: tanımdan otomatik üretilen form"></td>
+<td width="50%"><img src="docs/screenshots/09-panel-sistem.png" alt="Sistem bilgisi ve güvenlik denetim listesi"></td>
+</tr>
+<tr>
+<td align="center"><sub>Site ayarları — form, ayar <b>tanımından</b> üretilir</sub></td>
+<td align="center"><sub>Sistem bilgisi — güvenlik denetim listesi</sub></td>
+</tr>
+</table>
+
+### Ön yüz, koyu tema ve mobil
+
+<table>
+<tr>
+<td width="40%"><img src="docs/screenshots/01-anasayfa.png" alt="Ön yüz ana sayfa"></td>
+<td width="40%"><img src="docs/screenshots/11-koyu-tema.png" alt="Panelin koyu tema görünümü"></td>
+<td width="20%"><img src="docs/screenshots/12-mobil.png" alt="Panelin telefon görünümü"></td>
+</tr>
+<tr>
+<td align="center"><sub>Ön yüz</sub></td>
+<td align="center"><sub>Koyu tema — tek CSS değişken seti</sub></td>
+<td align="center"><sub>Mobil</sub></td>
+</tr>
+</table>
 
 ---
 
