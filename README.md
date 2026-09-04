@@ -6,7 +6,7 @@
 
 **Kurulum sihirbazı · rol tabanlı panel · konsol · migration · kuyruk · olay · modül sistemi · REST API · PWA — hepsi hazır.**
 
-[![Sürüm](https://img.shields.io/badge/Sürüm-1.1.0-0b5cb5?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/releases)
+[![Sürüm](https://img.shields.io/badge/Sürüm-1.2.0-0b5cb5?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/releases)
 [![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://php.net)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.2-7952B3?style=flat-square&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 [![Bağımlılık](https://img.shields.io/badge/Bağımlılık-Sıfır-16a34a?style=flat-square)](#)
