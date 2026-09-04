@@ -56,6 +56,13 @@ DirectoryIndex index.php
 
     # Sondaki bölü işaretini temizle: /panel/ayarlar/ → /panel/ayarlar
     # (aynı içeriğin iki adresi olması SEO'da yinelenen içerik sayılır)
+    #
+    # VİTRİN İSTİSNASI: uygulama cilginyazilim.com/kutuphane/uygulama/<klasor>/
+    # adresinden de açılıyor. Kök .htaccess o adrese eğik çizgiyi EKLER, bu kural
+    # SİLER; ikisi karşılıklı 301 üretip isteği CI4'e düşürüyor ve ziyaretçi
+    # 404 görüyordu. THE_REQUEST istemcinin gönderdiği ham istektir; içeriden
+    # demos/ altına yapılan yeniden yazmadan etkilenmez.
+    RewriteCond %{THE_REQUEST} !\s/+(ci4/)?kutuphane/uygulama/
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.+)/$ $1 [R=301,L]
 
