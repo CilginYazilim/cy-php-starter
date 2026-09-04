@@ -53,7 +53,63 @@ final class Url
         $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? '/index.php'));
         $dir    = rtrim(str_replace('\\', '/', dirname($script)), '/');
 
-        return self::$base = ($dir === '' || $dir === '.') ? '' : $dir;
+        $dir = ($dir === '' || $dir === '.') ? '' : $dir;
+
+        return self::$base = self::aliasTaban($dir) ?? $dir;
+    }
+
+    /**
+     * VİTRİN (TAKMA AD) YOLU — uygulama BAŞKA bir adresten servis ediliyorsa.
+     *
+     * cilginyazilim.com/kutuphane/uygulama/cy-php-starter/ adresi sunucuda
+     * demos/cy-php-starter/ klasörüne İÇERİDEN bağlanır (mod_rewrite). Böyle
+     * bir istekte SCRIPT_NAME gerçek klasörü ("/demos/cy-php-starter/index.php")
+     * gösterir ama REQUEST_URI ziyaretçinin gördüğü adrestir. Taban yalnızca
+     * SCRIPT_NAME'den türetilirse ikisi tutmaz: rota "kutuphane/uygulama/..."
+     * diye okunur ve uygulama KENDİ 404'ünü basar.
+     *
+     * Bu yüzden istek gerçek klasörün altından GELMİYORSA taban isteğin
+     * kendisinden türetilir: yoldaki klasör adına kadar olan bölüm tabandır.
+     * Böylece hem rota doğru çözülür hem de üretilen bütün adresler (assets/,
+     * form action'ları, yönlendirmeler) ziyaretçinin bulunduğu adreste kalır.
+     *
+     * @param string $dir SCRIPT_NAME'den gelen gerçek klasör, ör. "/demos/cy-php-starter"
+     *
+     * @return string|null Takma ad tabanı; yoksa null (olağan durum)
+     */
+    private static function aliasTaban(string $dir): ?string
+    {
+        if ($dir === '') {
+            return null;
+        }
+
+        $uri = explode('?', (string) ($_SERVER['REQUEST_URI'] ?? ''), 2)[0];
+        $uri = rawurldecode($uri);
+
+        // Olağan durum: istek zaten gerçek klasörün altından geliyor.
+        if ($uri === '' || $uri === $dir || str_starts_with($uri, $dir . '/')) {
+            return null;
+        }
+
+        /* İstekten gelen bu yol adres üretiminde kullanılacak; karakter kümesi
+         * current() ile aynı dar kümeye indirilir, ".." koşulsuz reddedilir. */
+        if (preg_match('#[^a-zA-Z0-9/_.-]#', $uri) === 1 || str_contains($uri, '..')) {
+            return null;
+        }
+
+        $klasor = basename($dir);
+
+        if ($klasor === '') {
+            return null;
+        }
+
+        $yer = strpos($uri, '/' . $klasor . '/');
+
+        if ($yer !== false) {
+            return substr($uri, 0, $yer + strlen($klasor) + 1);
+        }
+
+        return str_ends_with($uri, '/' . $klasor) ? $uri : null;
     }
 
     /** Testler için tabanı elle belirlemek. */
@@ -97,10 +153,17 @@ final class Url
             $base     = self::base();
 
             if ($base !== '' && str_ends_with($configured, $base)) {
-                $configured = substr($configured, 0, -strlen($base));
+                return rtrim(substr($configured, 0, -strlen($base)), '/') . $relative;
             }
 
-            return rtrim($configured, '/') . $relative;
+            /* Taban APP_URL'inkiyle uyuşmuyorsa uygulama vitrin yolundan servis
+             * ediliyor demektir (bkz. aliasTaban()). APP_URL'in YOL kısmı o
+             * durumda başka bir hedefi gösterir; yalnızca alan adı alınır, yolu
+             * istekten türetilen taban verir. Aksi hâlde iki yol üst üste binip
+             * /demos/cy-php-starter/kutuphane/uygulama/... gibi adresler çıkar. */
+            $yol = rtrim((string) parse_url($configured, PHP_URL_PATH), '/');
+
+            return $yol === $base ? rtrim($configured, '/') . $relative : self::origin() . $relative;
         }
 
         $scheme = Session::isHttps() ? 'https' : 'http';
