@@ -11,7 +11,6 @@ namespace App\Core\Console\Commands;
 
 use App\Core\Config;
 use App\Core\Console\Command;
-use App\Core\Database\Migrator;
 
 final class MigrateCommand extends Command
 {
@@ -33,7 +32,7 @@ final class MigrateCommand extends Command
 
     public function handle(): int
     {
-        $migrator = new Migrator($this->db(), (string) Config::get('db.migrations'), \App\Core\Modules\Modules::migrationPaths());
+        $migrator = \App\Core\Modules\Modules::migrator($this->db(), (string) Config::get('db.migrations'));
 
         $pending = $migrator->pending();
 

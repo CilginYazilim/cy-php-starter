@@ -47,20 +47,28 @@ final class ApiToken
     {
         $plain = self::PREFIX . bin2hex(random_bytes(24));
 
+        /* Son geçerlilik SQL'in saatiyle yazılır; resolve() de onu
+         * NOW() ile karşılaştırır (bkz. Database::syncTimezone). */
+        $sure = $daysValid !== null && $daysValid > 0;
+
         $statement = self::db()->prepare(
             'INSERT INTO `api_anahtarlari` (kullanici_id, ad, onek, ozet, son_gecerlilik)
-             VALUES (:kullanici_id, :ad, :onek, :ozet, :son)'
+             VALUES (:kullanici_id, :ad, :onek, :ozet, '
+                . ($sure ? 'NOW() + INTERVAL :gun DAY' : 'NULL') . ')'
         );
 
-        $statement->execute([
+        $params = [
             ':kullanici_id' => $userId,
             ':ad'           => mb_substr(trim($name), 0, 100, 'UTF-8') ?: 'Anahtar',
             ':onek'         => substr($plain, 0, self::PREFIX_LEN),
             ':ozet'         => hash('sha256', $plain),
-            ':son'          => $daysValid !== null && $daysValid > 0
-                ? date('Y-m-d H:i:s', time() + ($daysValid * 86400))
-                : null,
-        ]);
+        ];
+
+        if ($sure) {
+            $params[':gun'] = min($daysValid, 3650);
+        }
+
+        $statement->execute($params);
 
         $id = (int) self::db()->lastInsertId();
 
@@ -82,8 +90,12 @@ final class ApiToken
             return null;
         }
 
+        /* Süre kontrolü SQL'de: PHP'nin strtotime()'ı ile okumak, iki
+         * saat dilimi farklıysa süresi dolmuş anahtarı saatlerce geçerli
+         * sayıyordu. */
         $statement = self::db()->prepare(
-            'SELECT id, kullanici_id, ozet, son_gecerlilik
+            'SELECT id, kullanici_id, ozet,
+                    (son_gecerlilik IS NOT NULL AND son_gecerlilik <= NOW()) AS suresi_doldu
                FROM `api_anahtarlari`
               WHERE onek = :onek
               LIMIT 5'
@@ -99,7 +111,7 @@ final class ApiToken
                 continue;
             }
 
-            if ($row['son_gecerlilik'] !== null && strtotime((string) $row['son_gecerlilik']) < time()) {
+            if ((int) $row['suresi_doldu'] === 1) {
                 return null;
             }
 
@@ -135,6 +147,35 @@ final class ApiToken
     }
 
     /**
+     * YALNIZCA SAHİBİNİN anahtarını siler. Profil ekranından gelen
+     * istekte anahtar numarası formdan gelir; sahiplik koşulu olmadan
+     * bir üye başkasının anahtarını iptal edebilirdi.
+     */
+    public static function revokeOwned(int $userId, int $id): bool
+    {
+        $statement = self::db()->prepare(
+            'DELETE FROM `api_anahtarlari` WHERE id = :id AND kullanici_id = :kullanici'
+        );
+        $statement->execute([':id' => $id, ':kullanici' => $userId]);
+
+        if ($statement->rowCount() > 0) {
+            Logger::info('API anahtarı iptal edildi', ['anahtar' => $id, 'kullanici' => $userId], 'auth');
+
+            return true;
+        }
+
+        return false;
+    }
+
+    public static function countForUser(int $userId): int
+    {
+        $statement = self::db()->prepare('SELECT COUNT(*) FROM `api_anahtarlari` WHERE kullanici_id = :id');
+        $statement->execute([':id' => $userId]);
+
+        return (int) $statement->fetchColumn();
+    }
+
+    /**
      * Bir kullanıcının anahtarları (açık hali ASLA döndürülmez).
      *
      * @return array<int,array<string,mixed>>
@@ -142,7 +183,8 @@ final class ApiToken
     public static function forUser(int $userId): array
     {
         $statement = self::db()->prepare(
-            'SELECT id, ad, onek, son_gecerlilik, son_kullanim, created_at
+            'SELECT id, ad, onek, son_gecerlilik, son_kullanim, created_at,
+                    (son_gecerlilik IS NOT NULL AND son_gecerlilik <= NOW()) AS suresi_doldu
                FROM `api_anahtarlari`
               WHERE kullanici_id = :id
               ORDER BY id DESC'

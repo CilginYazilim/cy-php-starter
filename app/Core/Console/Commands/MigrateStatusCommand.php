@@ -25,9 +25,15 @@ final class MigrateStatusCommand extends Command
         return 'Migration durumunu listeler.';
     }
 
+    /** Temel parti (0) kurulumla gelir ve geri alınamaz; tabloda öyle görünsün. */
+    private static function partiEtiketi(int $parti): string
+    {
+        return $parti === Migrator::BASELINE ? '0 (kurulum)' : (string) $parti;
+    }
+
     public function handle(): int
     {
-        $migrator = new Migrator($this->db(), (string) Config::get('db.migrations'), \App\Core\Modules\Modules::migrationPaths());
+        $migrator = \App\Core\Modules\Modules::migrator($this->db(), (string) Config::get('db.migrations'));
 
         $available = $migrator->available();
         $completed = $migrator->completed();
@@ -51,7 +57,7 @@ final class MigrateStatusCommand extends Command
 
             $rows[] = [
                 $done ? 'uygulandı' : 'BEKLİYOR',
-                $done ? (string) $completed[$name] : '—',
+                $done ? self::partiEtiketi($completed[$name]) : '—',
                 $name,
             ];
         }
@@ -62,7 +68,7 @@ final class MigrateStatusCommand extends Command
         $kayip = array_diff(array_keys($completed), $available);
 
         foreach ($kayip as $name) {
-            $rows[] = ['DOSYA YOK', (string) $completed[$name], $name];
+            $rows[] = ['DOSYA YOK', self::partiEtiketi($completed[$name]), $name];
         }
 
         $this->out->title('Migration durumu');

@@ -81,6 +81,18 @@ storage/files/*
 !storage/files/.gitignore
 !storage/files/.htaccess
 
+# --- Oturum dosyaları -----------------------------------------------
+#  Her kurulum oturumlarını KENDİ klasöründe tutar (bkz. Session).
+#  İçlerinde giriş yapmış kullanıcının kimliği durur; asla paylaşılmaz.
+storage/sessions/*
+!storage/sessions/.gitignore
+!storage/sessions/.htaccess
+
+# --- Kurulum kilidi ---------------------------------------------------
+#  Sihirbazın kendini kilitlediği dosya. Sunucuya özeldir; depoya
+#  girerse yeni bir klonda kurulum hiç başlamaz.
+/storage/installed.lock
+
 # --- Bağımlılık klasörleri ------------------------------------------
 /vendor/
 /node_modules/

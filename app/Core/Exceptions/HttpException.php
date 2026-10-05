@@ -140,7 +140,6 @@ final class HttpException extends RuntimeException
         return in_array($this->status, [401, 403, 419, 429], true);
     }
 
-    /** Hangi görünüm dosyası basılacak? Karşılığı yoksa 500'e düşer. */
     /**
      * TELDEN GİDECEK durum kodu.
      *
@@ -173,10 +172,23 @@ final class HttpException extends RuntimeException
 
     public function view(): string
     {
+        return match (true) {
+            $this->status === 404                     => 'errors/404',
+            in_array($this->status, [401, 403, 419], true) => 'errors/403',
+            $this->status >= 500 && $this->status !== 503 => 'errors/500',
+            // 400, 405, 422, 429, 503 … kendi başlığıyla gösterilir;
+            // eskiden hepsi "500 – Bir şeyler ters gitti" diyordu.
+            default                                   => 'errors/genel',
+        };
+    }
+
+    /** Retry-After başlığı gerekiyor mu? (429 ve 503 için, saniye) */
+    public function retryAfter(): int
+    {
         return match ($this->status) {
-            404     => 'errors/404',
-            401, 403, 419 => 'errors/403',
-            default => 'errors/500',
+            429     => max(1, (int) ($this->context['tekrar_dene'] ?? 60)),
+            503     => 600,
+            default => 0,
         };
     }
 

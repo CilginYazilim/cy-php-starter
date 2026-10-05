@@ -33,7 +33,9 @@ final class MakeModelCommand extends MakeCommand
 
     public function handle(): int
     {
-        $class = $this->studly($this->requireName('php cy make:model <ad>'));
+        $class = $this->className('php cy make:model <ad>');
+
+        $this->assertTableFree($this->snake($class) . 'lar');
 
         $path = CY_BASE . '/app/Models/' . $class . '.php';
 

@@ -17,10 +17,11 @@
  *  DESTEKLENEN SÖZDİZİMİ
  *      KEY=deger
  *      export KEY=deger              (kabuk betiklerinden kopyala-yapıştır)
- *      KEY="tırnaklı  deger"         (\n ve \" kaçışları çözülür)
+ *      KEY="tırnaklı  deger"         (\\ \" \$ \n \r \t kaçışları çözülür)
  *      KEY='ham deger'               (hiçbir kaçış çözülmez)
- *      KEY=deger   # satır sonu notu  (yalnızca TIRNAKSIZ değerlerde)
- *      KEY=${BASKA_KEY}/alt-yol      (daha önce tanımlanmış değişkene atıf)
+ *      KEY="deger"   # satır sonu notu (tırnaklı ya da tırnaksız)
+ *      KEY=${BASKA_KEY}/alt-yol      (daha önce tanımlanmış değişkene atıf;
+ *                                     düz "$" için tırnak içinde \$ yazın)
  *
  *  NEDEN putenv() KULLANMIYORUZ? putenv ile yazılan değerler alt
  *  süreçlere (exec, proc_open) miras kalır; veritabanı parolanızın
@@ -87,29 +88,31 @@ final class Env
         return [$key, self::parseValue(trim($value))];
     }
 
-    private static function parseValue(string $value): string
+    /**
+     * Tek bir değeri çözer. Testlerde doğrudan sınanabilsin diye
+     * "public"tir; uygulama kodu Env::get() kullanmalıdır.
+     */
+    public static function parseValue(string $value): string
     {
         if ($value === '') {
             return '';
         }
 
         $first = $value[0];
-        $last  = $value[strlen($value) - 1];
 
-        if (strlen($value) > 1 && $first === '"' && $last === '"') {
-            // Çift tırnak: kaçışlar çözülür.
-            $inner = substr($value, 1, -1);
+        /* TIRNAKLI DEĞER: kapanış tırnağı SONDAKİ karakter olmak
+         * zorunda değildir — KEY="deger"   # not  biçimi de geçerlidir.
+         * Kapanışı karakter karakter arıyoruz; kaçışlanmış \" kapanış
+         * sayılmaz. */
+        if ($first === '"' || $first === "'") {
+            $end = self::closingQuote($value, $first);
 
-            return self::interpolate(str_replace(
-                ['\\"', '\\n', '\\r', '\\t', '\\\\'],
-                ['"',   "\n",  "\r",  "\t",  '\\'],
-                $inner
-            ));
-        }
+            if ($end !== null) {
+                $inner = substr($value, 1, $end - 1);
 
-        if (strlen($value) > 1 && $first === "'" && $last === "'") {
-            // Tek tırnak: içerik olduğu gibi alınır (ham).
-            return substr($value, 1, -1);
+                // Tek tırnak: içerik olduğu gibi alınır (ham).
+                return $first === "'" ? $inner : self::unescape($inner);
+            }
         }
 
         /* TIRNAKSIZ değer: satır sonundaki notu ayıklarız.
@@ -118,6 +121,59 @@ final class Env
         $value = (string) preg_replace('/\s+#.*$/', '', $value);
 
         return self::interpolate(trim($value));
+    }
+
+    /** Açılış tırnağının eşinin konumu; kapanmamışsa null. */
+    private static function closingQuote(string $value, string $quote): ?int
+    {
+        $length = strlen($value);
+
+        for ($i = 1; $i < $length; $i++) {
+            if ($quote === '"' && $value[$i] === '\\') {
+                $i++; // kaçışlanmış karakteri atla
+
+                continue;
+            }
+
+            if ($value[$i] === $quote) {
+                return $i;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Çift tırnak içini TEK GEÇİŞTE çözer: kaçışlar ve ${ATIF}lar.
+     *
+     * NEDEN TEK GEÇİŞ? Eskiden önce kaçışlar çözülüyor, SONRA ${...}
+     * aranıyordu; "\$\{" gibi kaçışlanmış bir dolar işaretini korumanın
+     * yolu yoktu. Bir veritabanı parolası "${" içerdiğinde sessizce
+     * değişiyor, site veritabanına bağlanamıyordu. Artık "\$" düz bir
+     * dolar işaretidir ve atıf başlatmaz.
+     *
+     *      \\ → \     \" → "     \$ → $     \n \r \t → kontrol karakteri
+     *      tanınmayan kaçış (ör. \d) olduğu gibi kalır
+     */
+    private static function unescape(string $inner): string
+    {
+        return (string) preg_replace_callback(
+            '/\\\\(.)|\$\{([A-Za-z_][A-Za-z0-9_.]*)\}/s',
+            static function (array $m): string {
+                if (($m[1] ?? '') !== '') {
+                    return match ($m[1]) {
+                        'n'     => "\n",
+                        'r'     => "\r",
+                        't'     => "\t",
+                        '"', '\\', '$' => $m[1],
+                        default => '\\' . $m[1],
+                    };
+                }
+
+                return self::$values[$m[2]] ?? '';
+            },
+            $inner
+        );
     }
 
     /**
@@ -175,6 +231,34 @@ final class Env
         $raw = trim(self::get($key, (string) $default));
 
         return is_numeric($raw) ? (int) $raw : $default;
+    }
+
+    /**
+     * Bir değeri .env satırına GÜVENLE yazılabilir hale getirir —
+     * parseValue()'nun tam tersi: Env::parseValue(Env::quote($x)) === $x.
+     *
+     * Yalnızca güvenli karakterlerden oluşan değerler tırnaksız yazılır;
+     * geri kalan HER ŞEY çift tırnağa alınır ve \ " $ ile satır sonları
+     * kaçışlanır. Eskiden kurulum sihirbazı yalnızca " karakterini
+     * kaçışlıyordu: "\t" ya da "${" içeren bir veritabanı parolası
+     * okunurken değişiyor, site veritabanına bağlanamıyordu.
+     *
+     * Kurulum sihirbazı da bunu kullanır (bu dosya bağımlılıksızdır).
+     */
+    public static function quote(string $value): string
+    {
+        if ($value !== '' && preg_match('#^[A-Za-z0-9_.:/@+,-]+$#', $value) === 1) {
+            return $value;
+        }
+
+        return '"' . strtr($value, [
+            '\\' => '\\\\',
+            '"'  => '\\"',
+            '$'  => '\\$',
+            "\n" => '\\n',
+            "\r" => '\\r',
+            "\t" => '\\t',
+        ]) . '"';
     }
 
     /**

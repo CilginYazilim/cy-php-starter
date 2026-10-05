@@ -81,7 +81,19 @@ final class FileStore implements CacheStore
                 return null;
             }
 
-            return unserialize($payload);
+            /* Bozuk dosyada unserialize() FALSE döner (ve bir uyarı
+             * basar). Eskiden bu false olduğu gibi dönüyordu; çağıran
+             * kod "önbellekte false var" sanıyordu. Bozuk kayıt
+             * "yok" demektir; dosyayı da temizleriz. */
+            $value = @unserialize($payload);
+
+            if ($value === false && $payload !== serialize(false)) {
+                @unlink($file);
+
+                return null;
+            }
+
+            return $value;
         } catch (Throwable) {
             // Bozuk bir önbellek dosyası "yok" demektir.
             return null;

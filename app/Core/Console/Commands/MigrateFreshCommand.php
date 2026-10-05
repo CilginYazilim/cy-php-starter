@@ -3,10 +3,14 @@
  * =====================================================================
  *  php cy migrate:fresh – Tümünü geri alıp baştan uygular
  * ---------------------------------------------------------------------
- *  YIKICI KOMUT. Yalnızca migration'ların oluşturduğu tabloları
- *  etkiler; kurulum/database.sql ile gelen çekirdek tablolara
- *  (kullanicilar, ayarlar…) dokunmaz — onları down() yazan bir
- *  migration yoksa kimse silmez.
+ *  YIKICI KOMUT. Yalnızca kurulumdan SONRA uygulanan migration'ları
+ *  geri alır. Kurulumla gelen her şey (kurulum/database.sql ve
+ *  sihirbazın çalıştırdığı migration'lar) "temel parti" (0) olarak
+ *  işaretlidir ve bu komuttan etkilenmez.
+ *
+ *  Eskiden bu açıklama "çekirdek tablolara dokunmaz" diyordu ama
+ *  kurulumun migration'ları 1. partiye yazıldığı için doğru değildi:
+ *  komut "sayfalar" tablosunu düşürüp ayar satırlarını siliyordu.
  * =====================================================================
  */
 
@@ -16,7 +20,6 @@ namespace App\Core\Console\Commands;
 
 use App\Core\Config;
 use App\Core\Console\Command;
-use App\Core\Database\Migrator;
 
 final class MigrateFreshCommand extends Command
 {
@@ -36,9 +39,9 @@ final class MigrateFreshCommand extends Command
              . "  php cy migrate:fresh --force    Sormaz (cron/CI için)\n"
              . "  php cy migrate:fresh --seed     Bitince db:seed de çalıştırır\n"
              . "\n"
-             . "  Yalnızca migration'ların yarattığı tabloları etkiler.\n"
-             . "  Çekirdek tablolar (kullanicilar, ayarlar…) kurulum SQL'inden\n"
-             . "  geldiği için bu komuttan etkilenmez.";
+             . "  Yalnızca kurulumdan SONRA uygulanan migration'ları etkiler.\n"
+             . "  Kurulumla gelen tablolar (parti 0) bu komuttan etkilenmez;\n"
+             . "  durumu görmek için: php cy migrate:status";
     }
 
     public function handle(): int
@@ -49,7 +52,7 @@ final class MigrateFreshCommand extends Command
             return self::BASARILI;
         }
 
-        $migrator = new Migrator($this->db(), (string) Config::get('db.migrations'), \App\Core\Modules\Modules::migrationPaths());
+        $migrator = \App\Core\Modules\Modules::migrator($this->db(), (string) Config::get('db.migrations'));
 
         $this->out->title('Geri alınıyor');
 

@@ -218,21 +218,32 @@ final class Modules
     }
 
     /**
-     * Açık modüllerin migration klasörleri.
+     * Modüllerin migration klasörleri.
      *
+     * @param bool $includeDisabled true → kapalı modüller de dahil
+     *                              (geri alma sırasında dosyayı bulmak için)
      * @return array<string,string> modül adı => klasör yolu
      */
-    public static function migrationPaths(): array
+    public static function migrationPaths(bool $includeDisabled = false): array
     {
         $paths = [];
 
-        foreach (self::enabled() as $module) {
+        foreach ($includeDisabled ? self::all() : self::enabled() as $module) {
             if ($module->hasMigrations()) {
                 $paths[$module->ad] = $module->migrationsPath();
             }
         }
 
         return $paths;
+    }
+
+    /**
+     * Komut satırı için hazır Migrator: açık modüllerden yeni migration
+     * arar, geri alırken kapalı modüllerin dosyalarını da bulur.
+     */
+    public static function migrator(\PDO $db, string $path): \App\Core\Database\Migrator
+    {
+        return new \App\Core\Database\Migrator($db, $path, self::migrationPaths(), self::migrationPaths(true));
     }
 
     /** @return array<int,string> Bu istekte yüklenen modüller */

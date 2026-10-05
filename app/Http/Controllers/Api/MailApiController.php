@@ -315,7 +315,7 @@ final class MailApiController extends Controller
         $errors = [];
 
         $konu  = trim($request->input('konu'));
-        $govde = trim((string) ($_POST['govde'] ?? ''));
+        $govde = trim(is_string($_POST['govde'] ?? null) ? $_POST['govde'] : '');
 
         if (mb_strlen($konu, 'UTF-8') < 3) {
             $errors['konu'] = 'Konu en az 3 karakter olmalı.';
@@ -463,7 +463,7 @@ final class MailApiController extends Controller
      */
     private function fromManualList(Request $request): array
     {
-        $raw   = (string) ($_POST['adresler'] ?? '');
+        $raw   = is_string($_POST['adresler'] ?? null) ? $_POST['adresler'] : '';
         $parts = preg_split('/[\s,;]+/', $raw) ?: [];
 
         $recipients = [];

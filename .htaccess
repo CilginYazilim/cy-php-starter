@@ -38,6 +38,17 @@ DirectoryIndex index.php
     </IfModule>
 </FilesMatch>
 
+#  NOKTA İLE BAŞLAYAN KLASÖRLER (.git, .github, .vscode …)
+#  Yukarıdaki FilesMatch yalnızca DOSYA ADINA bakar: ".git/config"
+#  isteğinde dosya adı "config" olduğu için kural tutmuyor ve depo
+#  geçmişi (kaynak kodun tamamı, eski .env'ler dahil) indirilebiliyordu.
+#  README kurulumu "git clone" ile anlattığı için .git klasörü çoğu
+#  sunucuda gerçekten vardır. Bu kural yol üzerindeki HER parçaya bakar.
+#  ".well-known" (SSL sertifikası doğrulaması) bilerek açık bırakılır.
+<IfModule mod_alias.c>
+    RedirectMatch 404 "/\.(?!well-known(/|$))"
+</IfModule>
+
 # ---------------------------------------------------------------------
 #  2) TEMİZ ADRESLER (SEO uyumlu)
 # ---------------------------------------------------------------------
@@ -54,17 +65,44 @@ DirectoryIndex index.php
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # İkinci kilit (mod_alias yoksa): nokta ile başlayan klasör ve
+    # dosyalar (.git/, .env …) hiçbir koşulda servis edilmez.
+    RewriteRule (^|/)\.(?!well-known(/|$)) - [F,L]
+
+    # Geliştirme klasörleri web'den açılmaz.
+    RewriteRule ^(tests|docs)(/|$) - [F,L]
+
+    # API: "Authorization: Bearer …" başlığını PHP'ye ilet.
+    # Apache (özellikle PHP-FPM/CGI ile) bu başlığı varsayılan olarak
+    # PHP'ye GEÇİRMEZ; kural olmadan Bearer anahtarı hiç ulaşmıyor ve
+    # her API isteği 401 alıyordu. (bkz. ApiToken::fromRequest)
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
     # Sondaki bölü işaretini temizle: /panel/ayarlar/ → /panel/ayarlar
     # (aynı içeriğin iki adresi olması SEO'da yinelenen içerik sayılır)
     #
-    # VİTRİN İSTİSNASI: uygulama cilginyazilim.com/kutuphane/uygulama/<klasor>/
-    # adresinden de açılıyor. Kök .htaccess o adrese eğik çizgiyi EKLER, bu kural
-    # SİLER; ikisi karşılıklı 301 üretip isteği CI4'e düşürüyor ve ziyaretçi
-    # 404 görüyordu. THE_REQUEST istemcinin gönderdiği ham istektir; içeriden
-    # demos/ altına yapılan yeniden yazmadan etkilenmez.
-    RewriteCond %{THE_REQUEST} !\s/+(ci4/)?kutuphane/uygulama/
+    # TAKMA AD (VİTRİN) İSTİSNASI: Uygulama başka bir adresten İÇERİDEN
+    # yeniden yazılarak servis ediliyorsa (örn. üst klasördeki .htaccess
+    # /vitrin/proje/ adresini bu klasöre bağlıyorsa) o üst kural sona
+    # eğik çizgi EKLER, bu kural SİLER; ikisi karşılıklı 301 üretip
+    # döngüye girer. İçeriden yeniden yazılmış isteklerde Apache
+    # REDIRECT_STATUS değişkenini doldurur; kural yalnızca ziyaretçinin
+    # DOĞRUDAN bu klasöre gelen isteğinde çalışır. (Eskiden burada
+    # yalnızca şablon yazarının kendi sitesine özel bir yol yazılıydı.)
+    #
+    # HEDEF, İSTEĞİN KENDİ ADRESİNDEN (REQUEST_URI) üretilir. Eskiden
+    # "$1" gibi GÖRELİ bir hedef kullanılıyordu; .htaccess içinde
+    # RewriteBase olmadan göreli 301, Apache'nin başına KLASÖRÜN DİSK
+    # YOLUNU eklemesine yol açabiliyor: /proje/giris/ isteği
+    # "http://site/C:/xampp/htdocs/proje/giris" (ya da /var/www/...)
+    # adresine yönleniyor, hem sayfa açılmıyor hem de sunucunun dosya
+    # düzeni sızıyordu. REQUEST_URI alt klasörü de içerdiği için kural
+    # kökte ve alt klasörde aynı şekilde çalışır.
+    RewriteCond %{ENV:REDIRECT_STATUS} ^$
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.+)/$ $1 [R=301,L]
+    RewriteCond %{REQUEST_URI} ^(/.+)/$
+    RewriteRule ^ %1 [R=301,L]
 
     # Kurulum sihirbazı kendi başına çalışır.
     RewriteCond %{REQUEST_URI} !kurulum/

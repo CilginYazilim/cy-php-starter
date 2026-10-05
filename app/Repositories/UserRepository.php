@@ -19,7 +19,8 @@ use PDO;
 final class UserRepository
 {
     private const COLUMNS = 'id, ad, soyad, kullanici_adi, eposta, rol, durum, tema, avatar, telefon,
-                             hakkinda, son_giris, son_giris_ip, giris_sayisi, created_at, updated_at';
+                             hakkinda, son_giris, son_giris_ip, giris_sayisi, created_at, updated_at,
+                             oturum_surumu';
 
     /**
      * DataTables sütun sırasına göre sıralanabilir sütunlar.
@@ -394,8 +395,16 @@ final class UserRepository
             $params[':' . $column] = $column === 'eposta' ? mb_strtolower((string) $data['eposta']) : $data[$column];
         }
 
+        /* PAROLA DEĞİŞİYORSA eski oturumlar ve "beni hatırla" jetonu
+         * AYNI SORGUDA geçersiz kılınır. Bunu çağıran koda bırakmak,
+         * parolayı değiştiren her yerin (profil, yönetici paneli,
+         * komut satırı, ileride eklenecek "parolamı unuttum") bunu
+         * hatırlamasını gerektirirdi; birinin unutması yeterdi. */
         if (!empty($data['sifre'])) {
             $sets[] = '`sifre` = :sifre';
+            $sets[] = '`oturum_surumu` = `oturum_surumu` + 1';
+            $sets[] = '`hatirla_token` = NULL';
+            $sets[] = '`hatirla_bitis` = NULL';
             $params[':sifre'] = password_hash((string) $data['sifre'], PASSWORD_DEFAULT);
         }
 
@@ -408,6 +417,27 @@ final class UserRepository
         return $stmt->execute($params);
     }
 
+    /**
+     * Kullanıcının bütün oturumlarını geçersiz kılar ("diğer
+     * cihazlardan çıkış yap"). Parola değişmeden de kullanılabilir.
+     */
+    public function bumpSessionVersion(int $id): void
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE kullanicilar
+                SET oturum_surumu = oturum_surumu + 1, hatirla_token = NULL, hatirla_bitis = NULL
+              WHERE id = :id'
+        );
+        $stmt->execute([':id' => $id]);
+    }
+
+    /**
+     * Parola özetini YENİDEN ÜRETİR (aynı parola, yeni algoritma/maliyet).
+     *
+     * Oturum sürümüne bilerek DOKUNMAZ: parola değişmedi, yalnızca
+     * saklanış biçimi güncellendi; kullanıcının diğer cihazlarını
+     * kapatmak için bir sebep yok.
+     */
     public function updatePasswordHash(int $id, string $hash): void
     {
         $stmt = $this->db->prepare('UPDATE kullanicilar SET sifre = :sifre WHERE id = :id');

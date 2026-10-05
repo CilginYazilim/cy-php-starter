@@ -18,6 +18,7 @@ declare(strict_types=1);
 
 namespace App\Core\Console;
 
+use App\Core\Console\Commands\ApiTokenCommand;
 use App\Core\Console\Commands\CacheClearCommand;
 use App\Core\Console\Commands\ConfigCacheCommand;
 use App\Core\Console\Commands\ConfigClearCommand;
@@ -69,6 +70,8 @@ final class Kernel
 
         MailWorkCommand::class,
         MailTestCommand::class,
+
+        ApiTokenCommand::class,
     ];
 
     /** @param array<int,string> $argv */

@@ -47,19 +47,32 @@ final class View
      */
     public static function resolve(string $view): string
     {
-        // ".." ve ters bölü her iki biçimde de temizlenir.
-        $clean = str_replace(['..', '\\'], '', $view);
+        /* BEYAZ LİSTE, KARA LİSTE DEĞİL. Eskiden ".." ve "\" silinerek
+         * temizleniyordu; silme sırası yüzünden ".\." gibi bir girdi
+         * temizlikten SONRA ".." haline geliyordu. Şu an görünüm adına
+         * kullanıcı girdisi ulaşmıyor, ama ulaştığı gün dizin dışına
+         * çıkılmasın: ad, yalnızca harf/rakam/alt çizgi/tire ve "/"
+         * ile ayrılmış parçalardan oluşabilir. */
+        $module = null;
+        $path   = $view;
 
-        if (str_contains($clean, '::')) {
-            [$module, $path] = explode('::', $clean, 2);
+        if (str_contains($view, '::')) {
+            [$module, $path] = explode('::', $view, 2);
 
-            $module = preg_replace('/[^A-Za-z0-9_]/', '', $module) ?? '';
-            $path   = trim($path, '/');
-
-            return CY_BASE . '/modules/' . $module . '/views/' . $path . '.php';
+            if (preg_match('/^[A-Za-z0-9_]+$/', $module) !== 1) {
+                throw new RuntimeException('Geçersiz modül adı: ' . $view);
+            }
         }
 
-        return CY_BASE . '/views/' . $clean . '.php';
+        $path = trim($path, '/');
+
+        if (preg_match('#^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$#', $path) !== 1) {
+            throw new RuntimeException('Geçersiz görünüm adı: ' . $view);
+        }
+
+        return $module !== null
+            ? CY_BASE . '/modules/' . $module . '/views/' . $path . '.php'
+            : CY_BASE . '/views/' . $path . '.php';
     }
 
     /** @param array<string,mixed> $data */

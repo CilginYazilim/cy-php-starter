@@ -27,11 +27,16 @@ final class Session
         ini_set('session.use_trans_sid', '0');
         ini_set('session.use_strict_mode', '1');
 
-        session_name((string) Config::get('session.name', 'CYSTARTERSESS'));
+        self::useOwnStorage();
 
+        session_name(self::cookieName());
+
+        /* ÇEREZ YOLU UYGULAMANIN KLASÖRÜDÜR. "/" olsaydı aynı alan
+         * adındaki /demo1 ve /demo2 kurulumları birbirinin çerezini
+         * alırdı. Kökte çalışan bir kurulumda yol yine "/" olur. */
         session_set_cookie_params([
             'lifetime' => 0,
-            'path'     => '/',
+            'path'     => Url::base() !== '' ? Url::base() . '/' : '/',
             'domain'   => '',
             'secure'   => self::isHttps(),
             'httponly' => true,
@@ -44,13 +49,83 @@ final class Session
         self::guard();
     }
 
+    /**
+     * Çerez adı: .env'deki SESSION_NAME ya da kuruluma özel bir ad.
+     *
+     * Eski sürümlerde her kurulum "CYSTARTERSESS" adını kullanıyordu.
+     * session_name() yalnızca harf ve rakam kabul eder; geçersiz bir
+     * değer yazılmışsa kuruluma özel ada düşeriz.
+     */
+    private static function cookieName(): string
+    {
+        $name = (string) Config::get('session.name', '');
+
+        if ($name !== '' && preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/', $name) === 1) {
+            return $name;
+        }
+
+        return 'CYS_' . substr(self::appId(), 0, 10);
+    }
+
+    /**
+     * Bu kurulumun kimliği: proje klasörü + APP_KEY.
+     *
+     * Oturuma yazılır ve her istekte karşılaştırılır. Aynı sunucuda
+     * oturum dosyalarını paylaşan iki kurulumdan birinin çerez değeri
+     * diğerine kopyalansa bile oturum KABUL EDİLMEZ — "bir demoda
+     * yönetici olan diğerinde de yönetici sayılır" açığını kapatır.
+     */
+    public static function appId(): string
+    {
+        $base = defined('CY_BASE') ? CY_BASE : __DIR__;
+
+        return hash('sha256', $base . '|' . (string) Config::get('app.key', ''));
+    }
+
+    /**
+     * Oturum dosyalarını uygulamanın KENDİ klasörüne (storage/sessions)
+     * yazar.
+     *
+     * PHP varsayılan olarak bütün sitelerin oturumlarını tek bir
+     * sistem klasöründe tutar. Paylaşımlı sunucuda bu, başka bir
+     * kurulumun oturum dosyasının bizim çerez adımızla okunabilmesi
+     * demektir. Klasör yazılamıyorsa sessizce PHP varsayılanına
+     * düşülür — oturumun hiç açılmaması daha kötü olurdu.
+     */
+    private static function useOwnStorage(): void
+    {
+        $path = (string) Config::get('session.path', '');
+
+        if ($path === '') {
+            return;
+        }
+
+        if (!is_dir($path)) {
+            @mkdir($path, 0700, true);
+        }
+
+        if (!is_dir($path) || !is_writable($path)) {
+            return;
+        }
+
+        session_save_path($path);
+
+        /* Debian/Ubuntu PHP'si çöp toplamayı kapatır ve VARSAYILAN
+         * klasörü cron ile temizler; bizim klasörümüze o cron
+         * uğramaz. Toplayıcıyı kendimiz açıyoruz. */
+        ini_set('session.gc_probability', '1');
+        ini_set('session.gc_divisor', '100');
+        ini_set('session.gc_maxlifetime', (string) max(1440, (int) Config::get('session.idle_timeout', 1800)));
+    }
+
     private static function guard(): void
     {
         $now         = time();
         $idleTimeout = (int) Config::get('session.idle_timeout', 1800);
         $regenEvery  = (int) Config::get('session.regenerate_every', 900);
 
-        $fingerprint = hash('sha256', ($_SERVER['HTTP_USER_AGENT'] ?? '') . '|cy-starter');
+        /* Parmak izi tarayıcıya VE bu kuruluma bağlıdır (bkz. appId). */
+        $fingerprint = hash('sha256', ($_SERVER['HTTP_USER_AGENT'] ?? '') . '|' . self::appId());
 
         if (!isset($_SESSION['_fingerprint'])) {
             $_SESSION['_fingerprint'] = $fingerprint;

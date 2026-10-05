@@ -29,25 +29,26 @@ use App\Core\Session;
 use App\Core\Setting;
 use App\Core\View;
 
-/* Buradan itibaren WEB'e özgü katman. */
-Session::start();
+/* Buradan itibaren WEB'e özgü katman.
+ *
+ * "Authorization: Bearer …" taşıyan API istekleri DURUMSUZDUR: oturum
+ * açılmaz, çerez gönderilmez. Eskiden açılıyordu; anahtarla gelen ilk
+ * istek oturuma yazılıyor, anahtar iptal edilse bile istemci o oturum
+ * çereziyle erişmeye devam edebiliyordu. */
+if (App\Core\Api\ApiToken::fromRequest() === '') {
+    Session::start();
+}
 
 /* Kurulum tamamlanmışsa (.env var) veritabanına bağlan ve ayarları
  * yükle. "installed" ara katmanı bundan sonra çalışıp .env yoksa
  * kurulum sihirbazına yönlendirir; burada tekrar dokunmuyoruz çünkü
- * rota henüz çözülmedi. */
+ * rota henüz çözülmedi.
+ *
+ * Panelden seçilen saat dilimi Setting::load() içinde PHP'ye ve
+ * veritabanı bağlantısına birlikte uygulanır. */
 if (Env::exists(CY_BASE . '/.env')) {
     try {
         Setting::load(Database::connection());
-
-        /* Saat dilimi: yönetici panelden değiştirebilsin diye ayarlar
-         * tablosu, .env'deki değerin üzerine yazar. Geçersiz bir
-         * değer PHP'de uyarı üretir; bu yüzden önce doğruluyoruz. */
-        $zaman = Setting::get('sistem_zaman_dilimi');
-
-        if ($zaman !== '' && in_array($zaman, timezone_identifiers_list(), true)) {
-            date_default_timezone_set($zaman);
-        }
     } catch (Throwable) {
         // Veritabanı geçici olarak erişilemezse ayarlar boş kalır;
         // sayfa yine de açılabilir (varsayılan metinlerle).
@@ -82,11 +83,21 @@ App\Core\Modules\Modules::boot();
 
 $request = new Request();
 
+$currentUser = Env::exists(CY_BASE . '/.env') ? Auth::user() : null;
+
 View::share([
     'appName'     => Config::get('app.name'),
     'appBrand'    => Config::get('app.brand'),
-    'currentUser' => Env::exists(CY_BASE . '/.env') ? Auth::user() : null,
+    'currentUser' => $currentUser,
 ]);
+
+/* Giriş yapmış kullanıcıya üretilen sayfa KİŞİSELDİR. Servis çalışanı
+ * (sw.js) bu başlığı görünce yanıtı çevrimdışı önbelleğe yazmaz; aksi
+ * halde çıkış yapıldıktan sonra aynı cihazdaki biri ağ yokken panel
+ * HTML'ini görebilirdi. */
+if ($currentUser !== null && !headers_sent()) {
+    header('X-CY-Onbellek: hayir');
+}
 
 /** @var App\Core\Router $router */
 $router = require CY_BASE . '/routes/web.php';

@@ -34,7 +34,7 @@ return new class extends App\Core\Database\Migration
         ['site_favicon', '', 'dahili', 'metin', 'Favicon Dosyası', null, 65],
 
         ['iletisim_whatsapp', '', 'iletisim', 'metin', 'WhatsApp Numarası',
-            'Ülke koduyla yazın: +90 541 509 05 83. Boşsa WhatsApp düğmesi hiç görünmez.', 25],
+            'Ülke koduyla yazın: +90 5XX XXX XX XX. Boşsa WhatsApp düğmesi hiç görünmez.', 25],
         ['iletisim_whatsapp_mesaj', 'Merhaba, siteniz üzerinden yazıyorum. Bilgi almak istiyorum.',
             'iletisim', 'uzun_metin', 'WhatsApp Hazır Mesajı',
             'Ziyaretçi düğmeye bastığında sohbet kutusuna hazır gelecek metin.', 27],

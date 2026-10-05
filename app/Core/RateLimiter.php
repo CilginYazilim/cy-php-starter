@@ -28,13 +28,20 @@ final class RateLimiter
 
         [$kimlik, $ip] = $this->split($key);
 
+        /* KALAN SÜRE SQL'DE HESAPLANIR. Eskiden MAX(attempted_at)
+         * PHP'ye çekilip strtotime() ile okunuyordu; kayıt MySQL'in
+         * NOW() değeriyle yazıldığı için iki saat dilimi farklıysa
+         * (MySQL UTC, PHP +03:00) kilit süresi baştan "geçmiş"
+         * görünüyor ve kilit HİÇ devreye girmiyordu. Karşılaştırmanın
+         * iki tarafı da artık aynı saatten gelir. */
         $stmt = $this->db->prepare(
-            'SELECT COUNT(*) AS adet, MAX(attempted_at) AS son
+            'SELECT COUNT(*) AS adet,
+                    TIMESTAMPDIFF(SECOND, NOW(), MAX(attempted_at) + INTERVAL :lock SECOND) AS kalan
                FROM login_attempts
               WHERE identifier = :key AND ip = :ip
                 AND attempted_at >= (NOW() - INTERVAL :window SECOND)'
         );
-        $stmt->execute([':key' => $kimlik, ':ip' => $ip, ':window' => $window]);
+        $stmt->execute([':key' => $kimlik, ':ip' => $ip, ':window' => $window, ':lock' => $lock]);
 
         $row = $stmt->fetch() ?: [];
 
@@ -42,10 +49,43 @@ final class RateLimiter
             return 0;
         }
 
-        $last      = strtotime((string) ($row['son'] ?? 'now')) ?: time();
-        $remaining = ($last + $lock) - time();
+        return max(0, (int) ($row['kalan'] ?? 0));
+    }
 
-        return max(0, $remaining);
+    /**
+     * IP GENELİNDE kilit: tek bir adresten FARKLI hesaplara yapılan
+     * çok sayıda başarısız deneme (parola püskürtme / credential
+     * stuffing). Hesap başına sayaç bunu yakalayamaz — saldırgan her
+     * hesabı yalnızca birkaç kez dener.
+     *
+     * @return int Kalan kilit süresi (saniye); 0 → kilit yok
+     */
+    public function ipLockedFor(string $ip): int
+    {
+        $max    = (int) Config::get('security.login_ip_max_attempts', 30);
+        $window = (int) Config::get('security.login_window', 900);
+        $lock   = (int) Config::get('security.login_lockout', 900);
+
+        if ($max <= 0) {
+            return 0;
+        }
+
+        $stmt = $this->db->prepare(
+            'SELECT COUNT(*) AS adet,
+                    TIMESTAMPDIFF(SECOND, NOW(), MAX(attempted_at) + INTERVAL :lock SECOND) AS kalan
+               FROM login_attempts
+              WHERE ip = :ip
+                AND attempted_at >= (NOW() - INTERVAL :window SECOND)'
+        );
+        $stmt->execute([':ip' => $ip, ':window' => $window, ':lock' => $lock]);
+
+        $row = $stmt->fetch() ?: [];
+
+        if ((int) ($row['adet'] ?? 0) < $max) {
+            return 0;
+        }
+
+        return max(0, (int) ($row['kalan'] ?? 0));
     }
 
     public function hit(string $key, string $ip): void

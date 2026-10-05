@@ -57,20 +57,23 @@ final class MailRepository
      */
     public function record(Mailable $mail, string $status = MailLog::DURUM_KUYRUKTA, string $batchId = ''): int
     {
+        $ayrildi = $status === MailLog::DURUM_GONDERILIYOR;
+
         $recipient = $mail->recipients()[0] ?? ['', ''];
         $reply     = $mail->replyAddress();
 
         $stmt = $this->db->prepare(
             'INSERT INTO mail_kayitlari
                 (alici_eposta, alici_ad, konu, govde, yanit_eposta, yanit_ad,
-                 sablon, tur, durum, kullanici_id, gonderen_id, toplu_id)
+                 sablon, tur, durum, kullanici_id, gonderen_id, toplu_id, ayrildi_at)
              VALUES
                 (:alici_eposta, :alici_ad, :konu, :govde, :yanit_eposta, :yanit_ad,
-                 :sablon, :tur, :durum, :kullanici_id, :gonderen_id, :toplu_id)'
+                 :sablon, :tur, :durum, :kullanici_id, :gonderen_id, :toplu_id, '
+                 . ($ayrildi ? 'NOW()' : 'NULL') . ')'
         );
 
         $stmt->execute([
-            ':alici_eposta' => $recipient[0],
+            ':alici_eposta' => mb_strtolower((string) $recipient[0]),
             ':alici_ad'     => $recipient[1] ?? '',
             ':konu'         => $mail->getSubject(),
             ':govde'        => $mail->getHtml(),
@@ -113,7 +116,8 @@ final class MailRepository
     public function requeue(int $id): bool
     {
         $stmt = $this->db->prepare(
-            "UPDATE mail_kayitlari SET durum = 'kuyrukta', hata = '' WHERE id = :id AND durum <> 'kuyrukta'"
+            "UPDATE mail_kayitlari SET durum = 'kuyrukta', hata = '', ayrildi_at = NULL
+              WHERE id = :id AND durum NOT IN ('kuyrukta', 'gonderiliyor')"
         );
         $stmt->execute([':id' => $id]);
 
@@ -149,6 +153,9 @@ final class MailRepository
     /**
      * Gönderilmeyi bekleyen kayıtlar (en eskiden yeniye).
      *
+     * DİKKAT: Satırları KİLİTLEMEZ; yalnızca listelemek içindir.
+     * Göndermek için claimPending() kullanın.
+     *
      * @return array<int,array<string,mixed>>
      */
     public function pending(int $limit = 10): array
@@ -163,6 +170,95 @@ final class MailRepository
         );
 
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Gönderilecek kayıtları ATOMİK olarak bu sürece ayırır.
+     *
+     * Her aday satır tek bir UPDATE ile "kuyrukta" → "gonderiliyor"
+     * yapılır; rowCount() 1 dönmüyorsa satırı başka bir süreç (panel,
+     * cron ya da mail:work) bizden önce almıştır ve atlanır. Eskiden
+     * satırlar kilitlenmeden okunuyordu; üç süreç aynı anda çalışınca
+     * bir duyuru aynı kişiye birkaç kez gidiyordu.
+     *
+     * @return array<int,array<string,mixed>> Yalnızca BU sürecin aldığı satırlar
+     */
+    public function claimPending(int $limit = 10): array
+    {
+        $this->releaseStuck();
+
+        $claim = $this->db->prepare(
+            "UPDATE mail_kayitlari
+                SET durum = 'gonderiliyor', ayrildi_at = NOW()
+              WHERE id = :id AND durum = 'kuyrukta'"
+        );
+
+        $read = $this->db->prepare('SELECT * FROM mail_kayitlari WHERE id = :id');
+
+        $rows = [];
+
+        foreach ($this->pending($limit) as $candidate) {
+            $claim->execute([':id' => (int) $candidate['id']]);
+
+            if ($claim->rowCount() !== 1) {
+                continue;
+            }
+
+            $read->execute([':id' => (int) $candidate['id']]);
+            $row = $read->fetch();
+
+            if ($row !== false) {
+                $rows[] = $row;
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * "gonderiliyor"da takılı kalmış kayıtları (süreç çöktü) BAŞARISIZ
+     * olarak işaretler.
+     *
+     * NEDEN KUYRUĞA GERİ DEĞİL? Süreç SMTP'ye mektubu teslim ettikten
+     * hemen sonra, durumu yazamadan çökmüş olabilir. Satırı kuyruğa
+     * döndürmek o kişiye ikinci bir kopya göndermek demektir. Başarısız
+     * kayıt panelde görünür; yönetici gerekiyorsa tek tıkla yeniden
+     * kuyruğa alır.
+     */
+    public function releaseStuck(int $seconds = 900): int
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE mail_kayitlari
+                SET durum = 'basarisiz', hata = 'Gönderim yarıda kaldı (süreç zaman aşımına uğradı). Ulaşıp ulaşmadığı bilinmiyor.'
+              WHERE durum = 'gonderiliyor'
+                AND ayrildi_at IS NOT NULL
+                AND ayrildi_at < (NOW() - INTERVAL :saniye SECOND)"
+        );
+        $stmt->bindValue(':saniye', max(60, $seconds), PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->rowCount();
+    }
+
+    /**
+     * Bu adrese son $hours saatte bu türde mektup gitti mi?
+     *
+     * Otomatik yanıtın aynı adrese tekrar tekrar gönderilmesini
+     * (iletişim formunu spam rölesi olarak kullanma) engellemek için.
+     */
+    public function sentRecentlyTo(string $email, string $type, int $hours = 24): bool
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM mail_kayitlari
+              WHERE alici_eposta = :eposta AND tur = :tur
+                AND created_at >= (NOW() - INTERVAL :saat HOUR)"
+        );
+        $stmt->bindValue(':eposta', mb_strtolower($email));
+        $stmt->bindValue(':tur', $type);
+        $stmt->bindValue(':saat', max(1, $hours), PDO::PARAM_INT);
+        $stmt->execute();
+
+        return (int) $stmt->fetchColumn() > 0;
     }
 
     public function countPending(): int

@@ -16,6 +16,14 @@ return [
     'login_lockout'      => Env::int('LOGIN_LOCKOUT', 900), // 15 dakika
     'login_window'       => Env::int('LOGIN_WINDOW', 900),
 
+    /* Tek bir IP'den FARKLI hesaplara yapılan başarısız deneme sınırı
+     * (parola püskürtme). 0 → kapalı. Ofis/okul gibi tek IP'yi
+     * paylaşan büyük kullanıcı gruplarında yükseltin. */
+    'login_ip_max_attempts' => Env::int('LOGIN_IP_MAX_ATTEMPTS', 30),
+
+    /* Kayıt formu: bir IP'den saatte en fazla kaç yeni hesap? */
+    'register_max_per_hour' => Env::int('REGISTER_MAX_PER_HOUR', 5),
+
     'password_min' => 8,
 
     /* -----------------------------------------------------------------

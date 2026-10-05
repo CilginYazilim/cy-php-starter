@@ -110,6 +110,17 @@ $value = static fn (string $field, string $fallback) => old($old, $field, $fallb
                             <?php if (isset($errors['hakkinda'])): ?><div class="invalid-feedback"><?= e($errors['hakkinda']) ?></div><?php endif; ?>
                         </div>
 
+                        <div class="col-12">
+                            <label class="form-label" for="eposta_sifre">Mevcut Parola <span class="cy-muted small">(yalnızca e-postayı değiştiriyorsanız)</span></label>
+                            <input type="password" name="eposta_sifre" id="eposta_sifre" autocomplete="current-password"
+                                   class="form-control<?= isset($errors['eposta_sifre']) ? ' is-invalid' : '' ?>">
+                            <?php if (isset($errors['eposta_sifre'])): ?>
+                                <div class="invalid-feedback"><?= e($errors['eposta_sifre']) ?></div>
+                            <?php else: ?>
+                                <div class="form-text">E-posta hesabınızın kurtarma adresidir; değiştirirken parolanız sorulur.</div>
+                            <?php endif; ?>
+                        </div>
+
                         <!-- DİKKAT: "rol" ve "durum" alanı BİLEREK yok. -->
                     </div>
                 </div>
@@ -153,10 +164,109 @@ $value = static fn (string $field, string $fallback) => old($old, $field, $fallb
                         </div>
                     </div>
                 </div>
-                <div class="cy-card__footer d-flex justify-content-end">
+                <div class="cy-card__footer d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span class="cy-muted small">Parola değişince diğer cihazlardaki oturumlarınız kapanır.</span>
                     <button type="submit" class="btn cy-btn cy-btn--ghost"><?= icon('lock', 'cy-icon cy-icon--sm') ?> Parolayı Güncelle</button>
                 </div>
             </form>
         </div>
+
+        <div class="cy-card">
+            <div class="cy-card__header"><h3 class="cy-section-title">Oturumlar</h3></div>
+            <div class="cy-card__body d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <p class="mb-0 cy-muted small">
+                    Ortak bir bilgisayarda çıkış yapmayı unuttuysanız ya da hesabınızın başka biri
+                    tarafından kullanıldığından şüpheleniyorsanız bu cihaz dışındaki tüm oturumları
+                    ve "beni hatırla" kayıtlarını kapatın.
+                </p>
+                <form method="post" action="<?= e(url('panel/hesabim/oturumlari-kapat')) ?>"
+                      data-confirm="Bu cihaz dışındaki tüm oturumlarınız kapatılacak. Devam edilsin mi?">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn cy-btn cy-btn--ghost"><?= icon('logout', 'cy-icon cy-icon--sm') ?> Diğer Cihazlardan Çıkış Yap</button>
+                </form>
+            </div>
+        </div>
+
+        <?php if (($apiTokens ?? null) !== null): ?>
+            <?php /* API ANAHTARLARI. Anahtarın açık hali veritabanında TUTULMAZ
+                     (yalnızca SHA-256 özeti); bu yüzden yalnızca üretildiği an,
+                     bir kez gösterilir. */ ?>
+            <div class="cy-card">
+                <div class="cy-card__header"><h3 class="cy-section-title"><?= icon('code', 'cy-icon cy-icon--sm') ?> API Anahtarları</h3></div>
+                <div class="cy-card__body">
+                    <?php if (!empty($yeniAnahtar) && is_string($yeniAnahtar)): ?>
+                        <div class="cy-alert cy-alert--success mb-3">
+                            <strong>Yeni anahtarınız:</strong> şimdi kopyalayın, bu sayfadan ayrılınca bir daha gösterilmez.
+                            <input type="text" class="form-control mt-2 font-monospace" readonly value="<?= e($yeniAnahtar) ?>"
+                                   aria-label="Yeni API anahtarı" id="yeni_api_anahtari">
+                            <div class="small mt-2">
+                                Kullanım: <code>curl -H "Authorization: Bearer <?= e(substr($yeniAnahtar, 0, 8)) ?>…" <?= e(App\Core\Url::absolute('api/v1/ben')) ?></code>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($apiTokens === []): ?>
+                        <p class="cy-muted small">Henüz anahtarınız yok. Mobil uygulama ya da başka bir sunucu bu siteye
+                            <code>/api/v1/…</code> uçlarından erişecekse bir anahtar üretin.</p>
+                    <?php else: ?>
+                        <div class="cy-table-wrap mb-3">
+                            <table class="table cy-table cy-table--tight w-100">
+                                <thead>
+                                    <tr><th>Ad</th><th>Ön ek</th><th>Son kullanım</th><th>Geçerlilik</th><th></th></tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($apiTokens as $anahtar): ?>
+                                        <tr>
+                                            <td><?= e((string) $anahtar['ad']) ?></td>
+                                            <td><code><?= e((string) $anahtar['onek']) ?>…</code></td>
+                                            <td><?= e(User::formatDate($anahtar['son_kullanim'] ?? null)) ?></td>
+                                            <td>
+                                                <?php if ((int) ($anahtar['suresi_doldu'] ?? 0) === 1): ?>
+                                                    <span class="text-danger">süresi doldu</span>
+                                                <?php elseif (!empty($anahtar['son_gecerlilik'])): ?>
+                                                    <?= e(User::formatDate((string) $anahtar['son_gecerlilik'])) ?>
+                                                <?php else: ?>
+                                                    süresiz
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-end">
+                                                <form method="post" action="<?= e(url('panel/hesabim/api-anahtari/sil')) ?>"
+                                                      data-confirm="Bu anahtar iptal edilecek; onu kullanan istemciler erişemeyecek. Emin misiniz?">
+                                                    <?= csrf_field() ?>
+                                                    <input type="hidden" name="anahtar_id" value="<?= (int) $anahtar['id'] ?>">
+                                                    <button type="submit" class="btn cy-btn cy-btn--ghost cy-btn--sm"><?= icon('trash', 'cy-icon cy-icon--sm') ?> İptal Et</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+
+                    <form method="post" action="<?= e(url('panel/hesabim/api-anahtari')) ?>" class="row g-2 align-items-end">
+                        <?= csrf_field() ?>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="anahtar_adi">Anahtar adı</label>
+                            <input type="text" name="anahtar_adi" id="anahtar_adi" maxlength="100" class="form-control"
+                                   placeholder="örn. Mobil uygulama" required>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label" for="anahtar_gun">Geçerlilik</label>
+                            <select name="anahtar_gun" id="anahtar_gun" class="form-select">
+                                <option value="30">30 gün</option>
+                                <option value="90" selected>90 gün</option>
+                                <option value="365">1 yıl</option>
+                                <option value="0">Süresiz</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <button type="submit" class="btn cy-btn cy-btn--primary cy-btn--block"><?= icon('plus', 'cy-icon cy-icon--sm') ?> Üret</button>
+                        </div>
+                    </form>
+                    <p class="cy-muted small mt-2 mb-0">Anahtar sizin yetkilerinizle çalışır; sizden fazlasına asla erişemez.</p>
+                </div>
+            </div>
+        <?php endif; ?>
     </div>
 </div>

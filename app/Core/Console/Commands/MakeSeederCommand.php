@@ -31,7 +31,7 @@ final class MakeSeederCommand extends MakeCommand
 
     public function handle(): int
     {
-        $name  = $this->studly($this->requireName('php cy make:seeder <ad>'));
+        $name  = $this->className('php cy make:seeder <ad>');
         $class = str_ends_with($name, 'Seeder') ? $name : $name . 'Seeder';
 
         $path = rtrim((string) Config::get('db.seeders'), '/\\') . DIRECTORY_SEPARATOR . $class . '.php';

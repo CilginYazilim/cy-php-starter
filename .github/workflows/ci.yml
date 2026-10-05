@@ -1,0 +1,48 @@
+# =====================================================================
+#  SÜREKLİ DENETİM – her itmede ve çekme isteğinde çalışır
+# ---------------------------------------------------------------------
+#  1. Desteklenen her PHP sürümünde TÜM .php dosyalarının sözdizimi
+#     denetlenir (8.1 en düşük sürümdür; README'de yazar).
+#  2. Veritabanı gerektirmeyen birim testleri çalışır (tests/unit.php).
+#
+#  Bağımlılık yok: Composer kurulmaz, PHPUnit gerekmez.
+# =====================================================================
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1', '8.2', '8.3', '8.4']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, pdo_mysql, gd, fileinfo, curl
+          coverage: none
+
+      - name: Sözdizimi denetimi
+        run: |
+          hatali=0
+          while IFS= read -r -d '' dosya; do
+            php -l "$dosya" > /dev/null || hatali=1
+          done < <(find . -path ./.git -prune -o \( -name '*.php' -o -name cy \) -type f -print0)
+          exit $hatali
+
+      - name: Birim testleri
+        run: php tests/unit.php

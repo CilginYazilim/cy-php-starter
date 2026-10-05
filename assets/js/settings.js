@@ -62,70 +62,25 @@ jQuery(function ($) {
 });
 
 /* ==================================================================
- *  AYAR ARAMA + YAPIŞKAN KAYDET
+ *  KAYDEDİLMEMİŞ DEĞİŞİKLİK UYARISI
  * ------------------------------------------------------------------
- *  Arama, TÜM sekmelerde birden arar: aradığınız ayarın hangi grupta
- *  olduğunu bilmek zorunda kalmazsınız. Eşleşme bulunan sekmeler
- *  otomatik görünür kalır, boş kalanlar gizlenir.
+ *  Bu blok eskiden "#ayar_ara" arama kutusunun varlığına bağlıydı.
+ *  Ayarlar sekmelerden ayrı sayfalara bölününce o kutu kaldırıldı ve
+ *  arama kodu ile birlikte bu uyarı da hiç çalışmaz oldu (ölü kod).
+ *  Arama artık yok — her sayfa tek bir grubu gösteriyor — ama uyarı
+ *  hâlâ işe yarar; doğrudan forma bağlandı.
  * ================================================================== */
 jQuery(function ($) {
     'use strict';
 
-    var $arama = $('#ayar_ara');
+    var $form = $('#ayarlar_formu');
 
-    if (!$arama.length) { return; }
+    if (!$form.length) { return; }
 
-    var $ayarlar = $('.cy-ayar');
-    var $bos     = $('#ayar_bos');
-    var $tablar  = $('.cy-tabnav .nav-item');
-    var $icerik  = $('.tab-content');
-
-    function normalize(text) {
-        // Türkçe büyük/küçük harf farkı aramayı bozmasın.
-        return (text || '').toLocaleLowerCase('tr-TR').trim();
-    }
-
-    $arama.on('input', function () {
-        var terim = normalize(this.value);
-
-        if (terim === '') {
-            $ayarlar.removeClass('d-none');
-            $('.tab-pane').removeClass('cy-arama-modu');
-            $tablar.removeClass('d-none');
-            $icerik.removeClass('cy-arama-acik');
-            $bos.addClass('d-none');
-            return;
-        }
-
-        var toplam = 0;
-
-        $('.tab-pane').each(function () {
-            var $pane   = $(this);
-            var eslesen = 0;
-
-            $pane.find('.cy-ayar').each(function () {
-                var uygun = normalize($(this).data('ayar')).indexOf(terim) !== -1;
-
-                $(this).toggleClass('d-none', !uygun);
-
-                if (uygun) { eslesen++; }
-            });
-
-            // Arama modunda tüm paneller aynı anda görünür; kullanıcı
-            // sekme sekme gezmek zorunda kalmasın.
-            $pane.toggleClass('cy-arama-modu', eslesen > 0);
-            toplam += eslesen;
-        });
-
-        $icerik.addClass('cy-arama-acik');
-        $bos.toggleClass('d-none', toplam > 0);
-    });
-
-    /* Kaydedilmemiş değişiklik varsa sayfadan ayrılırken uyar. */
     var kirli = false;
 
-    $('#ayarlar_formu').on('change input', ':input', function () { kirli = true; });
-    $('#ayarlar_formu').on('submit', function () { kirli = false; });
+    $form.on('change input', ':input', function () { kirli = true; });
+    $form.on('submit', function () { kirli = false; });
 
     $(window).on('beforeunload', function () {
         if (kirli) { return 'Kaydedilmemiş ayar değişiklikleriniz var.'; }

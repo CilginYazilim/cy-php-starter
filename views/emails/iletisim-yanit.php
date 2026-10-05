@@ -6,9 +6,12 @@
  *  "Mesajınızı aldık" mektubu. Kısa olmalı: uzun otomatik yanıtlar
  *  hem spam filtrelerini hem de okuyanı rahatsız eder.
  *
+ *  ZİYARETÇİNİN YAZDIĞI METİN BURAYA BASILMAZ. Form herkese açık ve
+ *  alıcı adresi formdan geldiği için, mesajı geri yansıtmak sitenin
+ *  alan adından başkalarına içerik gönderen bir röle demekti
+ *  (bkz. Notifier::mesajAlindi).
+ *
  *  @var string $ad
- *  @var string $konu
- *  @var string $mesaj
  *  @var string $siteAdi
  * =====================================================================
  */
@@ -22,12 +25,7 @@ $saatler = Setting::get('iletisim_saatler');
 <?= MailUi::baslik('Mesajınızı aldık, teşekkürler') ?>
 <?= MailUi::paragraf('Merhaba ' . $ad . ',') ?>
 <?= MailUi::paragraf($siteAdi . ' iletişim formundan gönderdiğiniz mesaj bize ulaştı. En kısa sürede size dönüş yapacağız.') ?>
-
-<?= MailUi::altBaslik('Gönderdiğiniz mesaj') ?>
-<?php if ($konu !== ''): ?>
-    <?= MailUi::bilgiTablosu(['Konu' => $konu]) ?>
-<?php endif; ?>
-<?= MailUi::alinti($mesaj) ?>
+<?= MailUi::paragraf('Bu mesajı siz göndermediyseniz bu e-postayı dikkate almayın; adresiniz başka biri tarafından yazılmış olabilir.') ?>
 
 <?php if ($telefon !== '' || $saatler !== ''): ?>
     <?= MailUi::ayrac() ?>

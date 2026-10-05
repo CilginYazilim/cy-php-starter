@@ -363,11 +363,27 @@ ederdi.
 ### Giriş güvenliği
 
 - **Kaba kuvvet koruması** — 5 hatalı denemeden sonra 15 dakika kilit
-  (`login_attempts` tablosu, kimlik+IP başına).
-- **Zamanlama saldırısı önlemi** — kullanıcı bulunamasa bile bir kez
-  `password_verify()` çalıştırılır, böylece yanıt süresinden "bu
-  e-posta kayıtlı mı" anlaşılamaz.
+  (`login_attempts` tablosu, kimlik+IP başına) ve tek IP'den farklı
+  hesaplara 30 hatalı denemede IP geneli kilit. Süreler SQL'in kendi
+  saatiyle hesaplanır; MySQL ile PHP'nin saat dilimi farklı olsa da
+  kilit çalışır (bağlantının saat dilimi `Database::syncTimezone()` ile
+  PHP'ninkine eşitlenir).
+- **Zamanlama saldırısı önlemi** — kullanıcı bulunamasa bile PHP'nin
+  varsayılan maliyetinde GEÇERLİ bir sahte özet doğrulanır; var olan ve
+  olmayan hesap aynı sürede, aynı mesajla ("kalan deneme hakkı" dahil)
+  yanıtlanır.
 - **Oturum sabitleme önlemi** — girişte `session_regenerate_id(true)`.
+- **Oturum sürümü** — `kullanicilar.oturum_surumu` parola değişince (ya
+  da Hesabım → "Diğer cihazlardan çıkış yap" ile) artar; oturumdaki
+  sürüm tutmazsa oturum geçersizdir. Parolayı değiştiren cihaz açık
+  kalır, diğerleri bir sonraki istekte düşer.
+- **Kuruluma özel oturum** — çerez adı (`SESSION_NAME`), çerez yolu
+  (uygulama klasörü), oturum klasörü (`storage/sessions`) ve parmak izi
+  (`APP_KEY`) kuruluma bağlıdır; aynı alan adındaki iki kurulum
+  birbirinin oturumunu kabul etmez.
+- **Girişten sonra dönüş** — yalnızca GET isteklerinde, isteğin kendi
+  yolundan saklanır ve `Middleware::safeIntended()` ile doğrulanır;
+  site dışına yönlendirme yapılamaz.
 - **Otomatik rehash** — `password_needs_rehash()` ile parola özeti
   güncel algoritmaya taşınır.
 - Oturum: `httponly` + `samesite=Lax` + HTTPS'te `secure`, tarayıcı
@@ -380,7 +396,7 @@ Oturum çerezi tarayıcı kapanınca ölür. Giriş ekranındaki kutu
 işaretlenirse — **yalnızca o zaman** — 30 günlük ayrı bir çerez bırakılır:
 
 ```
-çerez  cy_remember = <64 karakterlik rastgele jeton>   (HttpOnly)
+çerez  cy_remember_<kurulum> = <64 karakterlik rastgele jeton>   (HttpOnly)
 tablo  kullanicilar.hatirla_token = sha256(jeton)
        kullanicilar.hatirla_bitis  = NOW() + 30 gün
 ```
@@ -398,6 +414,9 @@ Parola ya da e-posta **çereze hiç yazılmaz**. Veritabanında yalnızca
   bilgisayarda tam bir açık.
 * **İşaretlenmemiş giriş de eski jetonu siler.** "Bu sefer hatırlama"
   tercihi, önceki oturumdan kalan çerezi de geçersiz kılmalıdır.
+* **Parola değişince jeton silinir.** `UserRepository::update()` parolayı
+  değiştiren AYNI sorguda jetonu siler ve oturum sürümünü artırır;
+  çalınmış bir çerez parola değişikliğinden sonra işe yaramaz.
 
 Çerezle açılan oturum da `session_regenerate_id()` ve CSRF jetonu
 yenilemesinden geçer; yani sabitleme saldırısına karşı normal girişle
@@ -559,6 +578,17 @@ Yardımcılar: `execute()`, `tableExists()`, `columnExists()`,
 
 Tek `php cy migrate` çağrısındaki tüm dosyalar aynı parti numarasını
 alır; `migrate:rollback` üç dosyalık bir dağıtımı tek komutla geri sarar.
+
+**Parti 0 — temel parti.** Kurulumla gelen her şey bu partidedir:
+sihirbazın çalıştırdığı migration'lar ve `kurulum/database.sql`'in
+şemada zaten bulunduğunu işaretlediği migration'lar. `migrate:rollback`
+ve `migrate:fresh` parti 0'a **asla** dokunmaz; `migrate:status` onları
+`0 (kurulum)` diye gösterir. `database.sql`'e yeni bir tablo/sütun
+eklediğinizde, onu getiren migration'ın adını dosyanın sonundaki
+`migrasyonlar` listesine de ekleyin.
+
+Kapalı bir modülün migration'ları da geri alınabilir: Migrator dosyayı
+açık olmayan modüllerin klasöründe de arar (`Modules::migrator()`).
 
 ```bash
 php cy migrate                 php cy migrate --pretend
@@ -888,10 +918,26 @@ yalnızca üretildiği anda bir kez gösterilir. Hızlı arama için kısa bir
 Anahtar, sahibi olan kullanıcıdan **fazla yetkiye asla sahip olamaz**;
 kullanıcı pasife alınırsa anahtar da geçersizdir.
 
+**Bearer istekleri durumsuzdur:** oturum açılmaz, çerez dönmez
+(`Auth::actingAs()`); anahtar iptal edildiği an erişim biter. Anahtar
+yerine açık bir panel oturumuyla gelen API isteklerinde veri değiştiren
+yöntemler (POST/PUT/PATCH/DELETE) CSRF jetonu ister. Apache'de
+`Authorization` başlığı kök `.htaccess` ile PHP'ye iletilir.
+
+Anahtar üretmenin üç yolu:
+
 ```php
 $sonuc = ApiToken::create($userId, 'Mobil uygulama', daysValid: 90);
 echo $sonuc['token'];   // yalnızca burada!
 ```
+
+```bash
+php cy api:token admin "Mobil uygulama" --gun=90
+```
+
+ve **Panel → Hesabım → API Anahtarları** (üret / listele / iptal et).
+Çalışan örnek uçlar: `app/Http/Controllers/Api/V1Controller.php`
+(`api/v1/ben`, `api/v1/kullanicilar`, `api/v1/sayfalar`).
 
 ### Hız sınırı
 
@@ -1244,15 +1290,20 @@ kendiliğinden güncellenir — dosya düzenlemek gerekmez.
 | Oturum sabitleme | Girişte `session_regenerate_id(true)` |
 | "Beni hatırla" çalınması | Çerezde ham jeton, veritabanında yalnızca SHA-256 özeti; `HttpOnly`; her kullanımda jeton yenilenir; çıkışta iptal |
 | Zengin metinle XSS | `Html::sanitize()` izin verilenler listesi — etiket, öznitelik ve adres şeması denetimi |
-| Kaba kuvvet | Hız sınırı + kilit (kimlik+IP) |
-| Kullanıcı sayımı | Sabit süreli yanıt, genel hata mesajı |
-| Path traversal | Segment bazlı doğrulama + `realpath()` |
-| Kötücül yükleme | 9 katmanlı savunma (bkz. §10) |
-| Dosya ifşası | `app/`, `config/`, `storage/`, `views/`, `.env`, `cy` web'e kapalı |
+| Kaba kuvvet | Kimlik+IP kilidi + IP geneli kilit; süreler SQL saatiyle |
+| Kullanıcı sayımı | Aynı maliyette sahte özet, aynı mesaj ve aynı "kalan hak" kuralı |
+| Açık yönlendirme | Dönüş adresi yalnızca uygulama içi yol (`Middleware::safeIntended`) |
+| Kurulum ele geçirme | `.env` / `storage/installed.lock` varken sihirbaz hiçbir adımı çalıştırmaz |
+| Parola sonrası oturum | Oturum sürümü + "beni hatırla" jetonu silme |
+| Oturum karışması | Kuruluma özel çerez adı/yolu, `storage/sessions`, `APP_KEY` parmak izi |
+| Path traversal | Segment bazlı doğrulama + `realpath()`; görünüm adları beyaz listeden |
+| Kötücül yükleme | 9 katmanlı savunma (bkz. §10) + piksel/bellek sınırı |
+| Dosya ifşası | `app/`, `config/`, `storage/`, `views/`, `.env`, `.git/`, `cy`, `tests/` web'e kapalı |
+| Yanlış rota tanımı | Bilinmeyen ara katman adı hata fırlatır |
 | Clickjacking | `X-Frame-Options: DENY` |
 | MIME sniffing | `X-Content-Type-Options: nosniff` |
 | Bilgi sızması | Yayında yığın izi/dosya yolu gösterilmez |
-| Spam | Bal küpü + zaman kontrolü + oturum hız sınırı |
+| Spam | Bal küpü + zaman kontrolü + oturum/IP hız sınırı (iletişim ve kayıt formu); otomatik yanıt ziyaretçi metnini içermez, aynı adrese günde bir |
 | API kötüye kullanımı | Bearer + hash'lenmiş anahtar + hız sınırı |
 
 ### İçerik Güvenliği Politikası ve dış servisler

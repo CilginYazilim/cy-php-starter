@@ -33,7 +33,7 @@ final class MakeControllerCommand extends MakeCommand
 
     public function handle(): int
     {
-        $base = $this->studly($this->requireName('php cy make:controller <ad>'));
+        $base = $this->className('php cy make:controller <ad>');
         $base = preg_replace('/Controller$/', '', $base) ?? $base;
 
         if ($this->input->hasOption('api')) {

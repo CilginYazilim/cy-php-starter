@@ -18,7 +18,6 @@ namespace App\Http\Controllers;
 
 use App\Core\Cache\Cache;
 use App\Core\Config;
-use App\Core\Database\Migrator;
 use App\Core\Flash;
 use App\Core\Log\Logger;
 use App\Core\Mail\Mailer;
@@ -449,11 +448,7 @@ final class SystemController extends Controller
     private function migrationSummary(): string
     {
         try {
-            $migrator = new Migrator(
-                $this->db,
-                (string) Config::get('db.migrations'),
-                Modules::migrationPaths()
-            );
+            $migrator = Modules::migrator($this->db, (string) Config::get('db.migrations'));
 
             $bekleyen = count($migrator->pending());
             $toplam   = count($migrator->available());

@@ -7,31 +7,50 @@
  *
  *  STRATEJİ
  *    Statik dosyalar (css/js/görsel) → önce ÖNBELLEK, yoksa ağ
- *    HTML sayfaları                  → önce AĞ, olmazsa önbellek
+ *    Herkese açık HTML sayfaları     → önce AĞ, olmazsa önbellek
+ *    Panel, giriş, kayıt, çıkış      → YALNIZCA AĞ (asla önbelleğe girmez)
  *    POST ve API istekleri           → HİÇ dokunulmaz
  *
  *  HTML'de neden önce ağ? Panelde bayat veri göstermek, biraz daha
  *  yavaş açılmaktan çok daha kötüdür. Kullanıcı silinmiş bir kaydı
  *  ya da eski bir bakiyeyi görmemelidir.
  *
+ *  KİŞİSEL SAYFALAR ÖNBELLEĞE GİRMEZ. Eski sürüm panel sayfalarını da
+ *  önbelleğe yazıyordu: kullanıcı çıkış yaptıktan sonra aynı cihazı
+ *  kullanan biri, ağ yokken /panel adresini açıp yönetici ekranının
+ *  HTML'ini görebiliyordu. Artık iki kilit var:
+ *    1. Yol kontrolü: panel/, giris, kayit, cikis hiç önbelleğe alınmaz.
+ *    2. Sunucu işareti: giriş yapmış kullanıcıya üretilen HER yanıt
+ *       "X-CY-Onbellek: hayir" başlığı taşır (bkz. index.php); bu
+ *       başlığı gören yanıt da önbelleğe yazılmaz.
+ *
+ *  SÜRÜM DEĞİŞİNCE ESKİ ÖNBELLEKLER SİLİNİR: "cy-v2"ye geçiş, eski
+ *  sürümün önbelleğe yazmış olabileceği panel sayfalarını da temizler.
+ *
  *  GET DIŞINDAKİ İSTEKLERE ASLA DOKUNMAYIZ: bir formu ya da API
  *  çağrısını önbellekten yanıtlamak veri kaybına yol açar.
  * ================================================================== */
 
-const SURUM   = 'cy-v1';
+const SURUM   = 'cy-v2';
 const STATIK  = SURUM + '-statik';
 const SAYFA   = SURUM + '-sayfa';
 
-/* Kurulumda önbelleğe alınacak asgari dosyalar. Liste kısa tutulur:
- * uzun bir liste, tek bir dosya 404 verdiğinde kurulumun tamamını
- * başarısız kılar. */
-const ONCEDEN = ['./'];
+/* Servis çalışanının kapsamı (uygulamanın taban yolu, sonu "/"). */
+const KAPSAM = new URL('./', self.location).pathname;
+
+/* Kurulumda önbelleğe alınacak asgari sayfalar. Her biri AYRI eklenir:
+ * cache.addAll() tek bir dosya 404 verdiğinde hepsini reddederdi. */
+const ONCEDEN = ['./', './cevrimdisi'];
+
+/* Önbelleğe ASLA girmeyecek rota önekleri (kapsama göre). */
+const OZEL = ['panel', 'giris', 'kayit', 'cikis'];
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(STATIK)
-            .then((cache) => cache.addAll(ONCEDEN))
-            .catch(() => undefined)      // biri düşerse kurulum yine tamamlansın
+            .then((cache) => Promise.all(
+                ONCEDEN.map((adres) => cache.add(adres).catch(() => undefined))
+            ))
             .then(() => self.skipWaiting())
     );
 });
@@ -41,12 +60,38 @@ self.addEventListener('activate', (event) => {
         caches.keys()
             .then((adlar) => Promise.all(
                 adlar
-                    .filter((ad) => !ad.startsWith(SURUM))
+                    .filter((ad) => ad.startsWith('cy-') && !ad.startsWith(SURUM))
                     .map((ad) => caches.delete(ad))   // eski sürümleri temizle
             ))
             .then(() => self.clients.claim())
     );
 });
+
+/**
+ * İsteğin rota yolu: temiz adreste kapsamdan sonraki kısım, eski
+ * biçimde (index.php?r=...) "r" parametresi.
+ */
+function rotaYolu(url) {
+    const r = url.searchParams.get('r');
+
+    if (r !== null) {
+        return r.replace(/^\/+/, '');
+    }
+
+    const yol = url.pathname.startsWith(KAPSAM) ? url.pathname.slice(KAPSAM.length) : url.pathname;
+
+    return yol.replace(/^index\.php\/?/, '').replace(/^\/+/, '');
+}
+
+function ozelMi(url) {
+    const yol = rotaYolu(url);
+
+    return OZEL.some((onek) => yol === onek || yol.startsWith(onek + '/'));
+}
+
+function cevrimdisiSayfa() {
+    return caches.match('./cevrimdisi').then((sayfa) => sayfa || caches.match('./'));
+}
 
 self.addEventListener('fetch', (event) => {
     const istek = event.request;
@@ -61,6 +106,15 @@ self.addEventListener('fetch', (event) => {
 
     // API ve kurulum sihirbazı her zaman ağdan gelir.
     if (url.pathname.includes('/api/') || url.pathname.includes('/kurulum')) { return; }
+
+    // Kişisel sayfalar: YALNIZCA AĞ. Ağ yoksa çevrimdışı sayfası.
+    if (ozelMi(url)) {
+        if (istek.mode === 'navigate') {
+            event.respondWith(fetch(istek).catch(cevrimdisiSayfa));
+        }
+
+        return;
+    }
 
     const statikMi = /\.(css|js|png|jpe?g|gif|webp|svg|ico|woff2?)$/i.test(url.pathname);
 
@@ -85,13 +139,15 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
         fetch(istek)
             .then((yanit) => {
-                if (yanit && yanit.status === 200 && yanit.type === 'basic') {
+                const kisisel = yanit.headers.get('X-CY-Onbellek') === 'hayir';
+
+                if (yanit && yanit.status === 200 && yanit.type === 'basic' && !kisisel) {
                     const kopya = yanit.clone();
                     caches.open(SAYFA).then((cache) => cache.put(istek, kopya));
                 }
 
                 return yanit;
             })
-            .catch(() => caches.match(istek).then((bulunan) => bulunan || caches.match('./')))
+            .catch(() => caches.match(istek).then((bulunan) => bulunan || cevrimdisiSayfa()))
     );
 });

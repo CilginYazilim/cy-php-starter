@@ -17,6 +17,8 @@ use DateTimeImmutable;
 final class MailLog
 {
     public const DURUM_KUYRUKTA   = 'kuyrukta';
+    /** Bir süreç tarafından ayrılmış, şu an gönderiliyor (bkz. MailRepository::claim). */
+    public const DURUM_GONDERILIYOR = 'gonderiliyor';
     public const DURUM_GONDERILDI = 'gonderildi';
     public const DURUM_BASARISIZ  = 'basarisiz';
 
@@ -64,6 +66,7 @@ final class MailLog
     {
         return [
             self::DURUM_KUYRUKTA   => 'Kuyrukta',
+            self::DURUM_GONDERILIYOR => 'Gönderiliyor',
             self::DURUM_GONDERILDI => 'Gönderildi',
             self::DURUM_BASARISIZ  => 'Başarısız',
         ];

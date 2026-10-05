@@ -11,7 +11,6 @@ namespace App\Core\Console\Commands;
 
 use App\Core\Config;
 use App\Core\Console\Command;
-use App\Core\Database\Migrator;
 
 final class MigrateRollbackCommand extends Command
 {
@@ -32,7 +31,9 @@ final class MigrateRollbackCommand extends Command
              . "\n"
              . "  Bir \"parti\", tek bir 'php cy migrate' çağrısında uygulanan\n"
              . "  migration'ların tamamıdır; üç dosyalık bir dağıtım tek\n"
-             . "  komutla geri sarılır.";
+             . "  komutla geri sarılır.\n"
+             . "\n"
+             . "  Kurulumla gelen migration'lar (parti 0) geri ALINMAZ.";
     }
 
     public function handle(): int
@@ -45,7 +46,7 @@ final class MigrateRollbackCommand extends Command
             return self::BASARILI;
         }
 
-        $migrator = new Migrator($this->db(), (string) Config::get('db.migrations'), \App\Core\Modules\Modules::migrationPaths());
+        $migrator = \App\Core\Modules\Modules::migrator($this->db(), (string) Config::get('db.migrations'));
 
         $this->out->title('Geri alınıyor');
 

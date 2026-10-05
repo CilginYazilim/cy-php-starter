@@ -45,13 +45,7 @@ final class MakeModuleCommand extends MakeCommand
 
     public function handle(): int
     {
-        $name = $this->studly($this->requireName('php cy make:module <Ad>'));
-
-        if ($name === '') {
-            $this->out->error('Geçerli bir modül adı verin (harfle başlamalı).');
-
-            return self::HATA;
-        }
+        $name = $this->className('php cy make:module <Ad>');
 
         $root = Modules::path() . DIRECTORY_SEPARATOR . $name;
 
@@ -63,6 +57,8 @@ final class MakeModuleCommand extends MakeCommand
 
         $table = $this->snake($name);
         $slug  = str_replace('_', '-', $table);
+
+        $this->assertTableFree($table);
 
         $replacements = [
             'AD'    => $name,

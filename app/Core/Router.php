@@ -227,7 +227,7 @@ final class Router
         }
 
         if ($verb === 'POST') {
-            $spoofed = strtoupper(trim((string) ($_POST['_method'] ?? '')));
+            $spoofed = strtoupper(trim($request->string('_method')));
 
             if ($spoofed !== '' && in_array($spoofed, self::VERBS, true)) {
                 return $spoofed;

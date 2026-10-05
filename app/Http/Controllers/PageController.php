@@ -102,14 +102,22 @@ final class PageController extends Controller
         $this->save($sayfa);
     }
 
+    /** POST'tan metin; dizi gönderilmişse varsayılan (bkz. Request::string). */
+    private static function post(string $key, string $default = ''): string
+    {
+        $value = $_POST[$key] ?? $default;
+
+        return is_scalar($value) ? (string) $value : $default;
+    }
+
     private function save(?\App\Models\Page $mevcut): void
     {
         $depo   = $this->pages();
         $errors = [];
 
-        $baslik = trim((string) ($_POST['baslik'] ?? ''));
-        $slug   = Html::slug(trim((string) ($_POST['slug'] ?? '')));
-        $icerik = (string) ($_POST['icerik'] ?? '');
+        $baslik = trim(self::post('baslik'));
+        $slug   = Html::slug(trim(self::post('slug')));
+        $icerik = self::post('icerik');
 
         if (mb_strlen($baslik) < 2) {
             $errors['baslik'] = 'Başlık en az 2 karakter olmalı.';
@@ -150,13 +158,13 @@ final class PageController extends Controller
         $veri = [
             'baslik'       => $baslik,
             'slug'         => $slug,
-            'ozet'         => trim((string) ($_POST['ozet'] ?? '')),
+            'ozet'         => trim(self::post('ozet')),
             'icerik'       => $icerik,
-            'durum'        => (string) ($_POST['durum'] ?? 'taslak'),
+            'durum'        => self::post('durum', 'taslak'),
             'menude'       => isset($_POST['menude']),
             'sira'         => (int) ($_POST['sira'] ?? 0),
-            'seo_baslik'   => trim((string) ($_POST['seo_baslik'] ?? '')),
-            'seo_aciklama' => trim((string) ($_POST['seo_aciklama'] ?? '')),
+            'seo_baslik'   => trim(self::post('seo_baslik')),
+            'seo_aciklama' => trim(self::post('seo_aciklama')),
             'yazar_id'     => Auth::id(),
         ];
 

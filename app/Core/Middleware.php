@@ -20,12 +20,16 @@ final class Middleware
 
         // API kuralları ayrı bir kapıcıya devredilir (Bearer anahtarı,
         // hız sınırı, JSON hata biçimi). Bkz. App\Core\Api\ApiGuard.
-        if (str_starts_with($rule, 'api')) {
+        if ($name === 'api' || str_starts_with((string) $name, 'api.')) {
             \App\Core\Api\ApiGuard::handle($rule, $request);
 
             return;
         }
 
+        /* BİLİNMEYEN AD = HATA. Eskiden "default => null" idi: rotada
+         * 'Auth' ya da 'cann:users.delete' gibi bir yazım hatası
+         * sessizce geçiyor ve rota HERKESE AÇIK kalıyordu. Güvenlik
+         * kontrolü belirsiz kaldığında "kapalı" yönde bozulmalıdır. */
         match ($name) {
             'auth'      => self::auth($request),
             'guest'     => self::guest(),
@@ -34,13 +38,23 @@ final class Middleware
             'csrf'      => self::csrf($request),
             'installed' => self::installed(),
             'bakim'     => self::maintenance(),
-            default     => null,
+            default     => throw new \LogicException(sprintf(
+                'Bilinmeyen ara katman: "%s". Geçerli adlar: auth, guest, role:…, can:…, csrf, installed, bakim, api, api.can:…, api.guest',
+                $rule
+            )),
         };
     }
 
     private static function auth(Request $request): void
     {
         if (Auth::check()) {
+            /* BAKIM MODU girişli kullanıcıyı da kapsar: ayarın açıklaması
+             * "siteyi yalnızca yöneticiler görebilir" der. Muaf olmayan
+             * üye panelde 503 görür; yalnızca çıkış yapabilir. */
+            if (Url::current() !== 'cikis') {
+                self::maintenance();
+            }
+
             return;
         }
 
@@ -50,8 +64,52 @@ final class Middleware
             throw HttpException::unauthorized();
         }
 
-        Session::set('_intended', $request->raw('r', ''));
+        /* "GİRİŞTEN SONRA BURAYA DÖN" adresi.
+         *
+         * Yalnızca GET isteklerinde ve İSTEĞİN KENDİ YOLUNDAN yazılır.
+         * Eskiden ham "r" parametresi (GET ya da POST) olduğu gibi
+         * saklanıyordu. "auth" ara katmanı "csrf"ten ÖNCE çalıştığı
+         * için başka bir site, ziyaretçinin tarayıcısına POST ile
+         * "r=/\evil.example" yerleştirebiliyor; giriş sonrası yanıt
+         * "Location: /\evil.example" oluyordu — tarayıcı bunu
+         * //evil.example, yani BAŞKA BİR SİTE sayar (açık yönlendirme).
+         * Ayrıca temiz adreslerde "r" hiç gelmediği için özellik zaten
+         * çalışmıyordu. Url::current() yolu dar bir karakter kümesine
+         * indirger; AuthController de okurken yeniden doğrular. */
+        if ($request->method() === 'GET') {
+            Session::set('_intended', self::safeIntended(Url::current()));
+        }
+
         Response::redirect(url('giris'));
+    }
+
+    /**
+     * Girişten sonra dönülecek yolu doğrular. Geçersizse '' döner.
+     *
+     * Kabul edilen: "panel/kullanicilar" gibi UYGULAMA İÇİ, göreli bir
+     * rota yolu. Şema, alan adı, ters bölü, "//" ya da ".." içeren her
+     * şey reddedilir; url() de sonucu her zaman uygulamanın taban
+     * yolunun altına yerleştirir.
+     */
+    public static function safeIntended(mixed $path): string
+    {
+        /* "//alan.adi" ve "/\alan.adi" tarayıcıda BAŞKA SİTE demektir;
+         * kırpmadan önce reddedilir (kırpılınca masum görünürlerdi). */
+        if (!is_string($path) || preg_match('#^\s*[/\\\\]{2}#', $path) === 1) {
+            return '';
+        }
+
+        $path = trim($path, '/');
+
+        if ($path === ''
+            || strlen($path) > 200
+            || preg_match('#^[A-Za-z0-9/_.-]+$#', $path) !== 1
+            || str_contains($path, '//')
+            || str_contains($path, '..')) {
+            return '';
+        }
+
+        return $path;
     }
 
     private static function guest(): void
@@ -122,12 +180,15 @@ final class Middleware
      * yeni üyeler kaydolmaya devam ediyordu. Kapıyı rotanın önüne
      * koyuyoruz.
      *
-     * Panele erişebilenler (dashboard.view) muaftır: bakım
-     * sırasında sistemi düzeltebilmeleri gerekir.
+     * Yalnızca "maintenance.bypass" yetkisi olanlar (yönetici ve
+     * editör) muaftır: bakım sırasında sistemi düzeltebilmeleri
+     * gerekir. Eskiden muafiyet "dashboard.view"e bağlıydı; o yetki
+     * HER ÜYEDE var ve kayıt da açık olduğu için herkes kayıt olup
+     * bakım modunu atlayabiliyordu.
      */
     private static function maintenance(): void
     {
-        if (!Setting::bool('sistem_bakim_modu', false) || Auth::can('dashboard.view')) {
+        if (!Setting::bool('sistem_bakim_modu', false) || Auth::can('maintenance.bypass')) {
             return;
         }
 

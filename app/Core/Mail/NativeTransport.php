@@ -55,19 +55,42 @@ final class NativeTransport implements Transport
             $headerLines[] = $name . ': ' . $value;
         }
 
-        // -f parametresi zarf gönderenini belirler; "Return-Path"
-        // doğru olsun diye veriyoruz. safe_mode kapalı olmalıdır.
-        $ok = @mail(
-            $to,
-            $subject,
-            $built['body'],
-            implode(Mime::CRLF, $headerLines),
-            '-f' . Mime::stripNewlines($from[0])
-        );
+        /* -f parametresi zarf gönderenini belirler ("Return-Path").
+         *
+         * KOMUT SATIRI ENJEKSİYONU: Bu değer sendmail'e ARGÜMAN olarak
+         * gider. Panelde "Gönderen Adresi" alanına "a@b.c -X/tmp/x" gibi
+         * bir değer yazılırsa sendmail'e ek bir parametre (ör. günlüğü
+         * web köküne yazdırma) iletilebiliyordu. Adres katı bir kalıba
+         * uymuyorsa -f hiç gönderilmez; mektup yine gider. */
+        $parametre = self::safeEnvelopeSender($from[0]);
+
+        $ok = $parametre !== ''
+            ? @mail($to, $subject, $built['body'], implode(Mime::CRLF, $headerLines), '-f' . $parametre)
+            : @mail($to, $subject, $built['body'], implode(Mime::CRLF, $headerLines));
 
         if ($ok !== true) {
             throw new MailException('PHP mail() mektubu teslim edemedi. Sunucunun posta ayarlarını (php.ini → sendmail_path / SMTP) kontrol edin.');
         }
+    }
+
+    /**
+     * Zarf göndereni olarak kullanılabilecek adres; uygun değilse ''.
+     *
+     * Boşluk, tırnak, ters bölü ya da "-" ile başlayan hiçbir değer
+     * geçemez — sendmail'e ek argüman sokmanın tüm yolları bunlardır.
+     */
+    public static function safeEnvelopeSender(string $address): string
+    {
+        $address = trim($address);
+
+        if ($address === ''
+            || preg_match('/^[A-Za-z0-9._%+=-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/', $address) !== 1
+            || str_starts_with($address, '-')
+            || filter_var($address, FILTER_VALIDATE_EMAIL) === false) {
+            return '';
+        }
+
+        return $address;
     }
 
     public function verify(): void

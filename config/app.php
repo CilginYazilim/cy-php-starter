@@ -32,10 +32,16 @@ return [
      *  (github.com/CilginYazilim/cy-php-starter/releases) ve anlamsal
      *  sürümleme kullanır: BÜYÜK.KÜÇÜK.YAMA
      * -------------------------------------------------------------- */
-    'version' => '1.1.0',
+    'version' => '1.3.0',
 
     'desc'  => Env::get('APP_DESCRIPTION', 'Çılgın Yazılım örnek uygulaması'),
     'url'   => Env::get('APP_URL', ''),
+
+    /* Kuruluma özel gizli anahtar (64 onaltılık karakter). Kurulum
+     * sihirbazı üretir. Oturumu bu kuruluma bağlamak için kullanılır
+     * (bkz. App\Core\Session::appId); değiştirirseniz açık oturumlar
+     * kapanır, başka bir şey bozulmaz. */
+    'key' => Env::get('APP_KEY', ''),
 
     /* -----------------------------------------------------------------
      *  ORTAM
@@ -47,10 +53,15 @@ return [
      *  tutarsızsa (production + debug) uyarı üretilir. Modüller de
      *  Config::isProduction() ile kendi kararlarını verebilir.
      * -------------------------------------------------------------- */
-    'env' => Env::get('APP_ENV', 'local'),
+    'env' => Env::get('APP_ENV', 'production'),
 
-    /* Hata ayrıntıları ekranda görünsün mü? Yayında MUTLAKA false. */
-    'debug' => Env::bool('APP_DEBUG', true),
+    /* Hata ayrıntıları ekranda görünsün mü? Yayında MUTLAKA false.
+     *
+     * VARSAYILAN KAPALIDIR: .env'de satır unutulmuşsa ya da ortam
+     * değişkeni hiç verilmemişse güvenli tarafta kalırız. Eskiden
+     * varsayılan "true" idi; eksik bir .env yayındaki sitede dosya
+     * yollarını ve SQL hatalarını ziyaretçiye gösteriyordu. */
+    'debug' => Env::bool('APP_DEBUG', false),
 
     'timezone' => Env::get('APP_TIMEZONE', 'Europe/Istanbul'),
     'locale'   => 'tr_TR',

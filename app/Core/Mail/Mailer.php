@@ -28,6 +28,7 @@ use App\Core\Config;
 use App\Core\Database;
 use App\Core\Log\Logger;
 use App\Core\Setting;
+use App\Models\MailLog;
 use App\Repositories\MailRepository;
 use Throwable;
 
@@ -208,7 +209,10 @@ final class Mailer
 
         self::applyDefaults($mail);
 
-        $logId = self::log()?->record($mail, 'kuyrukta');
+        /* Kayıt doğrudan "gonderiliyor" olarak açılır. Eskiden
+         * "kuyrukta" yazılıyordu: gönderim sürerken çalışan bir kuyruk
+         * işçisi aynı satırı alıp mektubu İKİNCİ KEZ gönderebiliyordu. */
+        $logId = self::log()?->record($mail, MailLog::DURUM_GONDERILIYOR);
 
         try {
             if (!self::enabled()) {
@@ -283,7 +287,7 @@ final class Mailer
         $failed          = 0;
         self::$lastError = '';
 
-        foreach ($repository->pending($limit) as $row) {
+        foreach ($repository->claimPending($limit) as $row) {
             $mail = $repository->toMailable($row);
 
             self::applyDefaults($mail);

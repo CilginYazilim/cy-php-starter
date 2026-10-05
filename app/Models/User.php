@@ -39,6 +39,8 @@ final class User
         public readonly ?string $createdAt = null,
         public readonly ?string $updatedAt = null,
         private readonly string $sifreHash = '',
+        /** Parola değişince artar; eski oturumları geçersiz kılar (bkz. Auth). */
+        public readonly int     $oturumSurumu = 0,
     ) {
     }
 
@@ -63,6 +65,7 @@ final class User
             createdAt:    isset($row['created_at']) ? (string) $row['created_at'] : null,
             updatedAt:    isset($row['updated_at']) ? (string) $row['updated_at'] : null,
             sifreHash:    (string) ($row['sifre'] ?? ''),
+            oturumSurumu: (int) ($row['oturum_surumu'] ?? 0),
         );
     }
 

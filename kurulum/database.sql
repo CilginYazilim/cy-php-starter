@@ -14,11 +14,16 @@
 --    değerlerle günceller, yönetici hesabını oluşturur ve
 --    database/migrations altındaki EK tabloları da kurar.
 --
---  ► ELLE KURULUM:
---    Terminal   :  mysql -u root -p < kurulum/database.sql
---    phpMyAdmin :  İçe Aktar > Dosya seç > database.sql > Başlat
+--  ► ELLE KURULUM (önce boş bir veritabanı oluşturun):
+--    Terminal   :  mysql -u root -p -e "CREATE DATABASE proje_adi CHARACTER SET utf8mb4 COLLATE utf8mb4_turkish_ci"
+--                  mysql -u root -p proje_adi < kurulum/database.sql
+--    phpMyAdmin :  Veritabanını seçin > İçe Aktar > database.sql > Başlat
 --    Ardından   :  php cy migrate        (onbellek, isler, api_anahtarlari)
 --    (Bu durumda yönetici hesabını kendiniz eklemeniz gerekir.)
+--
+--    Bu dosya bilerek "CREATE DATABASE / USE" İÇERMEZ. Eskiden
+--    "USE yeni_proje" sabit yazılıydı: dosyayı başka bir veritabanına
+--    aktarmak isteyen kişi farkında olmadan "yeni_proje"yi kuruyordu.
 --
 --  ► ÖRNEK VERİ bu dosyada DEĞİLDİR. Demo kullanıcı ve mesajlar
 --    "kurulum/demo.sql" içindedir; sihirbazda onay kutusuyla
@@ -30,21 +35,23 @@ SET time_zone = "+03:00";
 SET NAMES utf8mb4;
 
 -- ---------------------------------------------------------------
---  1) Veritabanı
+--  1) Eski tabloları temizle
 -- ---------------------------------------------------------------
-CREATE DATABASE IF NOT EXISTS `yeni_proje`
-    DEFAULT CHARACTER SET utf8mb4
-    COLLATE utf8mb4_turkish_ci;
-
-USE `yeni_proje`;
-
 -- Yabancı anahtar bağımlılığı olduğu için önce alt tablolar silinir.
+-- "api_anahtarlari" kullanicilar'a bağlıdır; listede olmadığı için
+-- eski sürümde ikinci içe aktarım FK hatasıyla duruyordu. Migration'ların
+-- kurduğu tablolar da (isler, onbellek) ve kayıt tablosu (migrasyonlar)
+-- temizlenir: yarım kalan bir şema sonradan "zaten var" hatalarına yol açar.
+DROP TABLE IF EXISTS `api_anahtarlari`;
 DROP TABLE IF EXISTS `mail_kayitlari`;
 DROP TABLE IF EXISTS `mesajlar`;
 DROP TABLE IF EXISTS `login_attempts`;
 DROP TABLE IF EXISTS `sayfalar`;
 DROP TABLE IF EXISTS `kullanicilar`;
 DROP TABLE IF EXISTS `ayarlar`;
+DROP TABLE IF EXISTS `isler`;
+DROP TABLE IF EXISTS `onbellek`;
+DROP TABLE IF EXISTS `migrasyonlar`;
 
 
 -- ===============================================================
@@ -93,7 +100,10 @@ INSERT INTO `ayarlar`
 -- ---- İLETİŞİM ----
 ('iletisim_eposta', '',           'iletisim', 'eposta',  'İletişim E-postası', 'İletişim formundan gelen mesajların bildirimi bu adrese gider.', NULL, 10),
 ('iletisim_telefon','',           'iletisim', 'metin',   'Telefon',            'Ön yüzde tıklanabilir bağlantı olur. Örn: +90 212 000 00 00', NULL, 20),
-('iletisim_whatsapp','+90 541 509 05 83', 'iletisim', 'metin', 'WhatsApp Numarası',  'Ülke koduyla yazın: +90 541 509 05 83. Boşsa WhatsApp düğmesi hiç görünmez.', NULL, 25),
+-- WhatsApp ve sosyal medya alanları BOŞ gelir. Eskiden şablon
+-- yazarının numarası ve hesapları varsayılan değerdi; her yeni
+-- kurulumun ziyaretçisi farkında olmadan o numaraya yönleniyordu.
+('iletisim_whatsapp','',          'iletisim', 'metin', 'WhatsApp Numarası',  'Ülke koduyla yazın: +90 5XX XXX XX XX. Boşsa WhatsApp düğmesi hiç görünmez.', NULL, 25),
 ('iletisim_whatsapp_mesaj', 'Merhaba, siteniz üzerinden yazıyorum. Bilgi almak istiyorum.', 'iletisim', 'uzun_metin', 'WhatsApp Hazır Mesajı', 'Ziyaretçi düğmeye bastığında sohbet kutusuna hazır gelecek metin.', NULL, 27),
 ('iletisim_adres',  '',           'iletisim', 'uzun_metin', 'Adres',           'Alt bilgide ve iletişim sayfasında görünür.', NULL, 30),
 ('iletisim_saatler','',           'iletisim', 'metin',   'Çalışma Saatleri',   'Örn: Hafta içi 09:00 – 18:00', NULL, 40),
@@ -115,18 +125,21 @@ INSERT INTO `ayarlar`
 ('mail_gonderen',      '',      'eposta', 'eposta', 'Gönderen Adresi',    'Mektupların "Kimden" adresi. Boşsa iletişim e-postası kullanılır.', NULL, 70),
 ('mail_gonderen_adi',  '',      'eposta', 'metin',  'Gönderen Adı',       'Örn: Yeni Proje Destek. Boşsa site adı kullanılır.', NULL, 80),
 ('mail_bildirim_yeni_mesaj', '1', 'eposta', 'onay', 'Yeni Mesaj Bildirimi', 'İletişim formu doldurulduğunda yöneticiye e-posta gitsin mi?', NULL, 90),
-('mail_otomatik_yanit',      '1', 'eposta', 'onay', 'Otomatik Yanıt',       'Mesajı gönderen ziyaretçiye "aldık" e-postası gitsin mi?', NULL, 100),
+-- Otomatik yanıt VARSAYILAN KAPALI: iletişim formu herkese açıktır ve
+-- yanıt, formda yazılan HERHANGİ bir adrese sizin alan adınızdan gider.
+-- Açık geldiğinde form bir spam rölesi gibi kullanılabiliyordu.
+('mail_otomatik_yanit',      '0', 'eposta', 'onay', 'Otomatik Yanıt',       'Mesajı gönderen ziyaretçiye "aldık" e-postası gitsin mi? Aynı adrese günde en fazla bir kez gider ve ziyaretçinin yazdığı metni İÇERMEZ.', NULL, 100),
 ('mail_hosgeldin',           '1', 'eposta', 'onay', 'Hoş Geldiniz E-postası', 'Yeni kayıt olan üyeye karşılama e-postası gitsin mi?', NULL, 110),
 ('mail_parti_boyutu',        '15','eposta', 'sayi', 'Parti Boyutu',          'Toplu gönderimde her turda kaç mektup gönderilsin? Sunucunuz yavaşsa düşürün.', NULL, 120),
 ('mail_alt_bilgi',           '',  'eposta', 'uzun_metin', 'E-posta Alt Bilgisi', 'Her mektubun altında görünecek metin. Boşsa site adı yazılır.', NULL, 130),
 
 -- ---- SOSYAL MEDYA ----
-('sosyal_facebook',  'https://www.facebook.com/cilginyazilim',                  'sosyal', 'url', 'Facebook',    NULL, NULL, 10),
-('sosyal_x',         'https://x.com/cilginyazilim',                             'sosyal', 'url', 'X (Twitter)', NULL, NULL, 20),
-('sosyal_instagram', 'https://www.instagram.com/cilginyazilim',                 'sosyal', 'url', 'Instagram',   NULL, NULL, 30),
-('sosyal_linkedin',  'https://tr.linkedin.com/in/evren-%C3%A7ilgin-193262216',  'sosyal', 'url', 'LinkedIn',    NULL, NULL, 40),
-('sosyal_youtube',   'https://www.youtube.com/@cilginyazilim',                  'sosyal', 'url', 'YouTube',     NULL, NULL, 50),
-('sosyal_github',    'https://github.com/CilginYazilim',                        'sosyal', 'url', 'GitHub',      NULL, NULL, 60),
+('sosyal_facebook',  '', 'sosyal', 'url', 'Facebook',    'Tam adres: https://www.facebook.com/hesabiniz', NULL, 10),
+('sosyal_x',         '', 'sosyal', 'url', 'X (Twitter)', 'Tam adres: https://x.com/hesabiniz', NULL, 20),
+('sosyal_instagram', '', 'sosyal', 'url', 'Instagram',   'Tam adres: https://www.instagram.com/hesabiniz', NULL, 30),
+('sosyal_linkedin',  '', 'sosyal', 'url', 'LinkedIn',    'Tam adres: https://www.linkedin.com/in/hesabiniz', NULL, 40),
+('sosyal_youtube',   '', 'sosyal', 'url', 'YouTube',     'Tam adres: https://www.youtube.com/@kanaliniz', NULL, 50),
+('sosyal_github',    '', 'sosyal', 'url', 'GitHub',      'Tam adres: https://github.com/hesabiniz', NULL, 60),
 
 -- ---- SEO ----
 ('seo_baslik_sablonu',    '%sayfa% · %site%', 'seo', 'metin', 'Başlık Şablonu', 'Sekmede görünecek biçim. %sayfa% ve %site% yer tutucularını kullanın.', NULL, 5),
@@ -202,6 +215,9 @@ CREATE TABLE `kullanicilar` (
   -- burada yalnızca özeti: veritabanı sızsa bile çerez üretilemez.
   `hatirla_token` CHAR(64) NULL DEFAULT NULL,
   `hatirla_bitis` DATETIME NULL DEFAULT NULL,
+  -- Parola değişince (ya da "diğer cihazlardan çıkış yap" denince)
+  -- bir artar; oturumdaki sürüm tutmazsa oturum geçersizdir.
+  `oturum_surumu` INT UNSIGNED NOT NULL DEFAULT 0,
   `son_giris`     TIMESTAMP NULL DEFAULT NULL,
   `son_giris_ip`  VARCHAR(45)  NOT NULL DEFAULT '',
   `giris_sayisi`  INT UNSIGNED NOT NULL DEFAULT 0,
@@ -219,10 +235,8 @@ DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_turkish_ci;
 
 -- NOT: Bu şema zaten kurulu bir veritabanını GÜNCELLEMEZ (her şeyi
--- baştan oluşturur). Mevcut bir kurulumu güncelliyorsanız "tema"
--- sütununu elle ekleyin:
---   ALTER TABLE kullanicilar ADD COLUMN tema ENUM('acik','koyu')
---     NOT NULL DEFAULT 'acik' AFTER durum;
+-- baştan oluşturur). Mevcut bir kurulumu güncellemek için yeni kodu
+-- çektikten sonra "php cy migrate" çalıştırın.
 
 -- NOT: Yönetici hesabı BİLEREK buraya eklenmedi; kurulum/ sihirbazı
 -- son adımda oluşturur. Elle kurulumda kendiniz ekleyin:
@@ -332,6 +346,8 @@ CREATE TABLE `mesajlar` (
   KEY `idx_mesajlar_okundu` (`okundu`),
   KEY `idx_mesajlar_tarih`  (`created_at`),
   KEY `idx_mesajlar_kullanici` (`kullanici_id`),
+  -- İletişim formunun IP başına saatlik sınırı bu indeksi kullanır.
+  KEY `idx_mesajlar_ip` (`ip`, `created_at`),
 
   CONSTRAINT `fk_mesajlar_kullanici`
     FOREIGN KEY (`kullanici_id`) REFERENCES `kullanicilar` (`id`)
@@ -357,6 +373,10 @@ COLLATE=utf8mb4_turkish_ci;
 --
 --  "govde" sütunu mektubun HTML gövdesini saklar — hem kuyruktakini
 --  sonradan gönderebilmek hem de panelde önizleyebilmek için.
+--
+--  "gonderiliyor" durumu bir satırı TEK BİR sürecin almasını sağlar:
+--  panel, cron ve "php cy mail:work" aynı anda çalışsa bile aynı
+--  mektup iki kez gönderilmez (bkz. MailRepository::claim).
 -- ===============================================================
 CREATE TABLE `mail_kayitlari` (
   `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -369,7 +389,7 @@ CREATE TABLE `mail_kayitlari` (
   `sablon`        VARCHAR(60)  NOT NULL DEFAULT 'genel',
   `tur`           ENUM('bildirim','iletisim','otomatik','toplu','test','sistem')
                   NOT NULL DEFAULT 'bildirim',
-  `durum`         ENUM('kuyrukta','gonderildi','basarisiz')
+  `durum`         ENUM('kuyrukta','gonderiliyor','gonderildi','basarisiz')
                   NOT NULL DEFAULT 'kuyrukta',
   `hata`          VARCHAR(255) NOT NULL DEFAULT '',
   `deneme`        TINYINT UNSIGNED NOT NULL DEFAULT 0,
@@ -377,6 +397,7 @@ CREATE TABLE `mail_kayitlari` (
   `gonderen_id`   INT UNSIGNED NULL DEFAULT NULL COMMENT 'Gönderimi başlatan yönetici',
   `toplu_id`      CHAR(32) NOT NULL DEFAULT '' COMMENT 'Aynı toplu gönderimin parçalarını bağlar',
   `gonderildi_at` DATETIME NULL DEFAULT NULL,
+  `ayrildi_at`    DATETIME NULL DEFAULT NULL COMMENT 'Gönderim için ayrıldığı an (yarıda kalanları bulmak için)',
   `created_at`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
   PRIMARY KEY (`id`),
@@ -397,3 +418,46 @@ CREATE TABLE `mail_kayitlari` (
 ) ENGINE=InnoDB
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_turkish_ci;
+
+
+-- ===============================================================
+--  7) MIGRATION KAYIT TABLOSU + TEMEL PARTİ
+-- ---------------------------------------------------------------
+--  Aşağıdaki migration'ların yaptığı değişiklikler BU DOSYADA zaten
+--  var. Kayıt tablosuna "parti 0" (temel parti) olarak işaretlenirler:
+--
+--    · "php cy migrate" onları tekrar çalıştırmaz,
+--    · "php cy migrate:rollback" / "migrate:fresh" onlara DOKUNMAZ.
+--
+--  NEDEN? Eskiden bu migration'lar kurulumdan sonra 1. partiye
+--  yazılıyordu. up() metotları "tablo zaten var" deyip hiçbir şey
+--  yapmıyor, ama down() metotları yine de siliyordu: kurulumdan hemen
+--  sonra çalıştırılan bir rollback "sayfalar" tablosunu düşürüyor,
+--  ayar satırlarını ve "beni hatırla" sütunlarını siliyordu.
+--
+--  Bu dosyaya yeni bir tablo/sütun eklediğinizde onu getiren
+--  migration'ın adını da buraya ekleyin.
+--
+--  Tablonun tanımı App\Core\Database\Migrator::ensureTable() ile
+--  birebir aynıdır.
+-- ===============================================================
+CREATE TABLE IF NOT EXISTS `migrasyonlar` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `dosya`      VARCHAR(255) NOT NULL,
+  `parti`      INT UNSIGNED NOT NULL DEFAULT 1,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_migrasyon_dosya` (`dosya`)
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_turkish_ci;
+
+INSERT INTO `migrasyonlar` (`dosya`, `parti`) VALUES
+('2026_08_10_040000_mesajlar_ip_indeksi',   0),
+('2026_08_10_050000_sayfalar_tablosu',      0),
+('2026_08_10_060000_beni_hatirla_sutunlari', 0),
+('2026_08_10_070000_yeni_ayarlar',          0),
+('2026_08_10_080000_pwa_ayarlari',          0),
+('2026_08_30_010000_surum_ayarini_kaldir',  0),
+('2026_10_06_010000_oturum_surumu',         0),
+('2026_10_06_020000_mail_kuyrugu_kilidi',   0);

@@ -25,21 +25,40 @@ use App\Core\Validator;
 use App\Events\FileUploaded;
 use App\Events\PasswordChanged;
 use App\Http\Controller;
+use App\Core\Api\ApiToken;
 use RuntimeException;
+use Throwable;
 
 final class ProfileController extends Controller
 {
+    /** Bir kullanıcının aynı anda sahip olabileceği en fazla API anahtarı. */
+    private const MAX_TOKENS = 10;
+
     public function index(Request $request): void
     {
         $user = Auth::user();
 
         $this->view('profile/index', [
-            'title'    => 'Hesabım',
-            'subtitle' => 'Kişisel bilgilerinizi ve parolanızı buradan güncelleyin.',
-            'user'     => $user,
-            'errors'   => Flash::errors(),
-            'old'      => Flash::old(),
+            'title'     => 'Hesabım',
+            'subtitle'  => 'Kişisel bilgilerinizi ve parolanızı buradan güncelleyin.',
+            'user'      => $user,
+            'errors'    => Flash::errors(),
+            'old'       => Flash::old(),
+            'apiTokens' => $user !== null && Auth::can('profile.api') ? $this->tokens($user->id) : null,
+            /* Yeni anahtarın AÇIK HALİ yalnızca bir kez, üretildiği
+             * isteğin hemen ardından gösterilir; sonra oturumdan silinir. */
+            'yeniAnahtar' => Session::pull('_yeni_api_anahtari'),
         ]);
+    }
+
+    /** @return array<int,array<string,mixed>> Tablo henüz yoksa boş */
+    private function tokens(int $userId): array
+    {
+        try {
+            return ApiToken::forUser($userId);
+        } catch (Throwable) {
+            return [];
+        }
     }
 
     public function update(Request $request): void
@@ -61,9 +80,25 @@ final class ProfileController extends Controller
             $validator->addError('eposta', 'Bu e-posta adresi başka bir hesapta kayıtlı.');
         }
 
+        /* E-POSTA DEĞİŞİKLİĞİ MEVCUT PAROLAYI İSTER.
+         *
+         * E-posta adresi hesabın kurtarma kanalıdır ("parolamı unuttum",
+         * bildirimler). Açık bırakılmış bir oturumu ele geçiren kişi
+         * eskiden adresi tek tıkla kendi adresine çevirip hesabı kalıcı
+         * olarak alabiliyordu. */
+        $yeniEposta = mb_strtolower((string) ($validator->validated()['eposta'] ?? ''));
+
+        if ($validator->passes() && $yeniEposta !== mb_strtolower($user->eposta)) {
+            $hesap = $this->users()->findWithPassword($user->id);
+
+            if ($hesap === null || !$hesap->verifyPassword($request->string('eposta_sifre'))) {
+                $validator->addError('eposta_sifre', 'E-posta adresinizi değiştirmek için mevcut parolanızı doğru girin.');
+            }
+        }
+
         if ($validator->fails()) {
             Flash::error('Lütfen formdaki hataları düzeltin.');
-            Flash::withInput($validator->errors(), $_POST);
+            Flash::withInput($validator->errors(), array_diff_key($_POST, array_flip(['eposta_sifre', 'csrf_token'])));
             Response::redirect(url('panel/hesabim'));
         }
 
@@ -89,7 +124,7 @@ final class ProfileController extends Controller
             Response::redirect(url('giris'));
         }
 
-        $current = (string) ($_POST['mevcut_sifre'] ?? '');
+        $current = $request->string('mevcut_sifre');
 
         /* Auth::user() parola özetini TAŞIMAZ (UserRepository::find()
          * "sifre" sütununu okumaz). Doğrulamayı onun üzerinden yapmak
@@ -103,7 +138,7 @@ final class ProfileController extends Controller
         if ($hesap === null || !$hesap->verifyPassword($current)) {
             $validator->addError('mevcut_sifre', 'Mevcut parolanız hatalı.');
         }
-        if ($current !== '' && $current === (string) ($_POST['yeni_sifre'] ?? '')) {
+        if ($current !== '' && $current === $request->string('yeni_sifre')) {
             $validator->addError('yeni_sifre', 'Yeni parola, mevcut parolanızdan farklı olmalıdır.');
         }
 
@@ -113,21 +148,109 @@ final class ProfileController extends Controller
             Response::redirect(url('panel/hesabim'));
         }
 
+        /* Parola değişti. UserRepository::update() aynı sorguda oturum
+         * sürümünü artırır ve "beni hatırla" jetonunu siler: DİĞER
+         * cihazlardaki oturumlar ve çalınmış olabilecek çerezler bir
+         * sonraki istekte düşer. Parolasını değiştirmenin bir nedeni
+         * "birileri hesabıma girmiş olabilir" şüphesidir; eskiden
+         * yalnızca BU oturumun kimliği yenileniyor, diğerleri açık
+         * kalıyordu. */
         $this->users()->update($user->id, ['sifre' => (string) $validator->validated()['yeni_sifre']]);
 
-        /* Parola değişti: oturum kimliğini ve CSRF jetonunu yeniliyoruz.
-         * Parolasını değiştirmenin bir nedeni "birileri hesabıma
-         * girmiş olabilir" şüphesidir; eski oturum kimliği geçerli
-         * kalırsa bu işlem hiçbir şeyi düzeltmez. */
-        Session::regenerate();
-        Csrf::rotate();
+        /* Bu cihaz açık kalır: yeni sürümle yeniden oturum açılır
+         * (oturum kimliği ve CSRF jetonu da yenilenir). */
+        $guncel = $this->users()->find($user->id);
+
+        if ($guncel !== null) {
+            Auth::login($guncel);
+        } else {
+            Session::regenerate();
+            Csrf::rotate();
+        }
 
         /* Parolanın kendisi olayda TAŞINMAZ. Bir dinleyici "parolanız
          * değişti" bilgilendirmesi gönderebilir — hesabı çalınan
          * kullanıcının fark etmesinin tek yolu genelde budur. */
         Events::dispatch(new PasswordChanged($user->id, kendisi: true));
 
-        Flash::success('Parolanız güncellendi.');
+        Flash::success('Parolanız güncellendi. Diğer cihazlardaki oturumlarınız kapatıldı.');
+        Response::redirect(url('panel/hesabim'));
+    }
+
+    /**
+     * "Diğer cihazlardaki oturumları kapat".
+     *
+     * Parola değiştirmeden de kullanılabilir: kullanıcı ortak bir
+     * bilgisayarda çıkış yapmayı unuttuğunu fark ettiğinde.
+     */
+    public function logoutOthers(Request $request): void
+    {
+        $user = Auth::user();
+
+        if ($user === null) {
+            Response::redirect(url('giris'));
+        }
+
+        Auth::logoutOtherDevices($user->id);
+
+        Flash::success('Bu cihaz dışındaki tüm oturumlarınız ve "beni hatırla" kayıtlarınız kapatıldı.');
+        Response::redirect(url('panel/hesabim'));
+    }
+
+    /* =================================================================
+     *  API ANAHTARLARI
+     * ============================================================== */
+
+    public function createToken(Request $request): void
+    {
+        $user = Auth::user();
+
+        if ($user === null) {
+            Response::redirect(url('giris'));
+        }
+
+        $ad  = trim($request->input('anahtar_adi'));
+        $gun = $request->int('anahtar_gun', 0, 3650) ?? 0;
+
+        if ($ad === '' || mb_strlen($ad) > 100) {
+            Flash::error('Anahtara 1-100 karakterlik bir ad verin (örn. "Mobil uygulama").');
+            Response::redirect(url('panel/hesabim'));
+        }
+
+        try {
+            if (ApiToken::countForUser($user->id) >= self::MAX_TOKENS) {
+                Flash::error('En fazla ' . self::MAX_TOKENS . ' anahtarınız olabilir. Kullanmadığınız bir anahtarı iptal edin.');
+                Response::redirect(url('panel/hesabim'));
+            }
+
+            $sonuc = ApiToken::create($user->id, $ad, $gun > 0 ? $gun : null);
+        } catch (\PDOException) {
+            Flash::error('API anahtarı tablosu bulunamadı. Sunucuda "php cy migrate" çalıştırın.');
+            Response::redirect(url('panel/hesabim'));
+        }
+
+        /* Açık anahtar veritabanına YAZILMAZ (yalnızca özeti); bu yüzden
+         * kullanıcıya bir kez gösterilmesi gerekir. Yönlendirme sonrası
+         * sayfada göstermek için oturumda BİR İSTEKLİK tutulur. */
+        Session::set('_yeni_api_anahtari', $sonuc['token']);
+
+        Flash::success('API anahtarı üretildi. Şimdi kopyalayın — bir daha gösterilmeyecek.');
+        Response::redirect(url('panel/hesabim'));
+    }
+
+    public function revokeToken(Request $request): void
+    {
+        $user = Auth::user();
+        $id   = $request->int('anahtar_id', 1);
+
+        if ($user === null || $id === null) {
+            Response::redirect(url('panel/hesabim'));
+        }
+
+        ApiToken::revokeOwned($user->id, $id)
+            ? Flash::success('API anahtarı iptal edildi; onu kullanan istemciler artık erişemez.')
+            : Flash::error('Anahtar bulunamadı.');
+
         Response::redirect(url('panel/hesabim'));
     }
 

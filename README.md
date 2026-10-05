@@ -6,7 +6,7 @@
 
 **Kurulum sihirbazı · rol tabanlı panel · konsol · migration · kuyruk · olay · modül sistemi · REST API · PWA — hepsi hazır.**
 
-[![Sürüm](https://img.shields.io/badge/Sürüm-1.2.1-0b5cb5?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/releases)
+[![Sürüm](https://img.shields.io/badge/Sürüm-1.3.0-0b5cb5?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/releases)
 [![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://php.net)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.2-7952B3?style=flat-square&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 [![Bağımlılık](https://img.shields.io/badge/Bağımlılık-Sıfır-16a34a?style=flat-square)](#)
@@ -188,6 +188,16 @@ tabloları kurar, migration'ları çalıştırır (önbellek, kuyruk, API
 anahtarları) ve yönetici hesabınızı açar. Paylaşımlı hostingde de
 eksiksiz kurulur.
 
+> **Sihirbaz kendini kilitler.** Kurulum bitince `.env` ve
+> `storage/installed.lock` yazılır; bu dosyalardan biri varken sihirbaz
+> hiçbir adımı çalıştırmaz (veritabanı erişilemese bile). Yeniden kurmak
+> için ikisini de **sunucudan elle** silin — tarayıcıdan yeniden kurulum
+> bilerek mümkün değildir.
+
+> **Varsayılan ortam yayındır** (`APP_ENV=production`, `APP_DEBUG=false`).
+> Kendi bilgisayarınızda hata ayrıntılarını görmek istiyorsanız sihirbazın
+> "Site Ayarları" adımında **Geliştirme ortamı** kutusunu işaretleyin.
+
 > **Örnek veri:** Son adımda "Örnek verileri de yükle" kutusu vardır.
 > Şablonu ilk kez deniyorsanız işaretleyin — listeleri ve filtreleri
 > dolu görürsünüz (demo parolası `Demo1234!`). Gerçek bir projeye
@@ -268,13 +278,68 @@ php cy module                      php cy module --enable=Stok
 php cy cache:clear --expired       php cy config:cache
 php cy log:purge --list            php cy queue:work --max=30
 php cy schedule:run --list         php cy mail:test ali@ornek.com
+
+# API anahtarı
+php cy api:token admin "Mobil uygulama" --gun=90
+php cy api:token admin --liste     php cy api:token admin --iptal=3
 ```
+
+> **Kurulumla gelen migration'lar geri alınamaz.** Sihirbazın kurduğu
+> her şey "temel parti" (0) olarak işaretlenir; `migrate:rollback` ve
+> `migrate:fresh` yalnızca kurulumdan SONRA uyguladığınız migration'ları
+> etkiler. `php cy migrate:status` bunları `0 (kurulum)` diye gösterir.
 
 **Cron — tek satır yeter:**
 
 ```cron
 * * * * * cd /yol/site && php cy schedule:run >> /dev/null 2>&1
 ```
+
+---
+
+## REST API
+
+Dış istemciler (mobil uygulama, başka bir sunucu) `/api/v1/…` uçlarına
+**Bearer anahtarıyla** bağlanır. Anahtar **Panel → Hesabım → API
+Anahtarları** ekranından ya da `php cy api:token` ile üretilir; açık hali
+yalnızca bir kez gösterilir, veritabanında yalnızca SHA-256 özeti durur.
+
+```bash
+curl -H "Authorization: Bearer cy_…" https://siteniz.com/api/v1/ben
+```
+
+| Uç | Koruma | Açıklama |
+|---|---|---|
+| `GET api/v1/ben` | anahtar | Anahtarın sahibi (bağlantı sınaması) |
+| `GET api/v1/kullanicilar?sayfa=1&boyut=25&ara=…` | anahtar + `users.view` | Sayfalanmış kullanıcı listesi |
+| `GET api/v1/sayfalar` | anahtarsız, hız sınırlı | Yayındaki içerik sayfaları |
+| `GET api/v1/sayfalar/{slug}` | anahtarsız, hız sınırlı | Tek sayfanın içeriği |
+
+- Anahtarla gelen istekler **durumsuzdur**: oturum açılmaz, çerez dönmez.
+  Anahtar iptal edildiği an erişim biter.
+- Anahtar, sahibinin yetkilerinden fazlasına erişemez; sahibi pasife
+  alınırsa anahtarı da çalışmaz.
+- Kendi uçlarınız için örnek: `app/Http/Controllers/Api/V1Controller.php`
+  ve `routes/web.php` içindeki `api/v1` grubu.
+
+---
+
+## Testler
+
+```bash
+php tests/unit.php                                   # veritabanı gerektirmez
+php tests/smoke.php http://localhost/proje           # kurulu siteye HTTP denetimi
+php tests/smoke.php http://localhost/proje --kullanici=admin --parola=… --api=cy_…
+```
+
+`smoke.php` siteyi değiştirmez: kurulum kilidi, gizli dosyalar (`.env`,
+`.git/`), açık yönlendirme, kaba kuvvet kilidi, kullanıcı tespiti,
+oturum çerezi, servis çalışanı ve API'yi dışarıdan sınar. Kısa sürede
+arka arkaya çalıştırırsanız IP kilidi devreye girer; ilgili testler
+"atlandı" görünür (koruma çalışıyor demektir).
+
+GitHub Actions her itmede PHP 8.1–8.4 üzerinde sözdizimi denetimi ve
+birim testlerini çalıştırır (`.github/workflows/ci.yml`).
 
 ---
 
@@ -379,11 +444,18 @@ Kırılma noktaları iki yüzde de aynıdır: `992px` (tablet) ve `768px`
 | CSP çakışması | Analytics kodunun adresi ve sha256 özeti otomatik tanıtılır; politika gevşetilmez |
 | CSRF | Her POST'ta token (form alanı veya `X-CSRF-Token`) |
 | Oturum çalma | `httponly` + `samesite` + `secure` + parmak izi + yenileme |
-| Kaba kuvvet | Hız sınırı + kilit (kimlik+IP) |
-| Path traversal | Segment bazlı doğrulama + `realpath()` |
-| Kötücül yükleme | Gerçek MIME + beyaz/kara liste + rastgele ad + GD yeniden üretimi |
-| Dosya ifşası | `app/` `config/` `storage/` `views/` `.env` `cy` web'e kapalı |
-| Bilgi sızması | Yayında yığın izi ve dosya yolu gösterilmez |
+| Oturum karışması | Kuruluma özel çerez adı, çerez yolu ve oturum klasörü (`storage/sessions`); oturum `APP_KEY`'e bağlı |
+| Parola değişikliği | Diğer cihazlardaki oturumlar ve "beni hatırla" jetonu anında geçersiz ("oturum sürümü") |
+| Kaba kuvvet | Kimlik+IP kilidi ve IP geneli kilit; süreler SQL saatiyle hesaplanır (saat dilimi farkından etkilenmez) |
+| Kullanıcı tespiti | Var olan/olmayan hesap aynı sürede ve aynı mesajla yanıtlanır |
+| Açık yönlendirme | "Girişten sonra dön" adresi yalnızca uygulama içi, beyaz listeli yol |
+| Kurulum ele geçirme | Sihirbaz `.env` / kilit dosyası varken hiçbir adımı çalıştırmaz |
+| Path traversal | Segment bazlı doğrulama + `realpath()`; görünüm adları beyaz listeden |
+| Kötücül yükleme | Gerçek MIME + beyaz/kara liste + rastgele ad + GD yeniden üretimi + piksel/bellek sınırı |
+| Spam rölesi | Otomatik yanıt varsayılan kapalı, ziyaretçi metnini içermez, aynı adrese günde bir |
+| Dosya ifşası | `app/` `config/` `storage/` `views/` `.env` `.git/` `cy` web'e kapalı |
+| Bilgi sızması | Yayında yığın izi ve dosya yolu gösterilmez; varsayılan `APP_DEBUG=false` |
+| Yanlış rota tanımı | Bilinmeyen ara katman adı hata fırlatır (rota sessizce herkese açılmaz) |
 
 **Panel → Sistem Bilgisi** sayfası bunların canlı denetimini yapar ve
 her sorunun nasıl çözüleceğini yazar.
@@ -415,12 +487,24 @@ location / {
     try_files $uri $uri/ /index.php?$query_string;
 }
 
-location ~ ^/(app|config|storage|views|database|modules|kurulum)/ { deny all; }
-location ~ /\.env  { deny all; }
+# Nokta ile başlayan her şey (.env, .git/, .github/ …) — .well-known hariç
+location ~ /\.(?!well-known) { deny all; }
+
+location ~ ^/(app|config|storage|views|database|modules|routes|tests|docs|kurulum)/ { deny all; }
 location ~ ^/cy$   { deny all; }
 
-location ~* ^/upload/.*\.php$ { deny all; }
+location ~* ^/upload/.*\.(php\d?|phtml|phar|pl|py|cgi|sh)$ { deny all; }
+location ^~ /upload/ {
+    add_header X-Content-Type-Options nosniff;
+    add_header Content-Security-Policy "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox";
+}
+
+# API'nin Bearer anahtarı PHP-FPM'e iletilsin
+fastcgi_param HTTP_AUTHORIZATION $http_authorization;
 ```
+
+> Kurulum bittiyse `kurulum` klasörünü silin; Nginx'te yukarıdaki kural
+> zaten kapatır, sihirbazı açmak için kuralı geçici olarak kaldırmanız gerekir.
 
 ---
 
@@ -449,11 +533,24 @@ Sürüm numarası **kodda, tek yerde** durur:
 
 ```php
 // config/app.php
-'version' => '1.1.0',
+'version' => '1.3.0',
 ```
 
 `Panel → Sistem Bilgisi` sayfası bu değeri okur. Şablonu güncellediğinizde
-numara kendiliğinden gelir; veritabanında ayrıca tutulmaz.
+numara kendiliğinden gelir; veritabanında ayrıca tutulmaz. Sürümlerin
+tam listesi: [CHANGELOG.md](CHANGELOG.md).
+
+### 1.3.0 — Güvenlik ve kararlılık
+
+Kapsamlı bir güvenlik incelemesinin bulguları kapatıldı; ayrıntılar ve
+güncelleme adımları [CHANGELOG.md](CHANGELOG.md) içinde. Öne çıkanlar:
+kurulum sihirbazı ele geçirme açığı, açık yönlendirme, saat dilimi
+farkında devre dışı kalan kaba kuvvet kilidi, parola değişince düşmeyen
+oturumlar, kurulumdan sonra veri silen `migrate:rollback` ve varsayılan
+olarak açık gelen hata ayıklama modu.
+
+> **Güncelliyorsanız:** kodu çektikten sonra `php cy migrate` çalıştırın
+> (2 yeni migration). Tüm kullanıcılar bir kez yeniden giriş yapar.
 
 ### 1.1.0
 

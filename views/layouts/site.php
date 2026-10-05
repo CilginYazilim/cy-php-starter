@@ -130,7 +130,7 @@ $siteDil = substr($siteDil, 0, 5);
      * giriyor. Sonuç: bakım modunu açan yönetici kendini dışarıda
      * bırakıp yalnızca veritabanından geri dönebiliyordu. */
     $bakimOrtusu = Setting::bool('sistem_bakim_modu', false)
-        && !can('dashboard.view')
+        && !can('maintenance.bypass')
         && !App\Core\Url::isCurrent('giris');
     ?>
     <?php if ($bakimOrtusu): ?>

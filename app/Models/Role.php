@@ -39,7 +39,8 @@ final class Role
             'mail.view', 'mail.send',
             'settings.view', 'settings.manage',
             'system.view', 'system.manage',
-            'profile.view', 'profile.update',
+            'profile.view', 'profile.update', 'profile.api',
+            'maintenance.bypass',
         ],
         self::EDITOR => [
             'dashboard.view', 'dashboard.stats',
@@ -50,7 +51,10 @@ final class Role
             // Editör giden e-postaların geçmişini görebilir ama
             // toplu duyuru gönderemez (mail.send yalnızca yöneticide).
             'mail.view',
-            'profile.view', 'profile.update',
+            'profile.view', 'profile.update', 'profile.api',
+            // Bakım sırasında içerik hazırlayabilsin. ÜYE'de bu yetki
+            // BİLEREK yoktur: kayıt açıkken herkes üye olabilir.
+            'maintenance.bypass',
         ],
         self::MEMBER => [
             'dashboard.view',

@@ -42,6 +42,21 @@ final class Request
         return strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
     }
 
+    /**
+     * Ham METİN değer — KIRPILMAZ (parolalar için doğru olan budur).
+     *
+     * Dizi gönderilmişse ("sifre[]=x") varsayılanı döner. Denetleyicide
+     * doğrudan "(string) ($_POST['x'] ?? '')" yazmak bir diziyle
+     * karşılaşınca uyarı üretir; geliştirme modunda bu uyarı istisnaya
+     * dönüşüp isteği 500 ile bitiriyordu.
+     */
+    public function string(string $key, string $default = ''): string
+    {
+        $value = $this->body[$key] ?? $this->query[$key] ?? $default;
+
+        return is_scalar($value) ? (string) $value : $default;
+    }
+
     public function input(string $key, string $default = ''): string
     {
         $value = $this->body[$key] ?? $this->query[$key] ?? $default;

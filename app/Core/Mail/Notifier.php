@@ -72,7 +72,27 @@ final class Notifier
     /** Ziyaretçiye "mesajınızı aldık" otomatik yanıtı. */
     public static function mesajAlindi(Message $message): bool
     {
-        if (!Setting::bool('mail_otomatik_yanit', true)) {
+        if (!Setting::bool('mail_otomatik_yanit', false)) {
+            return false;
+        }
+
+        /* SPAM RÖLESİ KORUMASI.
+         *
+         * İletişim formu herkese açıktır ve otomatik yanıt, formda
+         * yazılan HERHANGİ bir adrese SİZİN alan adınızdan gider.
+         * Eskiden yanıt, ziyaretçinin yazdığı konu ve mesajı da
+         * içeriyordu: bir spamcı kurbanın adresini yazıp mesaj
+         * kutusuna reklamını koyarak sitenizi güvenilir bir posta
+         * rölesi gibi kullanabiliyordu. Artık:
+         *   · mektup ziyaretçinin yazdığı metni İÇERMEZ,
+         *   · aynı adrese 24 saatte en fazla BİR otomatik yanıt gider. */
+        try {
+            $log = new \App\Repositories\MailRepository(\App\Core\Database::connection());
+
+            if ($log->sentRecentlyTo($message->eposta, 'otomatik', 24)) {
+                return false;
+            }
+        } catch (\Throwable) {
             return false;
         }
 
@@ -86,8 +106,6 @@ final class Notifier
             ->forUser($message->kullaniciId)
             ->view('emails/iletisim-yanit', [
                 'ad'      => $message->ad,
-                'konu'    => $message->konu,
-                'mesaj'   => $message->mesaj,
                 'siteAdi' => $siteAdi,
             ]);
 

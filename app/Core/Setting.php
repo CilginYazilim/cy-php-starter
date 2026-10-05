@@ -43,6 +43,29 @@ final class Setting
         }
 
         self::$cache = $values;
+
+        self::applyTimezone();
+    }
+
+    /**
+     * Panelden seçilen saat dilimini PHP'ye VE veritabanı bağlantısına
+     * uygular.
+     *
+     * Eskiden yalnızca index.php uyguluyordu: komut satırı (kuyruk,
+     * zamanlanmış görevler) .env'deki dilimde, web paneldeki dilimde
+     * çalışıyordu. Ayarlar her yüklendiğinde burada uygulanır; böylece
+     * iki giriş noktası da aynı saati görür. Geçersiz bir değer PHP'de
+     * uyarı üretir; bu yüzden önce doğruluyoruz.
+     */
+    private static function applyTimezone(): void
+    {
+        $zaman = self::$cache['sistem_zaman_dilimi'] ?? '';
+
+        if ($zaman !== '' && in_array($zaman, timezone_identifiers_list(), true)) {
+            date_default_timezone_set($zaman);
+        }
+
+        Database::syncTimezone();
     }
 
     public static function flush(): void

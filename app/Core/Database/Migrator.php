@@ -37,13 +37,24 @@ final class Migrator
     private const TABLE = 'migrasyonlar';
 
     /**
-     * @param string               $path       Uygulamanın migration klasörü
-     * @param array<string,string> $modulePaths Modül adı => klasör
+     * TEMEL PARTİ: kurulumla gelen değişiklikler.
+     *
+     * Bu partideki kayıtlar rollback/reset ile GERİ ALINMAZ. Kurulum
+     * sihirbazı migration'ları bu partiye yazar; kurulum/database.sql
+     * de şemada zaten bulunan migration'ları bu partiyle işaretler.
+     */
+    public const BASELINE = 0;
+
+    /**
+     * @param string               $path            Uygulamanın migration klasörü
+     * @param array<string,string> $modulePaths     AÇIK modüller: adı => klasör (yeni migration'lar buradan aranır)
+     * @param array<string,string> $knownModulePaths TÜM modüller (kapalılar dahil) — geri alırken dosyayı bulmak için
      */
     public function __construct(
         private readonly PDO $db,
         private readonly string $path,
         private readonly array $modulePaths = [],
+        private readonly array $knownModulePaths = [],
     ) {
     }
 
@@ -69,7 +80,12 @@ final class Migrator
         if (str_contains($name, '/')) {
             [$module, $file] = explode('/', $name, 2);
 
-            $dir = $this->modulePaths[$module] ?? '';
+            /* Kapalı modülün klasörü de aranır: modülü kapatan kişi
+             * onun tablolarını geri almak isteyebilir. Eskiden yalnızca
+             * açık modüllere bakılıyordu; kapalı bir modülün migration'ı
+             * rollback/fresh sırasında "dosya bulunamadı" ile tüm işlemi
+             * durduruyordu. */
+            $dir = $this->modulePaths[$module] ?? $this->knownModulePaths[$module] ?? '';
 
             if ($dir === '') {
                 return null;
@@ -178,10 +194,11 @@ final class Migrator
     /**
      * Bekleyen migration'ları sırayla çalıştırır.
      *
-     * @param callable(string):void|null $onEach Her dosyadan önce bilgi vermek için
+     * @param callable(string):void|null $onEach   Her dosyadan önce bilgi vermek için
+     * @param bool                       $baseline true → TEMEL PARTİ'ye yaz (yalnızca kurulum sihirbazı)
      * @return array<int,string> Çalıştırılanlar
      */
-    public function run(?callable $onEach = null): array
+    public function run(?callable $onEach = null, bool $baseline = false): array
     {
         $pending = $this->pending();
 
@@ -189,7 +206,7 @@ final class Migrator
             return [];
         }
 
-        $batch = $this->nextBatch();
+        $batch = $baseline ? self::BASELINE : $this->nextBatch();
         $done  = [];
 
         foreach ($pending as $name) {
@@ -263,7 +280,12 @@ final class Migrator
     {
         $this->ensureTable();
 
-        $total = count(array_unique(array_values($this->completed())));
+        $partiler = array_filter(
+            array_unique(array_values($this->completed())),
+            static fn (int $parti): bool => $parti !== self::BASELINE
+        );
+
+        $total = count($partiler);
 
         return $total === 0 ? [] : $this->rollback($total, $onEach);
     }
@@ -346,11 +368,20 @@ final class Migrator
         return (int) $max + 1;
     }
 
-    /** @return array<int,int> Geri alınacak parti numaraları (büyükten küçüğe) */
+    /**
+     * Geri alınacak parti numaraları (büyükten küçüğe).
+     *
+     * TEMEL PARTİ (0) asla listeye girmez: kurulumla gelen tablolar
+     * "rollback" ile silinemez.
+     *
+     * @return array<int,int>
+     */
     private function batchesToRollback(int $steps): array
     {
         $statement = $this->db->prepare(
-            'SELECT DISTINCT parti FROM `' . self::TABLE . '` ORDER BY parti DESC LIMIT ' . $steps
+            'SELECT DISTINCT parti FROM `' . self::TABLE . '`
+              WHERE parti <> ' . self::BASELINE . '
+              ORDER BY parti DESC LIMIT ' . $steps
         );
         $statement->execute();
 

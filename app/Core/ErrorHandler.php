@@ -145,6 +145,10 @@ final class ErrorHandler
 
         if (!headers_sent()) {
             http_response_code($wire);
+
+            if ($http !== null && $http->retryAfter() > 0) {
+                header('Retry-After: ' . $http->retryAfter());
+            }
         }
 
         if (self::wantsJson()) {
@@ -164,6 +168,15 @@ final class ErrorHandler
         // tane üretir. INFO seviyesinde ve "app" kanalında tutuyoruz.
         if ($http !== null && $http->status() === 404) {
             Logger::info('404: ' . $e->getMessage(), $http->context(), 'app');
+            return;
+        }
+
+        /* 503 (bakım modu) bir HATA değil, yöneticinin bilinçli
+         * kararıdır. Sunucu hatası gibi CRITICAL + yığın iziyle
+         * yazılsaydı bakım süresince her ziyaret günlüğü doldurur,
+         * gerçek hataları gömerdi. */
+        if ($http !== null && $http->status() === 503) {
+            Logger::info('503: ' . $e->getMessage(), $http->context(), 'app');
             return;
         }
 

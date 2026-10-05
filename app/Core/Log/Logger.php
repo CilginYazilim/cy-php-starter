@@ -192,7 +192,7 @@ final class Logger
 
         $parts = ['ip=' . (string) ($_SERVER['REMOTE_ADDR'] ?? '-')];
 
-        $path = (string) ($_GET['r'] ?? '');
+        $path = is_string($_GET['r'] ?? null) ? $_GET['r'] : '';
         $parts[] = 'yol=' . ($path !== '' ? self::singleLine(mb_substr($path, 0, 120)) : '/');
 
         // Oturuma DOĞRUDAN bakıyoruz; Auth::user() veritabanına gider

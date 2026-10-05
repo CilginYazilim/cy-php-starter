@@ -204,6 +204,7 @@ final class SettingsController extends Controller
     {
         $rows   = $this->groupRows($grup);
         $values = [];
+        $errors = [];
 
         foreach ($rows as $row) {
             if ((int) $row['duzenlenebilir'] === 0) {
@@ -211,18 +212,59 @@ final class SettingsController extends Controller
             }
 
             $key   = (string) $row['anahtar'];
-            $value = trim((string) ($_POST[$key] ?? ''));
+            $type  = (string) $row['tip'];
+            $value = trim($request->string($key));
 
-            /* PAROLA ALANLARI ekrana asla basılmaz; form her açıldığında
-             * boş gelir. Boş geleni kaydedersek kullanıcı sadece site
-             * adını değiştirdiğinde SMTP parolası silinirdi. */
-            if ($row['tip'] === 'sifre' && $value === '') {
+            if ($type === 'sifre') {
+                /* PAROLA ALANLARI ekrana asla basılmaz; form her
+                 * açıldığında boş gelir. Boş geleni kaydedersek kullanıcı
+                 * sadece site adını değiştirdiğinde SMTP parolası
+                 * silinirdi. SİLMEK için ayrı bir onay kutusu vardır;
+                 * eskiden bir kez girilen parola hiç kaldırılamıyordu. */
+                if ($request->bool($key . '__sil')) {
+                    $values[$key] = '';
+
+                    continue;
+                }
+
+                if ($value === '') {
+                    continue;
+                }
+            }
+
+            if ($type === 'onay') {
+                $values[$key] = $request->bool($key) ? '1' : '0';
+
                 continue;
             }
 
-            $values[$key] = $row['tip'] === 'onay'
-                ? ($request->bool($key) ? '1' : '0')
-                : $value;
+            $error = $this->validateSetting($row, $value);
+
+            if ($error !== null) {
+                $errors[$key] = $error;
+
+                continue;
+            }
+
+            $values[$key] = $value;
+        }
+
+        /* Tek bir alan bile geçersizse HİÇBİR ŞEY kaydedilmez: yarım
+         * kaydedilmiş bir form, kullanıcının hangi değişikliğin tuttuğunu
+         * bilememesi demektir. Girilen değerler forma geri döner
+         * (parolalar hariç). */
+        if ($errors !== []) {
+            $old = [];
+
+            foreach ($rows as $row) {
+                if ($row['tip'] !== 'sifre') {
+                    $old[(string) $row['anahtar']] = $request->string((string) $row['anahtar']);
+                }
+            }
+
+            Flash::error('Bazı alanlar geçersiz; hiçbir ayar kaydedilmedi.');
+            Flash::withInput($errors, $old);
+            Response::redirect(url('panel/ayarlar/' . $grup));
         }
 
         Setting::saveMany($this->db, $values);
@@ -231,6 +273,122 @@ final class SettingsController extends Controller
 
         Flash::success(count($values) . ' ayar kaydedildi.');
         Response::redirect(url('panel/ayarlar/' . $grup));
+    }
+
+    /**
+     * Tek bir ayar değerini TİPİNE (ve gerekiyorsa anahtarına) göre
+     * doğrular.
+     *
+     * Eskiden hiçbir doğrulama yoktu: "url" tipindeki sosyal medya
+     * alanlarına "javascript:alert(1)" yazılabiliyor, alt bilgideki
+     * bağlantıya tıklayan ziyaretçinin tarayıcısında çalışıyordu.
+     * "Gönderen Adresi" alanı ise doğrudan sendmail'e argüman olarak
+     * gidiyordu (bkz. NativeTransport::safeEnvelopeSender).
+     *
+     * @param array<string,mixed> $row
+     * @return string|null Hata mesajı; geçerliyse null
+     */
+    private function validateSetting(array $row, string $value): ?string
+    {
+        $key   = (string) $row['anahtar'];
+        $type  = (string) $row['tip'];
+        $label = (string) $row['etiket'];
+
+        /* Anahtara özel kurallar — tipten daha sıkıdır. */
+        switch ($key) {
+            case 'sistem_zaman_dilimi':
+                return $value === '' || in_array($value, timezone_identifiers_list(), true)
+                    ? null
+                    : 'Geçerli bir saat dilimi yazın (örn. Europe/Istanbul).';
+
+            case 'iletisim_harita':
+                return $value === '' || self::isHttpUrl($value)
+                    ? null
+                    : 'Harita bağlantısı http:// ya da https:// ile başlayan bir adres olmalıdır.';
+
+            case 'iletisim_whatsapp':
+                return preg_match('/^[+0-9 ()-]{0,30}$/', $value) === 1
+                    ? null
+                    : 'WhatsApp numarası yalnızca rakam, boşluk, +, - ve parantez içerebilir.';
+
+            case 'pwa_baslangic':
+                return $value === '' || \App\Core\Middleware::safeIntended($value) !== ''
+                    ? null
+                    : 'Açılış adresi site içinde bir yol olmalıdır (örn. panel). Tam adres yazmayın.';
+
+            case 'seo_og_gorsel':
+                return $value === ''
+                    || self::isHttpUrl($value)
+                    || (preg_match('#^[A-Za-z0-9/_.-]+$#', $value) === 1 && !str_contains($value, '..'))
+                    ? null
+                    : 'Paylaşım görseli upload/ altındaki bir dosya adı ya da https:// ile başlayan bir adres olmalıdır.';
+
+            case 'seo_google_dogrulama':
+                return preg_match('/^[A-Za-z0-9_-]{0,100}$/', $value) === 1
+                    ? null
+                    : 'Yalnızca doğrulama kodunu yazın (etiketin tamamını değil).';
+
+            case 'mail_host':
+                return $value === '' || preg_match('/^[A-Za-z0-9.-]{1,253}$/', $value) === 1
+                    ? null
+                    : 'SMTP sunucusu yalnızca alan adı ya da IP olmalıdır (örn. smtp.gmail.com).';
+
+            case 'mail_gonderen':
+                return $value === '' || \App\Core\Mail\NativeTransport::safeEnvelopeSender($value) !== ''
+                    ? null
+                    : 'Gönderen adresi geçerli ve sade bir e-posta adresi olmalıdır (boşluk ya da özel karakter içeremez).';
+        }
+
+        $sayiSiniri = [
+            'mail_port'           => [1, 65535],
+            'mail_parti_boyutu'   => [1, 200],
+            'sistem_sayfa_basina' => [5, 500],
+        ];
+
+        return match ($type) {
+            'eposta' => $value === '' || filter_var($value, FILTER_VALIDATE_EMAIL) !== false
+                ? null
+                : $label . ' geçerli bir e-posta adresi olmalıdır.',
+
+            'url' => $value === '' || self::isHttpUrl($value)
+                ? null
+                : $label . ' http:// ya da https:// ile başlayan geçerli bir adres olmalıdır.',
+
+            'sayi' => (function () use ($value, $key, $label, $sayiSiniri): ?string {
+                [$min, $max] = $sayiSiniri[$key] ?? [0, 1_000_000];
+
+                return filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => $min, 'max_range' => $max]]) !== false
+                    ? null
+                    : sprintf('%s %d ile %d arasında bir tam sayı olmalıdır.', $label, $min, $max);
+            })(),
+
+            'secim' => in_array($value, (array) (json_decode((string) ($row['secenekler'] ?? '[]'), true) ?: []), true)
+                ? null
+                : $label . ' için listedeki seçeneklerden birini seçin.',
+
+            'renk' => preg_match('/^#[0-9a-fA-F]{6}$/', $value) === 1
+                ? null
+                : $label . ' #RRGGBB biçiminde bir renk olmalıdır.',
+
+            'sifre' => mb_strlen($value) <= 255 && !preg_match('/[\r\n]/', $value)
+                ? null
+                : $label . ' en fazla 255 karakter olabilir ve satır sonu içeremez.',
+
+            'uzun_metin' => mb_strlen($value) <= ($key === 'seo_analytics' ? 20000 : 5000)
+                ? null
+                : $label . ' çok uzun.',
+
+            default => mb_strlen($value) <= 500 && !preg_match('/[\r\n]/', $value)
+                ? null
+                : $label . ' en fazla 500 karakter olabilir ve satır sonu içeremez.',
+        };
+    }
+
+    /** Yalnızca http(s) şemalı, geçerli bir mutlak adres mi? */
+    private static function isHttpUrl(string $value): bool
+    {
+        return preg_match('#^https?://#i', $value) === 1
+            && filter_var($value, FILTER_VALIDATE_URL) !== false;
     }
 
     /* =================================================================

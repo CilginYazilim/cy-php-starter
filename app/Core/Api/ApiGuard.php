@@ -51,7 +51,8 @@ final class ApiGuard
             'api'       => self::authenticate($request),
             'api.guest' => self::throttleOnly($request),
             'api.can'   => self::authorize((string) $parameter),
-            default     => null,
+            // Bilinmeyen ad sessizce geçmez (bkz. Middleware::handle).
+            default     => throw new \LogicException('Bilinmeyen API ara katmanı: "' . $rule . '"'),
         };
     }
 
@@ -66,8 +67,17 @@ final class ApiGuard
         if ($token === '') {
             /* Tarayıcıdan gelen ve zaten oturumu olan bir istek de
              * API'yi kullanabilsin (panelin kendi JavaScript'i gibi).
-             * Bu durumda CSRF koruması devrededir. */
+             *
+             * ÇEREZLE GELEN İSTEK CSRF'E AÇIKTIR: tarayıcı çerezi başka
+             * bir sitenin formuyla da gönderir. Bu yüzden veri
+             * değiştiren yöntemlerde (POST/PUT/PATCH/DELETE) CSRF
+             * jetonu ZORUNLUDUR. Eskiden bu açıklama "CSRF devrede"
+             * diyordu ama hiçbir yerde denetlenmiyordu. */
             if (Auth::check()) {
+                if (!in_array($request->method(), ['GET', 'HEAD', 'OPTIONS'], true) && !\App\Core\Csrf::check()) {
+                    ApiResponse::error('Güvenlik doğrulaması başarısız (CSRF).', 419, 'csrf');
+                }
+
                 self::$userId = Auth::id();
                 self::throttle('oturum:' . self::$userId);
 
@@ -82,7 +92,7 @@ final class ApiGuard
         if ($user === null) {
             Logger::security('Geçersiz API anahtarı ile istek', [
                 'ip'  => $request->ip(),
-                'yol' => $request->raw('r', ''),
+                'yol' => \App\Core\Url::current(),
             ]);
 
             // Hız sınırını GEÇERSİZ anahtarlara da uygularız; aksi
@@ -92,7 +102,12 @@ final class ApiGuard
             ApiResponse::unauthorized('Erişim anahtarı geçersiz ya da süresi dolmuş.');
         }
 
-        Auth::login($user);
+        /* DURUMSUZ: kullanıcı yalnızca BU İSTEK için tanınır.
+         * Eskiden Auth::login() çağrılıyordu; anahtarla gelen istek
+         * oturum açıp bir oturum çerezi döndürüyor, anahtar iptal
+         * edildikten sonra bile istemci o çerezle girmeye devam
+         * edebiliyordu. */
+        Auth::actingAs($user);
         self::$userId = $user->id;
 
         self::throttle('anahtar:' . substr(hash('sha256', $token), 0, 16));

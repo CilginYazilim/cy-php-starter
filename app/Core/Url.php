@@ -61,12 +61,18 @@ final class Url
     /**
      * VİTRİN (TAKMA AD) YOLU — uygulama BAŞKA bir adresten servis ediliyorsa.
      *
-     * cilginyazilim.com/kutuphane/uygulama/cy-php-starter/ adresi sunucuda
-     * demos/cy-php-starter/ klasörüne İÇERİDEN bağlanır (mod_rewrite). Böyle
-     * bir istekte SCRIPT_NAME gerçek klasörü ("/demos/cy-php-starter/index.php")
-     * gösterir ama REQUEST_URI ziyaretçinin gördüğü adrestir. Taban yalnızca
-     * SCRIPT_NAME'den türetilirse ikisi tutmaz: rota "kutuphane/uygulama/..."
-     * diye okunur ve uygulama KENDİ 404'ünü basar.
+     * Örnek: ornek.com/vitrin/uygulama/cy-php-starter/ adresi sunucuda
+     * demos/cy-php-starter/ klasörüne İÇERİDEN bağlanır (üst klasördeki bir
+     * mod_rewrite kuralıyla). Böyle bir istekte SCRIPT_NAME gerçek klasörü
+     * ("/demos/cy-php-starter/index.php") gösterir ama REQUEST_URI
+     * ziyaretçinin gördüğü adrestir. Taban yalnızca SCRIPT_NAME'den
+     * türetilirse ikisi tutmaz: rota "vitrin/uygulama/..." diye okunur ve
+     * uygulama KENDİ 404'ünü basar.
+     *
+     * ŞART: Takma ad yolu, gerçek klasörün ADIYLA bitmelidir
+     * (…/cy-php-starter/ → demos/cy-php-starter/). Kök .htaccess'teki
+     * sondaki-bölü kuralı bu tür içeriden yeniden yazılmış istekleri
+     * zaten atlar (bkz. REDIRECT_STATUS koşulu).
      *
      * Bu yüzden istek gerçek klasörün altından GELMİYORSA taban isteğin
      * kendisinden türetilir: yoldaki klasör adına kadar olan bölüm tabandır.
@@ -160,7 +166,7 @@ final class Url
              * ediliyor demektir (bkz. aliasTaban()). APP_URL'in YOL kısmı o
              * durumda başka bir hedefi gösterir; yalnızca alan adı alınır, yolu
              * istekten türetilen taban verir. Aksi hâlde iki yol üst üste binip
-             * /demos/cy-php-starter/kutuphane/uygulama/... gibi adresler çıkar. */
+             * /demos/cy-php-starter/vitrin/uygulama/... gibi adresler çıkar. */
             $yol = rtrim((string) parse_url($configured, PHP_URL_PATH), '/');
 
             return $yol === $base ? rtrim($configured, '/') . $relative : self::origin() . $relative;
@@ -229,7 +235,10 @@ final class Url
             return self::$current;
         }
 
-        $raw = (string) ($_GET['r'] ?? '');
+        /* "?r[]=x" gibi DİZİ değerler yok sayılır. (string) dönüşümü
+         * diziyle karşılaşınca uyarı üretiyor, geliştirme modunda bu
+         * uyarı istisnaya dönüşüp her isteği 500 ile bitiriyordu. */
+        $raw = is_string($_GET['r'] ?? null) ? $_GET['r'] : '';
 
         if ($raw === '') {
             $uri = (string) ($_SERVER['REQUEST_URI'] ?? '');

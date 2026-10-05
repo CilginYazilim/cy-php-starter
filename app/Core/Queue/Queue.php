@@ -70,11 +70,15 @@ final class Queue
     /** @param int $delay Kaç saniye sonra çalışsın? */
     public static function later(Job $job, int $delay): int
     {
+        /* "hazir_at" SQL'in kendi saatiyle hesaplanır; işçi de onu
+         * NOW() ile karşılaştırır. Eskiden PHP'nin date() değeri
+         * yazılıyordu: iki saat dilimi farklıysa işler saatlerce geç
+         * (ya da erken) çalışıyordu. */
         $statement = self::db()->prepare(
             'INSERT INTO `' . self::table() . '`
                 (kuyruk, sinif, veri, durum, deneme, max_deneme, hazir_at)
              VALUES
-                (:kuyruk, :sinif, :veri, :durum, 0, :max_deneme, :hazir_at)'
+                (:kuyruk, :sinif, :veri, :durum, 0, :max_deneme, NOW() + INTERVAL :gecikme SECOND)'
         );
 
         $statement->execute([
@@ -83,7 +87,7 @@ final class Queue
             ':veri'       => json_encode($job->toPayload(), JSON_UNESCAPED_UNICODE),
             ':durum'      => self::BEKLIYOR,
             ':max_deneme' => max(1, $job->tries()),
-            ':hazir_at'   => date('Y-m-d H:i:s', time() + max(0, $delay)),
+            ':gecikme'    => max(0, $delay),
         ]);
 
         $id = (int) self::db()->lastInsertId();
@@ -241,12 +245,12 @@ final class Queue
 
         self::db()->prepare(
             'UPDATE `' . self::table() . '`
-                SET durum = :durum, hata = :hata, hazir_at = :hazir, ayrildi_at = NULL
+                SET durum = :durum, hata = :hata, hazir_at = NOW() + INTERVAL :bekle SECOND, ayrildi_at = NULL
               WHERE id = :id'
         )->execute([
             ':durum' => self::BEKLIYOR,
             ':hata'  => mb_substr($e->getMessage(), 0, 500, 'UTF-8'),
-            ':hazir' => date('Y-m-d H:i:s', time() + $bekle),
+            ':bekle' => $bekle,
             ':id'    => $id,
         ]);
     }
@@ -254,17 +258,45 @@ final class Queue
     /**
      * Çöken bir işçinin elinde kalmış işleri serbest bırakır.
      * Bu olmadan tek bir çökme, o işi sonsuza dek kilitler.
+     *
+     * DENEME SINIRI BURADA DA GEÇERLİDİR. Her ayırma "deneme"yi bir
+     * artırır; ama eskiden zaman aşımına uğrayan iş sayıya bakılmadan
+     * "bekliyor"a döndürülüyordu. İşçiyi her seferinde çökerten bir iş
+     * (bellek taşması, sonsuz döngü) böylece SONSUZA DEK yeniden
+     * deneniyordu. Hakkı bitmiş iş artık "basarisiz" olarak kalır ve
+     * panelde görünür.
      */
     public static function releaseStuck(): int
     {
         $timeout = max(30, (int) Config::get('queue.timeout', 300));
+
+        $failed = self::db()->prepare(
+            'UPDATE `' . self::table() . '`
+                SET durum = :basarisiz, ayrildi_at = NULL,
+                    hata = :hata
+              WHERE durum = :calisiyor
+                AND ayrildi_at IS NOT NULL
+                AND ayrildi_at < (NOW() - INTERVAL :saniye SECOND)
+                AND deneme >= max_deneme'
+        );
+
+        $failed->bindValue(':basarisiz', self::BASARISIZ);
+        $failed->bindValue(':hata', 'İşçi zaman aşımına uğradı ve deneme hakkı bitti (çökme ya da sonsuz döngü olabilir).');
+        $failed->bindValue(':calisiyor', self::CALISIYOR);
+        $failed->bindValue(':saniye', $timeout, PDO::PARAM_INT);
+        $failed->execute();
+
+        if ($failed->rowCount() > 0) {
+            Logger::error('Zaman aşımına uğrayan işler başarısız sayıldı', ['adet' => $failed->rowCount()], 'queue');
+        }
 
         $statement = self::db()->prepare(
             'UPDATE `' . self::table() . '`
                 SET durum = :bekliyor, ayrildi_at = NULL
               WHERE durum = :calisiyor
                 AND ayrildi_at IS NOT NULL
-                AND ayrildi_at < (NOW() - INTERVAL :saniye SECOND)'
+                AND ayrildi_at < (NOW() - INTERVAL :saniye SECOND)
+                AND deneme < max_deneme'
         );
 
         $statement->bindValue(':bekliyor', self::BEKLIYOR);

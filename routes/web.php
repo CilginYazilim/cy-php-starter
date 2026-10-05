@@ -20,6 +20,7 @@ use App\Core\Router;
 use App\Http\Controllers\Api\MailApiController;
 use App\Http\Controllers\Api\MessageApiController;
 use App\Http\Controllers\Api\UserApiController;
+use App\Http\Controllers\Api\V1Controller;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MailController;
@@ -149,6 +150,29 @@ $router->post('api/eposta/isle',     MailApiController::class, 'process',  ['ins
 
 $router->post('api/eposta/sinama',   MailApiController::class, 'test',    ['installed', 'auth', 'csrf', 'can:settings.manage']);
 $router->post('api/eposta/baglanti', MailApiController::class, 'verify',  ['installed', 'auth', 'csrf', 'can:settings.manage']);
+
+// --- API ANAHTARLARI (Hesabım ekranı) ---
+$router->post('panel/hesabim/api-anahtari',     ProfileController::class, 'createToken',  ['installed', 'auth', 'csrf', 'can:profile.api']);
+$router->post('panel/hesabim/api-anahtari/sil', ProfileController::class, 'revokeToken',  ['installed', 'auth', 'csrf', 'can:profile.api']);
+$router->post('panel/hesabim/oturumlari-kapat', ProfileController::class, 'logoutOthers', ['installed', 'auth', 'csrf', 'can:profile.update']);
+
+/* ---------------------------------------------------------------------
+ *  REST API (dış istemciler) — "Authorization: Bearer cy_…"
+ * ---------------------------------------------------------------------
+ *  'api'        → geçerli anahtar ZORUNLU (ya da açık bir panel
+ *                 oturumu; o durumda veri değiştiren yöntemlerde CSRF)
+ *  'api.can:x'  → anahtarın sahibinin x yetkisi olmalı
+ *  'api.guest'  → anahtarsız, yalnızca IP başına hız sınırı
+ *
+ *  Anahtar: Panel → Hesabım → API Anahtarları  ya da
+ *           php cy api:token <kullanıcı> "<ad>" [--gun=90]
+ * ------------------------------------------------------------------ */
+$router->group('api/v1', ['installed'], function (Router $r): void {
+    $r->get('ben',            V1Controller::class, 'ben',          ['api']);
+    $r->get('kullanicilar',   V1Controller::class, 'kullanicilar', ['api', 'api.can:users.view']);
+    $r->get('sayfalar',       V1Controller::class, 'sayfalar',     ['api.guest']);
+    $r->get('sayfalar/{slug}', V1Controller::class, 'sayfa',       ['api.guest']);
+});
 
 /* ---------------------------------------------------------------------
  *  İÇERİK SAYFALARI (ön yüz) – EN SONA YAZILIR

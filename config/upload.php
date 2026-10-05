@@ -36,6 +36,12 @@ return [
     'max_dimension'    => 1200, // logo ve genel görseller
     'avatar_dimension' => 480,  // profil fotoğrafları (kare kırpılır)
 
+    /* Toplam piksel sınırı (genişlik × yükseklik). Küçük dosya boyutlu
+     * ama devasa çözünürlüklü bir görsel ("görsel bombası") GD'nin
+     * yüzlerce MB bellek ayırmasına yol açar. 25 MP, bugünün telefon
+     * fotoğraflarını rahatça kapsar. 0 → sınır yok (önerilmez). */
+    'max_pixels' => Env::int('UPLOAD_MAX_PIXELS', 25_000_000),
+
     /* -----------------------------------------------------------------
      *  GENEL DOSYA GRUPLARI (Uploader::store)
      * -----------------------------------------------------------------

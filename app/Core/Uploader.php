@@ -178,6 +178,21 @@ final class Uploader
 
         self::rejectDangerousExtension($extension);
 
+        /* Yeniden üretilecek görseller için piksel/bellek sınırı burada
+         * da geçerli: bu yol validateImage()'dan geçmez. */
+        $yenidenUretilecek = str_starts_with($mime, 'image/')
+            && array_key_exists($mime, (array) Config::get('upload.allowed_types', []));
+
+        if ($yenidenUretilecek) {
+            $info = @getimagesize((string) $file['tmp_name']);
+
+            if ($info === false) {
+                throw new RuntimeException('Yüklenen dosya geçerli bir görsel değil.');
+            }
+
+            self::assertDimensions((int) $info[0], (int) $info[1]);
+        }
+
         $directory = trim((string) ($options['dir'] ?? ''), '/');
         $name      = Storage::randomName($extension);
         $relative  = $directory !== '' ? $directory . '/' . $name : $name;
@@ -190,7 +205,7 @@ final class Uploader
 
         /* Görsel yüklendiyse yine de yeniden üretiyoruz: "belge"
          * grubuna sızmış bir polyglot dosya da temizlensin. */
-        if (str_starts_with($mime, 'image/') && array_key_exists($mime, (array) Config::get('upload.allowed_types', []))) {
+        if ($yenidenUretilecek) {
             self::sanitize($disk->path($relative, true), $mime, false, (int) Config::get('upload.max_dimension', 1200));
         }
 
@@ -320,9 +335,7 @@ final class Uploader
             throw new RuntimeException('Yüklenen dosya geçerli bir görsel değil.');
         }
 
-        if ((int) $info[0] < 1 || (int) $info[1] < 1 || (int) $info[0] > 10000 || (int) $info[1] > 10000) {
-            throw new RuntimeException('Görsel boyutları desteklenmiyor.');
-        }
+        self::assertDimensions((int) $info[0], (int) $info[1]);
 
         $mime    = strtolower((string) ($info['mime'] ?? ''));
         $allowed = (array) Config::get('upload.allowed_types');
@@ -332,6 +345,76 @@ final class Uploader
         }
 
         return $mime;
+    }
+
+    /**
+     * Görselin boyutları işlenebilir mi?
+     *
+     * TOPLAM PİKSEL SINIRI ("görsel bombası"). Dosya boyutu sınırı
+     * (2 MB) yetmez: tek renkli 10000×10000 bir PNG birkaç yüz KB tutar
+     * ama GD onu açarken piksel başına ~5 bayt, yani ~500-700 MB bellek
+     * ayırır. Herhangi bir üye avatar yükleyerek sunucuyu bellek dışına
+     * itebiliyordu. Sınır piksel sayısına ve o an kullanılabilir
+     * belleğe göre konur.
+     */
+    private static function assertDimensions(int $width, int $height): void
+    {
+        if ($width < 1 || $height < 1 || $width > 10000 || $height > 10000) {
+            throw new RuntimeException('Görsel boyutları desteklenmiyor.');
+        }
+
+        $maxPixels = (int) Config::get('upload.max_pixels', 25_000_000);
+
+        if ($maxPixels > 0 && $width * $height > $maxPixels) {
+            throw new RuntimeException(sprintf(
+                'Görsel çözünürlüğü çok yüksek (%d×%d). En fazla %.0f megapiksel yükleyebilirsiniz.',
+                $width,
+                $height,
+                $maxPixels / 1_000_000
+            ));
+        }
+
+        if (!self::enoughMemoryFor($width, $height)) {
+            throw new RuntimeException('Görsel bu sunucuda işlenemeyecek kadar büyük. Lütfen daha küçük bir görsel yükleyin.');
+        }
+    }
+
+    /**
+     * GD bu görseli açıp yeniden üretmeye yetecek kadar bellek var mı?
+     *
+     * Kaba hesap: kaynak + hedef tuval, piksel başına ~5 bayt, üstüne
+     * %50 pay. memory_limit "-1" (sınırsız) ise kontrol atlanır.
+     */
+    private static function enoughMemoryFor(int $width, int $height): bool
+    {
+        $limit = self::bytes((string) ini_get('memory_limit'));
+
+        if ($limit <= 0) {
+            return true;
+        }
+
+        $needed = (int) ($width * $height * 5 * 2 * 1.5);
+
+        return memory_get_usage(true) + $needed < $limit;
+    }
+
+    /** "256M" gibi php.ini değerini bayta çevirir; -1 → -1. */
+    private static function bytes(string $value): int
+    {
+        $value = trim($value);
+
+        if ($value === '' || $value === '-1') {
+            return -1;
+        }
+
+        $number = (int) $value;
+
+        return match (strtolower(substr($value, -1))) {
+            'g'     => $number * 1024 ** 3,
+            'm'     => $number * 1024 ** 2,
+            'k'     => $number * 1024,
+            default => $number,
+        };
     }
 
     /** PHP'nin yükleme hata kodu, boyut ve kaynak denetimi. */
@@ -428,6 +511,37 @@ final class Uploader
      * ============================================================== */
 
     /**
+     * JPEG'in EXIF "Orientation" etiketine göre görseli döndürür.
+     * exif eklentisi yoksa görsel olduğu gibi kalır.
+     *
+     * @param \GdImage $image
+     */
+    private static function applyExifOrientation(\GdImage $image, string $path): \GdImage
+    {
+        if (!function_exists('exif_read_data')) {
+            return $image;
+        }
+
+        $exif        = @exif_read_data($path);
+        $orientation = is_array($exif) ? (int) ($exif['Orientation'] ?? 1) : 1;
+
+        $rotated = match ($orientation) {
+            3       => imagerotate($image, 180, 0),
+            6       => imagerotate($image, -90, 0),
+            8       => imagerotate($image, 90, 0),
+            default => null,
+        };
+
+        if ($rotated instanceof \GdImage) {
+            imagedestroy($image);
+
+            return $rotated;
+        }
+
+        return $image;
+    }
+
+    /**
      * Görseli yeniden üreterek gömülü veriyi (EXIF, olası kötücül kod)
      * atar. $square true ise (avatarlar) önce ORTADAN kare kırpılır,
      * sonra $maxDimension'a küçültülür.
@@ -448,6 +562,14 @@ final class Uploader
 
         if ($source === false) {
             return;
+        }
+
+        /* EXIF YÖNÜ. Telefonlar dikey fotoğrafı yatay piksellerle
+         * kaydedip "bunu 90° çevirerek göster" etiketi ekler. Görseli
+         * yeniden ürettiğimizde EXIF verisi (bilerek) atılır; yönü
+         * önceden uygulamazsak dikey çekimler yan duruyordu. */
+        if ($mime === 'image/jpeg') {
+            $source = self::applyExifOrientation($source, $path);
         }
 
         $width  = imagesx($source);

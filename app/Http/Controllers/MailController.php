@@ -30,8 +30,8 @@ final class MailController extends Controller
         //   panel/eposta?adres=ali@ornek.com&konu=Re: ...
         // Mesaj penceresindeki "E-posta ile yanıtla" düğmesi bunu kullanır.
         $prefill = [
-            'adres' => (string) ($_GET['adres'] ?? ''),
-            'konu'  => (string) ($_GET['konu'] ?? ''),
+            'adres' => $request->string('adres'),
+            'konu'  => $request->string('konu'),
         ];
 
         if ($prefill['adres'] !== '' && filter_var($prefill['adres'], FILTER_VALIDATE_EMAIL) === false) {

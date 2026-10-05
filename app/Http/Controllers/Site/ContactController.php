@@ -69,7 +69,7 @@ final class ContactController extends Controller
          * üstelik hiçbir yerde iz kalmadığı için haftalarca fark
          * edilmedi. Artık her eleme "security" kanalına yazılıyor:
          * bir daha aynı sorunu tespit etmek beş dakika sürer. */
-        $honeypot = trim((string) ($_POST['cy_kontrol'] ?? ''));
+        $honeypot = trim($request->string('cy_kontrol'));
 
         if ($honeypot !== '') {
             Logger::security('İletişim formu: bal küpü doldurulmuş, mesaj elendi', [
@@ -85,7 +85,7 @@ final class ContactController extends Controller
          * Form üretildikten sonraki ilk 3 saniyede gelen gönderim
          * insan işi değildir. Bal küpünden daha güvenilir bir
          * ölçüttür çünkü otomatik doldurmadan etkilenmez. */
-        $formZamani = (int) ($_POST['cy_zaman'] ?? 0);
+        $formZamani = (int) $request->string('cy_zaman', '0');
 
         if ($formZamani > 0 && (time() - $formZamani) < 3) {
             Logger::security('İletişim formu: insanüstü hızda gönderim, mesaj elendi', [

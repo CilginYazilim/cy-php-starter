@@ -1,12 +1,44 @@
-# Yükleme klasöründe sunucu tarafı kod çalıştırılmasını engeller.
-# Zararlı bir dosyanın yüklenmesi durumunda dahi çalıştırılamaz.
+# =====================================================================
+#  upload/ – Kullanıcı yüklemeleri: YALNIZCA statik dosya olarak servis
+# ---------------------------------------------------------------------
+#  Zararlı bir dosya yüklense bile burada ÇALIŞTIRILAMAZ.
+#
+#  NEDEN <IfModule> İÇİNDE? "php_flag" yalnızca PHP Apache modülü
+#  (mod_php) olarak yüklüyse tanınır. PHP-FPM / FastCGI kullanan
+#  sunucularda (bugün çoğunluk) bu satır "Invalid command" hatası
+#  verir ve Apache klasördeki HER isteğe 500 döner — yani bütün
+#  avatarlar ve logolar kırılıyordu. FPM'de çalıştırmayı aşağıdaki
+#  FilesMatch kuralı zaten engeller.
+# =====================================================================
 
-php_flag engine off
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php5.c>
+    php_flag engine off
+</IfModule>
 
 <IfModule mod_rewrite.c>
     RewriteEngine Off
 </IfModule>
 
-<FilesMatch "\.(php|php3|php4|php5|php7|php8|phtml|phar|pl|py|cgi|asp|aspx|sh|shtml)$">
-    Require all denied
+# Sunucuda çalıştırılabilecek her uzantı reddedilir (FPM dahil).
+<FilesMatch "\.(php\d?|phtml|phar|phps|pht|pl|py|cgi|asp|aspx|jsp|sh|shtml|htaccess|htpasswd)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
 </FilesMatch>
+
+# Tarayıcı dosya türünü TAHMİN ETMESİN ve buradaki bir dosya (örneğin
+# içine betik gömülmüş bir SVG) sitenin kökeninde betik çalıştıramasın.
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Content-Security-Policy "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox"
+</IfModule>

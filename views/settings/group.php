@@ -50,8 +50,7 @@ $old      = $old ?? [];
                             // YAZDIĞI değeri göster, kayıtlıyı değil.
                             $value = array_key_exists($key, $old) ? (string) $old[$key] : Setting::get($key);
                             ?>
-                            <div class="<?= $width ?> cy-ayar"
-                                 data-ayar="<?= e(mb_strtolower($row['etiket'] . ' ' . $key . ' ' . ($row['aciklama'] ?? ''), 'UTF-8')) ?>">
+                            <div class="<?= $width ?> cy-ayar">
 
                                 <label class="form-label" for="set_<?= e($key) ?>"><?= e($row['etiket']) ?></label>
 
@@ -89,6 +88,19 @@ $old      = $old ?? [];
                                             <?= icon('eye', 'cy-icon cy-icon--sm') ?>
                                         </button>
                                     </div>
+
+                                    <?php if (Setting::get($key) !== ''): ?>
+                                        <?php /* Kayıtlı parolayı KALDIRMANIN tek yolu: boş alan
+                                                "değiştirme" anlamına geldiği için silmek ayrı
+                                                ve bilinçli bir seçim olmalı. */ ?>
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox" value="1"
+                                                   name="<?= e($key) ?>__sil" id="set_<?= e($key) ?>__sil">
+                                            <label class="form-check-label small" for="set_<?= e($key) ?>__sil">
+                                                Kayıtlı parolayı sil
+                                            </label>
+                                        </div>
+                                    <?php endif; ?>
 
                                 <?php elseif ($type === 'renk'): ?>
                                     <input type="color" class="form-control form-control-color"

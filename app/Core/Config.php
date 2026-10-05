@@ -225,7 +225,7 @@ final class Config
     {
         $file = self::cacheFile();
 
-        if ($file === '' || Env::bool('APP_DEBUG', true) || !is_file($file)) {
+        if ($file === '' || Env::bool('APP_DEBUG', false) || !is_file($file)) {
             return false;
         }
 

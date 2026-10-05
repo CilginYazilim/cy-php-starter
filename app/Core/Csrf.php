@@ -24,7 +24,8 @@ final class Csrf
 
     public static function check(?string $token = null): bool
     {
-        $token ??= (string) ($_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $token ??= $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        $token   = is_string($token) ? $token : '';
 
         if ($token === '' || empty($_SESSION[self::SESSION_KEY])) {
             return false;
