@@ -55,12 +55,12 @@ final class Middleware
                 self::maintenance();
             }
 
-            /* DEMO KİLİDİ: APP_DEMO=true iken örnek hesaplar parolayı,
-             * ayarları, kullanıcıları değiştiremez; e-posta gönderemez.
-             * Burada durur, çünkü girişli her yazma isteği "auth"tan
-             * geçer — rotalara tek tek eklemek unutulmaya açıktı. */
-            Demo::guard($request);
-
+            /* DEMO KİLİDİ burada DEĞİL, bütün ara katmanlardan SONRA
+             * çalışır (bkz. afterAll). Eskiden burada duruyordu ve yetki
+             * denetiminden ÖNCE geliyordu: editör, zaten yetkisi olmayan
+             * bir işlemde "yetkiniz yok" yerine "Demo modunda …
+             * değiştirilemez" görüyor, demo kapalıyken yapabilecekmiş
+             * izlenimine kapılıyordu. */
             return;
         }
 
@@ -87,6 +87,24 @@ final class Middleware
         }
 
         Response::redirect(url('giris'));
+    }
+
+    /**
+     * Rotanın bütün ara katmanları geçtikten sonra, denetleyiciden hemen
+     * önce çalışır (Router::run). Sıra her zaman:
+     *
+     *     installed → auth → csrf → can:… → DEMO KİLİDİ → denetleyici
+     *
+     * Böylece yetkisi olmayan herkes "yetkiniz yok" alır; demo mesajını
+     * yalnızca işi yapmaya YETKİSİ OLAN demo hesabı görür.
+     *
+     * @param array<int,string> $rules rotanın ara katmanları
+     */
+    public static function afterAll(array $rules, Request $request): void
+    {
+        if (in_array('auth', $rules, true) && Auth::check()) {
+            Demo::guard($request);
+        }
     }
 
     /**

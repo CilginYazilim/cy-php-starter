@@ -106,6 +106,11 @@ jQuery(function ($) {
             $error.addClass('d-none').text('');
         }
 
+        // Geliştirme modu: gönderilmeyen doğrulama mektubunun bağlantısı.
+        var link = meta.gelistirme || '';
+        $('#preview_gelistirme').toggleClass('d-none', link === '');
+        $('#preview_gelistirme_baglanti').attr('href', link || '#');
+
         document.getElementById('preview_frame').srcdoc = html || '';
         previewModal.show();
     }
@@ -124,7 +129,8 @@ jQuery(function ($) {
                 durum:  res.durum + ' · ' + res.tur,
                 tarih:  res.tarih,
                 hata:   res.hata,
-                deneme: res.deneme
+                deneme: res.deneme,
+                gelistirme: res.gelistirme_baglanti || ''
             }, res.govde);
         })
         .fail(function (xhr) { CY.ajaxError(xhr, 'Mektup getirilemedi.'); })

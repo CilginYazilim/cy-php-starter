@@ -688,4 +688,43 @@ final class UserRepository
 
         return (int) $stmt->fetchColumn() > 0;
     }
+
+    /**
+     * "Son aktif yönetici" kuralını ATOMİK uygular.
+     *
+     * otherActiveAdminExists() + update() iki ayrı adımdı: iki yönetici
+     * AYNI ANDA birbirini düşürürse ikisi de "öteki var" görür, ikisi de
+     * düşer ve sistemde yönetici kalmazdı. Burada aktif yönetici
+     * satırları işlem boyunca kilitlenir (SELECT … FOR UPDATE); ikinci
+     * istek ilki bitene kadar bekler ve güncel durumu görür.
+     *
+     * @param callable():void $change Değişikliği yapan geri çağrı (aynı işlemde çalışır)
+     * @return bool false → başka aktif yönetici yok, hiçbir şey yapılmadı
+     */
+    public function changeAdminSafely(int $targetId, callable $change): bool
+    {
+        $this->db->beginTransaction();
+
+        try {
+            $stmt = $this->db->query("SELECT id FROM kullanicilar WHERE rol = 'admin' AND durum = 'aktif' FOR UPDATE");
+            $digerleri = array_diff(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)), [$targetId]);
+
+            if ($digerleri === []) {
+                $this->db->rollBack();
+
+                return false;
+            }
+
+            $change();
+            $this->db->commit();
+
+            return true;
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+
+            throw $e;
+        }
+    }
 }

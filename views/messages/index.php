@@ -66,10 +66,13 @@ $smtpEksik = Setting::get('mail_surucu', 'kayit') === 'kayit';
 
 <?php if ($smtpEksik && can('settings.manage')): ?>
     <div class="cy-alert cy-alert--warning mb-3">
-        <strong><?= icon('alert', 'cy-icon cy-icon--sm') ?> Yeni mesaj bildirimi gönderilmiyor.</strong>
-        E-posta yöntemi “kayıt” modunda: mektuplar <code class="cy-mono">storage/mail/</code>
-        klasörüne yazılıyor, kimseye ulaşmıyor. Bu ekranı düzenli kontrol edin ya da
-        <a class="cy-link" href="<?= e(url('panel/ayarlar/eposta')) ?>">SMTP ayarlarını yapın</a>.
+        <span class="cy-alert__icon"><?= icon('alert', 'cy-icon cy-icon--sm') ?></span>
+        <div class="cy-alert__body">
+            <strong>Yeni mesaj bildirimi gönderilmiyor.</strong>
+            E-posta yöntemi “kayıt” modunda: mektuplar <code class="cy-mono">storage/mail/</code>
+            klasörüne yazılıyor, kimseye ulaşmıyor. Bu ekranı düzenli kontrol edin ya da
+            <a class="cy-link" href="<?= e(url('panel/ayarlar/eposta')) ?>">SMTP ayarlarını yapın</a>.
+        </div>
     </div>
 <?php endif; ?>
 

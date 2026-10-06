@@ -24,8 +24,9 @@ $old      = $old ?? [];
 ?>
 
 <?php if ($errors !== []): ?>
-    <div class="cy-alert cy-alert--danger mb-3">
-        Lütfen işaretli alanları düzeltin. Hiçbir ayar kaydedilmedi.
+    <div class="cy-alert cy-alert--danger mb-3" role="alert">
+        <span class="cy-alert__icon"><?= icon('alert', 'cy-icon cy-icon--sm') ?></span>
+        <div class="cy-alert__body">Lütfen işaretli alanları düzeltin. Hiçbir ayar kaydedilmedi.</div>
     </div>
 <?php endif; ?>
 
@@ -257,12 +258,14 @@ $old      = $old ?? [];
                         ekranında görünür.
                     </p>
                     <?php if (Setting::get('mail_surucu', 'kayit') === 'kayit'): ?>
-                        <p class="cy-alert cy-alert--warning small mb-0">
-                            <?= icon('alert', 'cy-icon cy-icon--sm') ?>
-                            E-posta yöntemi hâlâ “kayıt” modunda: bildirim mektubu
-                            <u>kimseye ulaşmıyor</u>.
-                            <a class="cy-link" href="<?= e(url('panel/ayarlar/eposta')) ?>">SMTP ayarlarını yapın</a>.
-                        </p>
+                        <div class="cy-alert cy-alert--warning mb-0">
+                            <span class="cy-alert__icon"><?= icon('alert', 'cy-icon cy-icon--sm') ?></span>
+                            <div class="cy-alert__body">
+                                E-posta yöntemi hâlâ “kayıt” modunda: bildirim mektubu
+                                <strong>kimseye ulaşmıyor</strong>.
+                                <a class="cy-link" href="<?= e(url('panel/ayarlar/eposta')) ?>">SMTP ayarlarını yapın</a>.
+                            </div>
+                        </div>
                     <?php else: ?>
                         <p class="cy-muted small mb-0">
                             Bildirim adresi: <strong><?= e(Setting::get('iletisim_eposta', 'tanımlı değil')) ?></strong>
@@ -424,11 +427,13 @@ $old      = $old ?? [];
                 </div>
                 <div class="cy-card__body">
                     <?php if (!$indeksle): ?>
-                        <div class="cy-alert cy-alert--warning small mb-3">
-                            <?= icon('alert', 'cy-icon cy-icon--sm') ?>
-                            <strong>Site aramaya kapalı.</strong> Her sayfaya
-                            <code class="cy-mono">noindex</code> ekleniyor ve robots.txt
-                            tüm siteyi engelliyor. Yayına çıkarken bu ayarı açmayı unutmayın.
+                        <div class="cy-alert cy-alert--warning mb-3">
+                            <span class="cy-alert__icon"><?= icon('alert', 'cy-icon cy-icon--sm') ?></span>
+                            <div class="cy-alert__body">
+                                <strong>Site aramaya kapalı.</strong> Her sayfaya
+                                <code class="cy-mono">noindex</code> ekleniyor ve robots.txt
+                                tüm siteyi engelliyor. Yayına çıkarken bu ayarı açmayı unutmayın.
+                            </div>
                         </div>
                     <?php endif; ?>
 

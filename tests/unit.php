@@ -456,6 +456,40 @@ dogrula('Satır içi etiketler kelimeyi bölmez', App\Core\Html::toText('<p>ka<s
 dogrula('Boş HTML boş metin', App\Core\Html::toText('<p> </p><br>') === '');
 
 /* ---------------------------------------------------------------- */
+echo "\nMenü, e-posta gizliliği, sayfa adresleri (1.6.0)\n";
+
+$_GET['r'] = 'panel/kullanicilar';
+Url::forgetCurrent();
+dogrula('Kontrol Paneli (tam eşleşme) alt sayfada aktif DEĞİL', !Url::isCurrent('panel', true));
+dogrula('Önek eşleşmesi alt sayfada yine çalışır', Url::isCurrent('panel'));
+dogrula('Tam eşleşme kendi sayfasında aktif', Url::isCurrent('panel/kullanicilar', true));
+$_GET['r'] = 'panel';
+Url::forgetCurrent();
+dogrula('Kontrol Paneli kendi sayfasında aktif', Url::isCurrent('panel', true));
+unset($_GET['r']);
+Url::forgetCurrent();
+
+dogrula('E-posta maskelenir', App\Models\MailLog::maskEmail('elif.demir@ornek.com') === 'e***@ornek.com');
+dogrula('Bozuk adres de maskelenir', App\Models\MailLog::maskEmail('adsiz') === 'a***' && App\Models\MailLog::maskEmail('') === '');
+$guvenlikMektubu = static fn (string $sablon): App\Models\MailLog => App\Models\MailLog::fromRow(['id' => 1, 'alici_eposta' => 'a@b.c', 'konu' => 'x', 'sablon' => $sablon]);
+dogrula('Doğrulama ve parola sıfırlama mektupları hassas', $guvenlikMektubu('dogrulama')->isSensitive() && $guvenlikMektubu('parola-sifirlama')->isSensitive());
+dogrula('Duyuru mektubu hassas değil', !$guvenlikMektubu('duyuru')->isSensitive());
+
+foreach (['app', 'config', 'database', 'docs', 'routes', 'tests', 'views', 'Panel'] as $ayrilmis) {
+    dogrula('"' . $ayrilmis . '" sayfa adresi olamaz', App\Repositories\PageRepository::reserved($ayrilmis));
+}
+dogrula('"hakkimizda" sayfa adresi olabilir', !App\Repositories\PageRepository::reserved('hakkimizda'));
+
+/* Demo kilidi yetki denetiminden SONRA çalışır: Router her rotada
+ * ara katmanlardan sonra Middleware::afterAll'u çağırır, auth() artık
+ * Demo::guard'ı çağırmaz. (Davranışın HTTP sınaması tests/smoke.php'de.) */
+$routerKaynak     = (string) file_get_contents(CY_BASE . '/app/Core/Router.php');
+$middlewareKaynak = (string) file_get_contents(CY_BASE . '/app/Core/Middleware.php');
+dogrula('Demo kilidi ara katmanlardan sonra çalışır', str_contains($routerKaynak, 'Middleware::afterAll($middleware, $request)'));
+preg_match('/private static function auth\(Request \$request\): void\s*\{(.*?)\n    \}/s', $middlewareKaynak, $authGovde);
+dogrula('auth() demo kilidini kendisi çağırmaz', isset($authGovde[1]) && !str_contains($authGovde[1], 'Demo::guard('));
+
+/* ---------------------------------------------------------------- */
 echo "\nVeritabanı: indeksler ve sorgu biçimi\n";
 
 $sema = (string) @file_get_contents(CY_BASE . '/kurulum/database.sql');

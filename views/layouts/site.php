@@ -76,6 +76,9 @@ $siteDil = substr($siteDil, 0, 5);
     <meta name="cy-base" content="<?= e(url('__PATH__')) ?>">
     <?php if (!Setting::bool('seo_indeksleme', true)): ?>
         <meta name="robots" content="noindex, nofollow">
+    <?php elseif ($noindex ?? false): ?>
+        <?php /* Giriş, kayıt, parola sıfırlama: aranmaz ama bağlantıları izlenir. */ ?>
+        <meta name="robots" content="noindex, follow">
     <?php endif; ?>
 
     <?php if (($googleDogrulama = Setting::get('seo_google_dogrulama')) !== ''): ?>

@@ -71,16 +71,18 @@ $ilkSekme  = $canSend ? 'gonder' : 'gecmis';
 
 <?php if (!($yapilandi ?? false)): ?>
     <div class="cy-alert cy-alert--info mb-3">
-        <strong>Gönderim yöntemi "Kayıt" modunda.</strong>
-        Mektuplar kimseye gitmez, <code>storage/mail/</code> klasörüne <code>.eml</code> dosyası olarak yazılır —
-        geliştirirken gerçek adreslere test maili gitmesini önler.
-        Yayına alırken
-        <?php if (can('settings.view')): ?>
-            <a href="<?= e(url('panel/ayarlar')) ?>">Site Ayarları → E-posta</a>
-        <?php else: ?>
-            Site Ayarları → E-posta
-        <?php endif; ?>
-        bölümünden SMTP bilgilerinizi girin.
+        <span class="cy-alert__icon"><?= icon('info', 'cy-icon cy-icon--sm') ?></span>
+        <div class="cy-alert__body">
+            <strong>Gönderim yöntemi "Kayıt" modunda.</strong>
+            Mektuplar kimseye gitmez, <code>storage/mail/</code> klasörüne <code>.eml</code> dosyası olarak yazılır —
+            geliştirirken gerçek adreslere test maili gitmesini önler. Yayına alırken
+            <?php if (can('settings.view')): ?>
+                <a class="cy-link" href="<?= e(url('panel/ayarlar/eposta')) ?>">Site Ayarları → E-posta</a>
+            <?php else: ?>
+                Site Ayarları → E-posta
+            <?php endif; ?>
+            bölümünden SMTP bilgilerinizi girin.
+        </div>
     </div>
 <?php endif; ?>
 

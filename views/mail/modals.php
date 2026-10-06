@@ -31,7 +31,18 @@
                     <dt>Tarih</dt> <dd id="preview_tarih">—</dd>
                 </dl>
 
-                <div class="cy-alert cy-alert--danger d-none mb-3 small" id="preview_hata"></div>
+                <div class="cy-alert cy-alert--danger d-none mb-3" id="preview_hata"></div>
+
+                <?php /* Yalnızca geliştirme modunda ve yöneticiye: mektuplar
+                         gönderilmediği için doğrulama bağlantısı buradan açılır
+                         (bkz. MailApiController::developmentLink). */ ?>
+                <div class="cy-alert cy-alert--info d-none mb-3" id="preview_gelistirme">
+                    <span class="cy-alert__icon"><?= icon('code', 'cy-icon cy-icon--sm') ?></span>
+                    <div class="cy-alert__body">
+                        <strong>Geliştirme modu:</strong> bu mektup kimseye gönderilmedi.
+                        <a class="cy-link" id="preview_gelistirme_baglanti" href="#" target="_blank" rel="noopener">Bağlantıyı aç →</a>
+                    </div>
+                </div>
 
                 <iframe id="preview_frame" title="E-posta önizleme" sandbox
                         style="width:100%; height:520px; border:1px solid var(--cy-border); border-radius:10px; background:#f1f4f8;"></iframe>

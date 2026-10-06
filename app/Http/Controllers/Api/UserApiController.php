@@ -116,8 +116,10 @@ final class UserApiController extends Controller
     {
         $user  = $this->requireUser($request);
         $extra = [
-            'can_edit'   => Auth::can('users.update'),
-            'can_delete' => Auth::can('users.delete') && !Auth::isSelf($user->id),
+            'can_edit'   => Auth::can('users.update') && $this->mayManage($user),
+            'can_delete' => Auth::can('users.delete') && !Auth::isSelf($user->id) && $this->mayManage($user),
+            // E-posta/parola değişirse işlemi yapanın parolası istenir (bkz. save).
+            'onay_gerekir' => Auth::isSelf($user->id) || $user->isAdmin(),
         ];
 
         if (Auth::can('users.view')) {
@@ -150,6 +152,10 @@ final class UserApiController extends Controller
 
         $target = $isEdit ? $this->requireUser($request, 'id') : null;
 
+        if ($target !== null && !$this->mayManage($target)) {
+            Response::error(self::ADMIN_ONLY, 403);
+        }
+
         $validator = new Validator($_POST);
         $validator->name('ad', 'Ad')
                   ->name('soyad', 'Soyad')
@@ -180,6 +186,11 @@ final class UserApiController extends Controller
             $validator->addError('rol', 'Kendi rolünüzü değiştiremezsiniz.');
         }
 
+        // Yönetici yalnızca yönetici tarafından atanabilir (users.role başka role verilse bile).
+        if ($role === Role::ADMIN && ($target === null || $target->rol !== Role::ADMIN) && !(Auth::user()?->isAdmin() ?? false)) {
+            $validator->addError('rol', 'Yönetici rolünü yalnızca yöneticiler verebilir.');
+        }
+
         $status = $isEdit ? $target->durum : 'aktif';
 
         if (Auth::can('users.status') && array_key_exists('durum', $_POST)) {
@@ -200,6 +211,26 @@ final class UserApiController extends Controller
             && !$this->users()->otherActiveAdminExists($target->id)) {
 
             $validator->addError('rol', 'Sistemdeki son aktif yönetici bu şekilde değiştirilemez.');
+        }
+
+        /* YENİDEN DOĞRULAMA: bir YÖNETİCİNİN ya da kendi hesabının e-posta
+         * veya parolası değişiyorsa işlemi yapanın parolası istenir.
+         * Eskiden yalnızca Hesabım ekranı soruyordu; bu uç aynı işi
+         * sormadan yaptığı için o koruma boşa çıkıyordu. */
+        if ($isEdit && (Auth::isSelf($target->id) || $target->isAdmin()) && $validator->passes()) {
+            $yeni           = $validator->validated();
+            $epostaDegisti  = strcasecmp((string) $yeni['eposta'], $target->eposta) !== 0;
+            $parolaDegisti  = !empty($yeni['sifre']);
+
+            if ($epostaDegisti || $parolaDegisti) {
+                $hata = \App\Core\PasswordConfirm::check((int) Auth::id(), $request->string('onay_parola'));
+
+                if ($hata !== null) {
+                    $validator->addError('onay_parola', $hata === \App\Core\PasswordConfirm::WRONG
+                        ? 'Bu değişiklik için kendi parolanızı doğru girin.'
+                        : $hata);
+                }
+            }
         }
 
         $newAvatar = null;
@@ -246,7 +277,19 @@ final class UserApiController extends Controller
                 $payload['sifre'] = $data['sifre'];
             }
 
-            $this->users()->update($target->id, $payload);
+            $dusuruluyor = $target->isAdmin() && $target->isActive() && ($role !== Role::ADMIN || $status !== 'aktif');
+
+            if ($dusuruluyor) {
+                if (!$this->users()->changeAdminSafely($target->id, fn () => $this->users()->update($target->id, $payload))) {
+                    if ($newAvatar !== null) {
+                        Uploader::delete($newAvatar);
+                    }
+
+                    Response::error('Sistemdeki son aktif yönetici bu şekilde değiştirilemez.', 409);
+                }
+            } else {
+                $this->users()->update($target->id, $payload);
+            }
 
             if ($newAvatar !== null && $target->avatar !== '') {
                 Uploader::delete($target->avatar);
@@ -284,11 +327,24 @@ final class UserApiController extends Controller
             Response::error('Kendi hesabınızı silemezsiniz.', 403);
         }
 
-        if ($target->isAdmin() && !$this->users()->otherActiveAdminExists($target->id)) {
-            Response::error('Sistemdeki son yönetici silinemez.', 409);
+        if (!$this->mayManage($target)) {
+            Response::error(self::ADMIN_ONLY, 403);
         }
 
-        if (!$this->users()->delete($target->id)) {
+        $silindi = false;
+        $sil     = function () use ($target, &$silindi): void {
+            $silindi = $this->users()->delete($target->id);
+        };
+
+        if ($target->isAdmin() && $target->isActive()) {
+            if (!$this->users()->changeAdminSafely($target->id, $sil)) {
+                Response::error('Sistemdeki son yönetici silinemez.', 409);
+            }
+        } else {
+            $sil();
+        }
+
+        if (!$silindi) {
             Response::error('Silinecek kayıt bulunamadı.', 404);
         }
 
@@ -310,18 +366,39 @@ final class UserApiController extends Controller
             Response::error('Kendi hesabınızın durumunu değiştiremezsiniz.', 403);
         }
 
-        $newStatus = $target->durum === 'aktif' ? 'pasif' : 'aktif';
-
-        if ($newStatus !== 'aktif' && $target->isAdmin() && !$this->users()->otherActiveAdminExists($target->id)) {
-            Response::error('Sistemdeki son aktif yönetici pasifleştirilemez.', 409);
+        if (!$this->mayManage($target)) {
+            Response::error(self::ADMIN_ONLY, 403);
         }
 
-        $this->users()->update($target->id, ['durum' => $newStatus]);
+        $newStatus = $target->durum === 'aktif' ? 'pasif' : 'aktif';
+        $degistir  = fn () => $this->users()->update($target->id, ['durum' => $newStatus]);
+
+        if ($newStatus !== 'aktif' && $target->isAdmin()) {
+            if (!$this->users()->changeAdminSafely($target->id, $degistir)) {
+                Response::error('Sistemdeki son aktif yönetici pasifleştirilemez.', 409);
+            }
+        } else {
+            $degistir();
+        }
 
         Response::success(
             $newStatus === 'aktif' ? 'Hesap aktifleştirildi.' : 'Hesap pasifleştirildi.',
             ['id' => $target->id, 'durum' => $newStatus]
         );
+    }
+
+    private const ADMIN_ONLY = 'Yönetici hesaplarını yalnızca yöneticiler değiştirebilir.';
+
+    /**
+     * Bu hesabı yönetebilir mi? Yönetici hesabını YALNIZCA yönetici.
+     *
+     * Role.php editöre users.update verilebileceğini söylüyor; bu
+     * denetim olmadan o editör bir yöneticinin e-postasını ve parolasını
+     * değiştirip hesabı ele geçirebilirdi.
+     */
+    private function mayManage(User $target): bool
+    {
+        return !$target->isAdmin() || (Auth::user()?->isAdmin() ?? false);
     }
 
     private function requireUser(Request $request, string $field = 'id'): User

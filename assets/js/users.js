@@ -27,6 +27,16 @@ jQuery(function ($) {
     var currentDetailId = null;
     var searchTimer     = null;
 
+    /* Kontrol panelindeki "onay bekliyor" kartı buraya ?durum=onay_bekliyor
+     * ile gelir. Süzgeç tablo İLK veriyi istemeden önce seçilir; panel
+     * açık gösterilir ki kullanıcı neden az kayıt gördüğünü anlasın. */
+    var ilkDurum = new URLSearchParams(window.location.search).get('durum') || '';
+    if (ilkDurum && $('#filter_status option[value="' + ilkDurum + '"]').length) {
+        $('#filter_status').val(ilkDurum);
+        $('#user_filters_panel').addClass('show');
+        $('#filters_toggle').attr('aria-expanded', 'true');
+    }
+
     function clearErrors() {
         var $form = $('#user_form');
         $form.find('.is-invalid').removeClass('is-invalid');
@@ -64,6 +74,7 @@ jQuery(function ($) {
         $('#avatar_preview').addClass('d-none').attr('src', '');
         $('#avatar_placeholder').removeClass('d-none');
         $('#durum_aktif').prop('checked', true);
+        $('#reauth_group').addClass('d-none');
         clearErrors();
     }
 
@@ -95,6 +106,9 @@ jQuery(function ($) {
         $('#password_required').addClass('d-none');
         $('#password_hint').text('Değiştirmek istemiyorsanız boş bırakın.');
         $('#sifre').attr('placeholder', 'Boş bırakılırsa değişmez');
+
+        // Yönetici ya da kendi hesabı: e-posta/parola değişikliği parola onayı ister.
+        $('#reauth_group').toggleClass('d-none', !data.onay_gerekir);
 
         if (data.avatar_url) {
             $('#avatar_preview').attr('src', data.avatar_url).removeClass('d-none');
@@ -143,6 +157,8 @@ jQuery(function ($) {
         $('#reset_filters').prop('disabled', count === 0);
         $('#active_filter_count').text(count).toggleClass('d-none', count === 0);
     }
+
+    if (ilkDurum) { updateFilterState(); }
 
     $('#table_search').on('input', function () {
         var value = this.value;

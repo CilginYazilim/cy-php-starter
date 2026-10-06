@@ -162,7 +162,8 @@ final class PageController extends Controller
             'icerik'       => $icerik,
             'durum'        => self::post('durum', 'taslak'),
             'menude'       => isset($_POST['menude']),
-            'sira'         => (int) ($_POST['sira'] ?? 0),
+            // smallint unsigned sütun: dışarıdaki değer veritabanı hatasına dönüşmesin.
+            'sira'         => max(0, min(9999, (int) ($_POST['sira'] ?? 0))),
             'seo_baslik'   => trim(self::post('seo_baslik')),
             'seo_aciklama' => trim(self::post('seo_aciklama')),
             'yazar_id'     => Auth::id(),

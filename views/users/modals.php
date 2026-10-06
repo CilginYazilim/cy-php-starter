@@ -92,6 +92,22 @@ $roles = $roles ?? [];
                             <div class="form-text" id="password_hint">En az 8 karakter; harf ve rakam içermelidir.</div>
                             <div class="invalid-feedback" data-error-for="sifre"></div>
                         </div>
+
+                        <?php /* Bir YÖNETİCİNİN ya da kendi hesabının e-postası veya
+                                 parolası değişiyorsa işlemi yapanın parolası istenir
+                                 (bkz. UserApiController::save). JS yalnızca gerektiğinde gösterir. */ ?>
+                        <div class="col-12 d-none" id="reauth_group">
+                            <label class="form-label" for="onay_parola">Kendi parolanız</label>
+                            <div class="cy-password">
+                                <input type="password" name="onay_parola" id="onay_parola" class="form-control"
+                                       autocomplete="current-password" aria-describedby="onay_parola_hint">
+                                <button type="button" class="cy-password__toggle js-toggle-password" aria-label="Parolayı göster">
+                                    <?= icon('eye', 'cy-icon cy-icon--sm') ?>
+                                </button>
+                            </div>
+                            <div class="form-text" id="onay_parola_hint">Bu hesabın e-postasını ya da parolasını değiştiriyorsanız kendi parolanızla onaylayın.</div>
+                            <div class="invalid-feedback" data-error-for="onay_parola"></div>
+                        </div>
                     </div>
 
                     <?php if (can('users.role') || can('users.status')): ?>
@@ -202,8 +218,8 @@ $roles = $roles ?? [];
 
                 <?php if (can('users.view')): ?>
                     <div class="cy-alert cy-alert--warning mt-3 d-none" id="detail_login_attempts">
-                        <?= icon('alert', 'cy-icon cy-icon--sm') ?>
-                        <span id="detail_login_attempts_text"></span>
+                        <span class="cy-alert__icon"><?= icon('alert', 'cy-icon cy-icon--sm') ?></span>
+                        <div class="cy-alert__body" id="detail_login_attempts_text"></div>
                     </div>
                 <?php endif; ?>
             </div>

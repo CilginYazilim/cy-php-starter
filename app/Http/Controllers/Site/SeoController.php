@@ -116,8 +116,13 @@ final class SeoController extends Controller
             return;
         }
 
-        // Panel ve teknik klasörler asla taranmamalı.
-        foreach (['/panel', '/giris', '/kayit', '/kurulum', '/api/', '/upload/'] as $yol) {
+        /* Panel ve teknik klasörler asla taranmamalı.
+         *
+         * upload/ TAMAMEN engellenmez: logo, paylaşım (OG) görseli ve
+         * sayfa kapakları orada durur; eskiden engellendiği için sosyal
+         * medya botları bağlantı önizlemesindeki görseli alamıyordu.
+         * Yalnızca kullanıcı fotoğrafları (kişisel veri) kapalı. */
+        foreach (['/panel', '/giris', '/kayit', '/parolami-unuttum', '/parola-sifirla', '/kurulum', '/api/', '/upload/img/avatar/'] as $yol) {
             echo 'Disallow: ' . Url::base() . $yol . "\n";
         }
 

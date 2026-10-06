@@ -125,12 +125,15 @@ $baslik   = $sayfa?->baslik ?? 'İletişim';
                             ?>
                             <?php if ($smtpEksik && can('settings.manage')): ?>
                                 <div class="cy-alert cy-alert--warning mb-3">
-                                    <strong><?= icon('alert', 'cy-icon cy-icon--sm') ?> E-posta gönderimi kapalı.</strong>
-                                    Buradan gelen mesajlar veritabanına kaydedilir ama
-                                    <u>bildirim e-postası kimseye ulaşmaz</u>.
-                                    <a class="cy-link" href="<?= e(url('panel/ayarlar/eposta')) ?>">SMTP ayarlarını yapın</a>
-                                    ya da mesajları <a class="cy-link" href="<?= e(url('panel/mesajlar')) ?>">panelden</a> takip edin.
-                                    <span class="d-block small mt-1">Bu uyarıyı yalnızca yöneticiler görür.</span>
+                                    <span class="cy-alert__icon"><?= icon('alert', 'cy-icon cy-icon--sm') ?></span>
+                                    <div class="cy-alert__body">
+                                        <strong>E-posta gönderimi kapalı.</strong>
+                                        Buradan gelen mesajlar veritabanına kaydedilir ama
+                                        bildirim e-postası kimseye ulaşmaz.
+                                        <a class="cy-link" href="<?= e(url('panel/ayarlar/eposta')) ?>">SMTP ayarlarını yapın</a>
+                                        ya da mesajları <a class="cy-link" href="<?= e(url('panel/mesajlar')) ?>">panelden</a> takip edin.
+                                        <span class="d-block small mt-1">Bu uyarıyı yalnızca yöneticiler görür.</span>
+                                    </div>
                                 </div>
                             <?php endif; ?>
 
@@ -202,7 +205,8 @@ $baslik   = $sayfa?->baslik ?? 'İletişim';
                     </div>
                 <?php else: ?>
                     <div class="cy-alert cy-alert--info">
-                        İletişim formu şu anda kapalı. Lütfen soldaki bilgilerden bize ulaşın.
+                        <span class="cy-alert__icon"><?= icon('info', 'cy-icon cy-icon--sm') ?></span>
+                        <div class="cy-alert__body">İletişim formu şu anda kapalı. Lütfen soldaki bilgilerden bize ulaşın.</div>
                     </div>
                 <?php endif; ?>
             </div>

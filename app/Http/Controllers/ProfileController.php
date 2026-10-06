@@ -20,7 +20,6 @@ use App\Core\Flash;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
-use App\Core\Throttle;
 use App\Core\Uploader;
 use App\Core\Validator;
 use App\Events\FileUploaded;
@@ -39,7 +38,7 @@ final class ProfileController extends Controller
     public const TOKEN_DAYS = [30, 90, 180, 365];
 
     /** Hatalı parola için ortak işaret (mesajı her form kendisi yazar). */
-    private const WRONG_PASSWORD = 'hatali';
+    private const WRONG_PASSWORD = \App\Core\PasswordConfirm::WRONG;
 
     public function index(Request $request): void
     {
@@ -211,26 +210,13 @@ final class ProfileController extends Controller
     }
 
     /**
-     * Mevcut parolayı doğrular.
-     *
-     * HIZ SINIRLIDIR: açık bırakılmış bir oturumu ele geçiren kişi bu
-     * formları parola tahmin etmek için sınırsızca kullanamasın.
+     * Mevcut parolayı doğrular (hız sınırlı; bkz. App\Core\PasswordConfirm).
      *
      * @return string|null null → doğru; WRONG_PASSWORD → yanlış; başka metin → hız sınırı mesajı
      */
     private function checkPassword(int $userId, string $plain): ?string
     {
-        $bekle = Throttle::attempt('parola-dogrula:' . $userId, 10, 900);
-
-        if ($bekle > 0) {
-            return sprintf('Çok fazla parola denemesi yaptınız. Lütfen %d dakika sonra tekrar deneyin.', (int) ceil($bekle / 60));
-        }
-
-        /* Auth::user() parola özetini TAŞIMAZ (UserRepository::find()
-         * "sifre" sütununu okumaz); özeti bu iş için ayrıca okuyoruz. */
-        $hesap = $this->users()->findWithPassword($userId);
-
-        return $hesap !== null && $plain !== '' && $hesap->verifyPassword($plain) ? null : self::WRONG_PASSWORD;
+        return \App\Core\PasswordConfirm::check($userId, $plain);
     }
 
     private function tokenCount(int $userId): int

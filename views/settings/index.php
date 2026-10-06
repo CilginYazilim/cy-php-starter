@@ -66,9 +66,12 @@ $uyarili = array_filter($kartlar, static fn (array $k): bool => (bool) $k['uyari
 
 <?php if ($uyarili !== []): ?>
     <div class="cy-alert cy-alert--warning mb-3">
-        <strong><?= count($uyarili) ?> bölüm dikkatinizi bekliyor:</strong>
-        <?= e(implode(', ', array_map(static fn (array $k): string => $k['baslik'], $uyarili))) ?>.
-        Turuncu işaretli kartların altındaki cümle sorunun ne olduğunu da yazıyor.
+        <span class="cy-alert__icon"><?= icon('alert', 'cy-icon cy-icon--sm') ?></span>
+        <div class="cy-alert__body">
+            <strong><?= count($uyarili) ?> bölüm dikkatinizi bekliyor:</strong>
+            <?= e(implode(', ', array_map(static fn (array $k): string => $k['baslik'], $uyarili))) ?>.
+            İşaretli kartların altındaki cümle sorunun ne olduğunu da yazıyor.
+        </div>
     </div>
 <?php endif; ?>
 

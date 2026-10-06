@@ -101,6 +101,35 @@ final class OrnekRepository
         return (int) $this->db->lastInsertId();
     }
 
+    public function countByStatus(string $durum): int
+    {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM `ornek` WHERE durum = :durum');
+        $stmt->execute([':durum' => $durum]);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Bir kullanıcının kayıtları, duruma göre.
+     *
+     * @return array{yayinda:int,onay:int,taslak:int}
+     */
+    public function statusCountsFor(int $kullaniciId): array
+    {
+        $sayilar = ['yayinda' => 0, 'onay' => 0, 'taslak' => 0];
+
+        $stmt = $this->db->prepare('SELECT durum, COUNT(*) AS adet FROM `ornek` WHERE kullanici_id = :id GROUP BY durum');
+        $stmt->execute([':id' => $kullaniciId]);
+
+        foreach ($stmt->fetchAll() as $satir) {
+            if (array_key_exists((string) $satir['durum'], $sayilar)) {
+                $sayilar[(string) $satir['durum']] = (int) $satir['adet'];
+            }
+        }
+
+        return $sayilar;
+    }
+
     public function isFull(): bool
     {
         return $this->count() >= self::UST_SINIR;

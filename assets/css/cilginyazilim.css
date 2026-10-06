@@ -977,11 +977,21 @@ table.dataTable > thead .sorting_desc:after { display: none !important; }
  * gri tonda kalır. Eskiden bütün kutu renkli zemin + renkli yazıydı:
  * uzun bir açıklama mavi üstüne mavi okunuyordu. Hata kutusu,
  * gözden kaçmasın diye hafif kırmızı zemini korur. */
+/* YAPI:
+ *   <div class="cy-alert cy-alert--warning">
+ *     <span class="cy-alert__icon">…ikon…</span>
+ *     <div class="cy-alert__body"><strong>Başlık.</strong> Metin…</div>
+ *   </div>
+ *
+ * Kutu NORMAL METİN AKIŞINDADIR (display:block); ikon sol üste
+ * sabitlenir. Eskiden kutu display:flex idi: içerideki düz metin, <u>
+ * ve <a> öğelerinin her biri ayrı bir flex sütununa dönüşüyor, cümle
+ * kelime kelime yan yana sütunlara bölünüyordu. JavaScript'in .text()
+ * ile doldurduğu ikonsuz kutular da bu sayede düzgün görünür. */
 .cy-alert {
     --ton: var(--cy-info);
-    display: flex;
-    align-items: flex-start;
-    gap: .6rem;
+    position: relative;
+    display: block;
     padding: .65rem .85rem;
     border: 1px solid var(--cy-border);
     border-left: 3px solid var(--ton);
@@ -990,9 +1000,19 @@ table.dataTable > thead .sorting_desc:after { display: none !important; }
     color: var(--cy-text-soft);
     font-size: .8125rem;
     line-height: 1.55;
+    overflow-wrap: anywhere;
 }
+.cy-alert:has(> .cy-alert__icon) { padding-left: 2.35rem; }
+.cy-alert__icon {
+    position: absolute;
+    top: .72rem;
+    left: .8rem;
+    display: inline-flex;
+    color: var(--ton);
+}
+.cy-alert__icon .cy-icon { width: 16px; height: 16px; }
+.cy-alert__body > :last-child { margin-bottom: 0; }
 .cy-alert strong { color: var(--cy-text); }
-.cy-alert > .cy-icon:first-child { flex-shrink: 0; margin-top: .15rem; color: var(--ton); }
 
 .cy-alert--danger  { --ton: var(--cy-danger); background: var(--cy-danger-soft); border-color: transparent; color: var(--cy-text); }
 .cy-alert--success { --ton: var(--cy-success); }

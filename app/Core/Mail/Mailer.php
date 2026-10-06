@@ -107,6 +107,21 @@ final class Mailer
         return true;
     }
 
+    /**
+     * Mektup GERÇEKTEN alıcıya ulaşabilir mi?
+     *
+     * enabled() "gönderim denenebilir mi" sorusunu cevaplar ve "Kayıt"
+     * sürücüsünde de true döner: mektup storage/mail/ klasörüne yazılır,
+     * hata oluşmaz. Ama kimseye ulaşmaz. Doğrulama ve parola sıfırlama
+     * gibi kullanıcının mektubu ALMASINA dayanan akışlar bunu sormalı;
+     * eskiden kayıt formu "bağlantı gönderdik" deyip hesabı sonsuza dek
+     * "onay bekliyor"da bırakıyordu.
+     */
+    public static function canDeliver(): bool
+    {
+        return self::config()['surucu'] !== 'kayit' && self::enabled();
+    }
+
     public static function transport(): Transport
     {
         if (self::$transport !== null) {

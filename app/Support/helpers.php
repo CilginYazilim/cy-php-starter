@@ -143,9 +143,9 @@ if (!function_exists('setting_bool')) {
 
 if (!function_exists('is_route')) {
     /** Sol menüde aktif bağlantıyı işaretlemek için. */
-    function is_route(string $path): bool
+    function is_route(string $path, bool $exact = false): bool
     {
-        return Url::isCurrent($path);
+        return Url::isCurrent($path, $exact);
     }
 }
 if (!function_exists('old')) {

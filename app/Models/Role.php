@@ -9,12 +9,19 @@
  *
  *  ROLLER
  *    admin  → Yönetici. Her şeyi yapabilir.
- *    editor → Editör. Mesajları ve giden e-posta geçmişini yönetir;
- *             KULLANICI EKRANINA HİÇ GİREMEZ (aşağıdaki listede
- *             users.* yoktur). Editöre kullanıcı yönetimi vermek
- *             isterseniz ABILITIES listesine users.view / users.create
- *             / users.update ekleyin — yan menü zaten yetkiye göre
- *             çizildiği için başka bir yere dokunmanız gerekmez.
+ *    editor → Editör. Sayfaları, mesajları ve giden e-posta geçmişini
+ *             yönetir; KULLANICI EKRANINA HİÇ GİREMEZ (aşağıdaki
+ *             listede users.* yoktur). Editöre kullanıcı yönetimi
+ *             vermek isterseniz ABILITIES listesine users.view /
+ *             users.create / users.update ekleyin. Yan menü yetkiye
+ *             göre çizilir; başka bir yere dokunmanız gerekmez.
+ *
+ *             GÜVENLİK: yönetici hesapları bu yetkilerle bile
+ *             DEĞİŞTİRİLEMEZ, silinemez, pasife alınamaz ve kimse
+ *             yönetici yapılamaz; bunları yalnızca yönetici yapar
+ *             (UserApiController::mayManage). Bir yöneticinin ya da
+ *             kendi hesabının e-posta/parolasını değiştiren, kendi
+ *             parolasıyla onaylar (PasswordConfirm).
  *    uye    → Üye. Yalnızca kendi profilini görür ve düzenler.
  * =====================================================================
  */
@@ -34,7 +41,7 @@ final class Role
     /** @var array<string,array<int,string>> */
     private const ABILITIES = [
         self::ADMIN => [
-            'dashboard.view', 'dashboard.stats',
+            'dashboard.view',
             'users.view', 'users.create', 'users.update', 'users.delete', 'users.role', 'users.status',
             'messages.view', 'messages.manage',
             'pages.view', 'pages.manage',
@@ -45,7 +52,7 @@ final class Role
             'maintenance.bypass',
         ],
         self::EDITOR => [
-            'dashboard.view', 'dashboard.stats',
+            'dashboard.view',
             'messages.view', 'messages.manage',
             // İçerik sayfaları editörün asıl işidir: yazabilir,
             // düzenleyebilir, yayınlayabilir.

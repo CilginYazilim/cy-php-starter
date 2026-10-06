@@ -25,9 +25,14 @@ final class PageRepository
      *
      * @var array<int,string>
      */
+    /* Uygulamanın kendi adresleri ve kök klasörleri. Bir sayfa "app"
+     * ya da "config" adresini alırsa .htaccess o klasörü 403 ile
+     * kapattığı için sayfa hiç açılmaz; yönetici nedenini anlamaz. */
     private const AYRILMIS = [
         'panel', 'giris', 'kayit', 'cikis', 'api', 'kurulum', 'upload', 'assets',
         'sitemap', 'robots', 'manifest', 'cevrimdisi', 'storage', 'modules',
+        'app', 'config', 'database', 'docs', 'routes', 'tests', 'views',
+        'parolami-unuttum', 'parola-sifirla', 'onizleme',
     ];
 
     /**

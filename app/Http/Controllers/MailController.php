@@ -16,7 +16,6 @@ namespace App\Http\Controllers;
 use App\Core\Auth;
 use App\Core\Mail\Mailer;
 use App\Core\Request;
-use App\Core\Setting;
 use App\Http\Controller;
 use App\Models\Role;
 
@@ -50,7 +49,7 @@ final class MailController extends Controller
             'prefill'    => $prefill,
             'canSend'    => Auth::can('mail.send'),
             'gonderen'   => trim(($config['gonderenAd'] !== '' ? $config['gonderenAd'] . ' ' : '') . '<' . $config['gonderen'] . '>'),
-            'yapilandi'  => Mailer::enabled() && Setting::get('mail_surucu', 'kayit') !== 'kayit',
+            'yapilandi'  => Mailer::canDeliver(),
         ]);
     }
 

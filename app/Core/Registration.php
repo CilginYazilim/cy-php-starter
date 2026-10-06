@@ -34,14 +34,30 @@ final class Registration
             return false;
         }
 
-        /* Doğrulama açık ama mektup gönderilemiyorsa form KAPANIR:
+        /* Doğrulama açık ama mektup ALICIYA ULAŞAMIYORSA form KAPANIR:
          * açılan hesaplar hiç etkinleştirilemez, ziyaretçi boşuna
-         * bekler. Yönetici durumu Sistem sayfasında görür. */
-        if (self::requiresVerification() && !Mailer::enabled()) {
+         * bekler. Yönetici nedeni panel bildiriminde görür.
+         *
+         * Eskiden Mailer::enabled() soruluyordu; "Kayıt" sürücüsünde o
+         * da true döndüğü için form açık kalıyor, mektup yalnızca
+         * storage/mail/ klasörüne yazılıyordu.
+         *
+         * Geliştirme modunda (APP_DEBUG) form açık kalır: geliştirici
+         * akışı dener, bağlantıyı Panel → E-posta'dan açar. */
+        if (self::requiresVerification() && !Mailer::canDeliver() && !self::developmentPreview()) {
             return false;
         }
 
         return true;
+    }
+
+    /**
+     * Geliştirme kolaylığı: APP_DEBUG açık ve mektuplar gönderilmiyorsa
+     * doğrulama bağlantısı yöneticiye Panel → E-posta'da gösterilir.
+     */
+    public static function developmentPreview(): bool
+    {
+        return Config::isDebug() && !Mailer::canDeliver();
     }
 
     /**
@@ -60,8 +76,10 @@ final class Registration
             return '';
         }
 
-        if (self::requiresVerification() && !Mailer::enabled()) {
-            return 'Kayıtta e-posta doğrulaması açık ama e-posta ayarları eksik; kayıt formu kapalı.';
+        if (self::requiresVerification() && !Mailer::canDeliver()) {
+            return self::developmentPreview()
+                ? 'Geliştirme modu: doğrulama mektupları gönderilmiyor; bağlantıyı Panel → E-posta geçmişindeki mektuptan açabilirsiniz. Yayında kayıt formu kapanır.'
+                : 'Kayıt formu kapalı: e-posta doğrulaması açık ama mektuplar gönderilemiyor. SMTP ayarlayın ya da Ayarlar → Sistem\'den doğrulamayı kapatın.';
         }
 
         return '';

@@ -259,6 +259,9 @@ final class Router
             Middleware::handle($rule, $request);
         }
 
+        // Demo kilidi: yetki denetiminden SONRA (bkz. Middleware::afterAll).
+        Middleware::afterAll($middleware, $request);
+
         $controller = new $controllerClass();
 
         $controller->{$method}($request, ...$params);

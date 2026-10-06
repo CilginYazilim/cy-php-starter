@@ -38,6 +38,7 @@ final class AuthController extends Controller
 
         $this->view('auth/login', [
             'title'        => 'Giriş Yap',
+            'noindex'      => true,
             'errors'       => Flash::errors(),
             'old'          => Flash::old(),
             'scripts'      => ['login.js'],
@@ -108,6 +109,7 @@ final class AuthController extends Controller
 
         $this->view('auth/register', [
             'title'   => 'Kayıt Ol',
+            'noindex' => true,
             'errors'  => Flash::errors(),
             'old'     => Flash::old(),
             'scripts' => ['register.js'],
@@ -301,7 +303,14 @@ final class AuthController extends Controller
 
         $user = ($id !== null && $son !== null) ? $this->users()->find($id) : null;
 
-        if ($user === null) {
+        /* İMZA ÖNCE. Eskiden imza denetlenmeden "Hesabınız zaten etkin"
+         * deniyordu: rastgele bir numara deneyen kişi o numaralı hesabın
+         * var ve etkin olduğunu öğrenebiliyordu. Artık imzası geçersiz
+         * her bağlantı — hesap olsun olmasın — AYNI mesajı alır. (İmza
+         * e-postayı içerdiği için kaydı okumak yine gerekir.) */
+        $sonuc = $user !== null ? Registration::checkLink($user, (int) $son, $imza) : 'gecersiz';
+
+        if ($sonuc === 'gecersiz') {
             Flash::error('Doğrulama bağlantısı geçersiz.');
             Response::redirect(url('giris'));
         }
@@ -310,8 +319,6 @@ final class AuthController extends Controller
             Flash::info('Hesabınız zaten etkin. Giriş yapabilirsiniz.');
             Response::redirect(url('giris'));
         }
-
-        $sonuc = Registration::checkLink($user, $son, $imza);
 
         if ($sonuc !== 'gecerli' || !$user->isPendingVerification()) {
             Flash::error($sonuc === 'suresi_doldu'

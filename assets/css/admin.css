@@ -2197,3 +2197,33 @@ a.cy-stat--link:focus-visible { outline: 2px solid var(--cy-brand); outline-offs
     /* Düğmeli satırda eylemler alt satıra iner; yalnızca kilit varsa yanda kalır. */
     .cy-ornek__actions:has(form, a) { width: 100%; flex-wrap: wrap; }
 }
+
+/* --- Özet kartı ızgarası (1.6.0) ---
+   auto-fit 4 kartı geniş ekranda 3 + 1 kırabiliyordu. Sütun sayısı
+   artık sabit: 1200px üstü --cy-stats-lg (varsayılan 4), 768–1199 arası
+   --cy-stats-md (varsayılan 2), altı 2. Kontrol paneli kart sayısına
+   göre değişkeni kendisi verir. */
+.cy-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 768px)  { .cy-stats { grid-template-columns: repeat(var(--cy-stats-md, 2), minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .cy-stats { grid-template-columns: repeat(var(--cy-stats-lg, 4), minmax(0, 1fr)); } }
+
+/* --- Profil tamamlama ilerlemesi --- */
+.cy-me { flex-wrap: wrap; }
+.cy-me__body { flex: 1 1 220px; }
+.cy-me__progress {
+    flex: 0 1 260px;
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    padding: .6rem .75rem;
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius);
+    color: inherit;
+    text-decoration: none;
+}
+.cy-me__progress:hover { border-color: var(--cy-brand); color: inherit; }
+.cy-me__progress-head { display: flex; justify-content: space-between; font-size: .78rem; font-weight: 600; }
+.cy-me__progress-head strong { color: var(--cy-brand-600); }
+.cy-me__progress-hint { font-size: .74rem; color: var(--cy-text-muted); }
+.cy-progress { display: block; height: 6px; border-radius: 999px; background: var(--cy-surface-soft); overflow: hidden; }
+.cy-progress__bar { display: block; height: 100%; border-radius: inherit; background: var(--cy-brand-500); }

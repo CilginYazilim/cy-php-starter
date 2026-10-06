@@ -19,6 +19,7 @@ namespace App\Http\Controllers\Site;
 
 use App\Core\Exceptions\HttpException;
 use App\Core\Request;
+use App\Core\Response;
 use App\Http\Controller;
 use App\Repositories\PageRepository;
 
@@ -26,7 +27,15 @@ final class PageController extends Controller
 {
     public function show(Request $request, string $slug): void
     {
-        $sayfa = (new PageRepository($this->db))->findPublished(mb_strtolower($slug));
+        /* Adresler küçük harflidir. "/Hakkimizda" eskiden de açılıyor ve
+         * kendi canonical adresini basıyordu: arama motoru aynı içeriği
+         * iki adreste görüyordu. Büyük harfli istek kalıcı olarak (301)
+         * küçük harfli adrese yönlendirilir. (Rota yalnızca ASCII kabul eder.) */
+        if (strtolower($slug) !== $slug) {
+            Response::redirect(url(strtolower($slug)), 301);
+        }
+
+        $sayfa = (new PageRepository($this->db))->findPublished($slug);
 
         if ($sayfa === null) {
             throw HttpException::notFound($slug);

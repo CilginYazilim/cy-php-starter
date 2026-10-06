@@ -69,9 +69,10 @@ final class MailApiController extends Controller
     /** @return array<int,string> */
     private function toTableRow(MailLog $log): array
     {
-        $alici = $log->aliciAd !== ''
-            ? '<span class="cy-user-cell__name">' . e($log->aliciAd) . '</span><span class="cy-user-cell__meta">' . e($log->aliciEposta) . '</span>'
-            : '<span class="cy-user-cell__name">' . e($log->aliciEposta) . '</span>';
+        $eposta = $this->hidden($log) ? MailLog::maskEmail($log->aliciEposta) : $log->aliciEposta;
+        $alici  = $log->aliciAd !== ''
+            ? '<span class="cy-user-cell__name">' . e($log->aliciAd) . '</span><span class="cy-user-cell__meta">' . e($eposta) . '</span>'
+            : '<span class="cy-user-cell__name">' . e($eposta) . '</span>';
 
         $durum = '<span class="cy-status ' . $log->statusVariant() . '"><span class="cy-status__dot"></span>' . e($log->statusLabel()) . '</span>';
 
@@ -110,20 +111,55 @@ final class MailApiController extends Controller
     /** Kayıtlı mektubun HTML gövdesini önizleme penceresine döndürür. */
     public function fetch(Request $request): void
     {
-        $log = $this->requireLog($request);
+        $log    = $this->requireLog($request);
+        $gizli  = $this->hidden($log);
+        $eposta = $gizli ? MailLog::maskEmail($log->aliciEposta) : $log->aliciEposta;
 
         Response::json([
             'success' => true,
             'id'      => $log->id,
-            'alici'   => $log->aliciAd !== '' ? $log->aliciAd . ' <' . $log->aliciEposta . '>' : $log->aliciEposta,
+            'alici'   => $log->aliciAd !== '' ? $log->aliciAd . ' <' . $eposta . '>' : $eposta,
             'konu'    => $log->konu,
             'durum'   => $log->statusLabel(),
             'tur'     => $log->typeLabel(),
             'hata'    => $log->hata,
             'deneme'  => $log->deneme,
             'tarih'   => MailLog::formatDate($log->gonderildiAt ?? $log->createdAt),
-            'govde'   => $this->mails()->body($log->id),
+            'govde'   => $gizli ? self::HIDDEN_BODY : $this->mails()->body($log->id),
+
+            // Yalnızca geliştirme modunda ve yöneticiye: doğrulama bağlantısı.
+            'gelistirme_baglanti' => $gizli ? '' : $this->developmentLink($log),
         ]);
+    }
+
+    /** Güvenlik bağlantılı mektubun gövdesi yerine gösterilen metin. */
+    private const HIDDEN_BODY = '<div style="font-family:system-ui,sans-serif;padding:2rem;color:#475569;line-height:1.6">'
+        . '<strong style="color:#0f172a">Bu mektup bir güvenlik bağlantısı içerir.</strong><br>'
+        . 'E-posta doğrulama ve parola sıfırlama mektuplarının içeriğini yalnızca kullanıcıları yönetebilen roller görebilir.'
+        . '</div>';
+
+    /** Bu kullanıcıya mektubun içeriği gizlenmeli mi? */
+    private function hidden(MailLog $log): bool
+    {
+        return $log->isSensitive() && !Auth::can('users.view');
+    }
+
+    /**
+     * Geliştirme kolaylığı: mektuplar gönderilmiyorken (APP_DEBUG +
+     * Kayıt sürücüsü) doğrulama/sıfırlama bağlantısını yöneticiye ver.
+     * Yayında boş döner.
+     */
+    private function developmentLink(MailLog $log): string
+    {
+        if (!$log->isSensitive() || !\App\Core\Registration::developmentPreview() || !Auth::can('users.view')) {
+            return '';
+        }
+
+        $govde = $this->mails()->body($log->id);
+
+        return preg_match('#href="(https?://[^"]+/(?:kayit/dogrula|parola-sifirla)\?[^"]+)"#', $govde, $m) === 1
+            ? html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8')
+            : '';
     }
 
     public function requeue(Request $request): void

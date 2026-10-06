@@ -3,13 +3,12 @@
  * =====================================================================
  *  GÖRÜNÜM: Kontrol paneli
  * ---------------------------------------------------------------------
- *  SADE DÜZEN: renkli gradyan şerit ve "canlı" kartlar kaldırıldı.
- *  Selamlama tek satır, sayılar düz kartlarda; her sayı ilgili sayfaya
- *  bağlantıdır. Göz önce rakama gider, süsleme dikkat dağıtmaz.
+ *  SADE DÜZEN: tek satır selamlama, düz kartlar; her kart ilgili
+ *  sayfaya bağlantıdır. Kartlar DashboardController'da YETKİYE GÖRE
+ *  üretilir (bkz. oradaki açıklama); görünüm yalnızca çizer.
  *
- *  İstatistik yetkisi olmayan roller (editör, üye) bir boş sayfa
- *  yerine hesap özetini ve erişebildikleri bölümlerin kısayollarını
- *  görür — modüllerin sayfaları dahil.
+ *  Kullanıcı yöneticisi olmayan roller (editör, üye) profil tamamlama
+ *  ilerlemesini ve erişebildikleri bölümlerin kısayollarını da görür.
  * =====================================================================
  */
 
@@ -17,17 +16,15 @@ use App\Core\Modules\Modules;
 use App\Models\Role;
 
 $currentUser    = $currentUser ?? null;
-$stats          = $stats ?? null;
+$kartlar        = $kartlar ?? [];
 $messageStats   = $messageStats ?? null;
-$mailStats      = $mailStats ?? null;
 $latestMessages = $latestMessages ?? [];
+$latestUsers    = $latestUsers ?? null;
 $chart          = $chart ?? [];
+$profil         = $profil ?? null;
 
 /* ---------------------------------------------------------------------
- *  SELAMLAMA
- * ---------------------------------------------------------------------
- *  Saate göre selamlama + Türkçe uzun tarih + günün özeti. Harici bir
- *  tarih kütüphanesi kullanmadan (sıfır bağımlılık ilkesi) üretilir.
+ *  SELAMLAMA — saate göre + Türkçe uzun tarih (sıfır bağımlılık)
  * ------------------------------------------------------------------ */
 $saat      = (int) date('G');
 $selamlama = match (true) {
@@ -42,46 +39,46 @@ $aylar  = ['', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz',
 $bugun  = (int) date('j') . ' ' . $aylar[(int) date('n')] . ' ' . $gunler[(int) date('w')];
 
 $ozetParcalari = [$bugun];
-
 if ($messageStats !== null && $messageStats['unread'] > 0) {
     $ozetParcalari[] = $messageStats['unread'] . ' okunmamış mesaj';
 }
-if ($mailStats !== null && $mailStats['kuyrukta'] > 0) {
-    $ozetParcalari[] = $mailStats['kuyrukta'] . ' e-posta kuyrukta';
-}
-if ($stats !== null && (int) $stats['last7'] > 0) {
-    $ozetParcalari[] = 'son 7 günde ' . $stats['last7'] . ' yeni kayıt';
-}
+
+/* Kart sayısına göre sütun: 4 kart 3+1 kırılmasın (bkz. .cy-stats). */
+$kartSayisi = count($kartlar);
+$genisSutun = match (true) {
+    $kartSayisi <= 5 => max(1, $kartSayisi),
+    $kartSayisi === 6 => 3,
+    default           => 4,
+};
 
 /* ---------------------------------------------------------------------
- *  KISAYOLLAR — rolün erişebildiği bölümler
- * ---------------------------------------------------------------------
- *  Modüllerin menü tanımı (module.json → "menu") burada da kullanılır:
- *  yeni bir modül açıldığında kontrol panelinde kendiliğinden görünür.
+ *  KISAYOLLAR — kullanıcı yöneticisi olmayan roller için
  * ------------------------------------------------------------------ */
 $kisayollar = [];
 
-foreach (Modules::enabled() as $modul) {
-    if ($modul->menu !== null && can($modul->menu['can'])) {
-        $kisayollar[] = [
-            'yol'      => $modul->menu['route'],
-            'ikon'     => $modul->menu['icon'],
-            'baslik'   => $modul->menu['label'],
-            'aciklama' => $modul->aciklama,
-        ];
+if (!can('users.view')) {
+    foreach (Modules::enabled() as $modul) {
+        if ($modul->menu !== null && can($modul->menu['can'])) {
+            $kisayollar[] = [
+                'yol'      => $modul->menu['route'],
+                'ikon'     => $modul->menu['icon'],
+                'baslik'   => $modul->menu['label'],
+                'aciklama' => $modul->aciklama,
+            ];
+        }
     }
-}
 
-$cekirdek = [
-    ['pages.view',    'panel/sayfalar',     'files',    'Sayfalar',  'Hakkımızda gibi içerik sayfalarını düzenleyin.'],
-    ['messages.view', 'panel/mesajlar',     'inbox',    'Mesajlar',  'İletişim formundan gelen mesajlar.'],
-    ['users.view',    'panel/kullanicilar', 'users',    'Kullanıcılar', 'Hesaplar, roller ve durumlar.'],
-    ['profile.view',  'panel/hesabim',      'user',     'Hesabım',   'Bilgileriniz, parolanız ve oturumlarınız.'],
-];
+    $cekirdek = [
+        ['pages.view',    'panel/sayfalar', 'files', 'Sayfalar', 'Hakkımızda gibi içerik sayfalarını düzenleyin.'],
+        ['messages.view', 'panel/mesajlar', 'inbox', 'Mesajlar', 'İletişim formundan gelen mesajlar.'],
+        ['mail.view',     'panel/eposta',   'send',  'E-posta',  'Giden e-postaların geçmişi.'],
+        ['profile.view',  'panel/hesabim',  'user',  'Hesabım',  'Bilgileriniz, parolanız ve oturumlarınız.'],
+    ];
 
-foreach ($cekirdek as [$yetki, $yol, $ikon, $baslik, $aciklama]) {
-    if (can($yetki)) {
-        $kisayollar[] = ['yol' => $yol, 'ikon' => $ikon, 'baslik' => $baslik, 'aciklama' => $aciklama];
+    foreach ($cekirdek as [$yetki, $yol, $ikon, $baslik, $aciklama]) {
+        if (can($yetki)) {
+            $kisayollar[] = ['yol' => $yol, 'ikon' => $ikon, 'baslik' => $baslik, 'aciklama' => $aciklama];
+        }
     }
 }
 ?>
@@ -108,45 +105,23 @@ foreach ($cekirdek as [$yetki, $yol, $ikon, $baslik, $aciklama]) {
     <?php endif; ?>
 </div>
 
-<?php if ($stats !== null): ?>
-
-    <?php
-    /* Her kart ilgili sayfaya gider; yetki yoksa düz kutu kalır. */
-    $kartlar = [
-        ['users',  'brand',   'Kullanıcı',  (int) $stats['total'],  'son 7 günde +' . (int) $stats['last7'], can('users.view') ? 'panel/kullanicilar' : ''],
-        ['check',  'success', 'Aktif hesap', (int) $stats['active'], (int) $stats['passive'] . ' pasif / askıda', can('users.view') ? 'panel/kullanicilar' : ''],
-    ];
-
-    if ($messageStats !== null) {
-        $kartlar[] = ['inbox', $messageStats['unread'] > 0 ? 'warning' : 'brand', 'Mesaj', (int) $messageStats['total'], (int) $messageStats['unread'] . ' okunmamış', 'panel/mesajlar'];
-    }
-
-    if ($mailStats !== null) {
-        $kartlar[] = [
-            'send',
-            $mailStats['basarisiz'] > 0 ? 'danger' : 'brand',
-            'E-posta kuyruğu',
-            (int) $mailStats['kuyrukta'],
-            (int) $mailStats['bugun'] . ' bugün gitti' . ($mailStats['basarisiz'] > 0 ? ' · ' . (int) $mailStats['basarisiz'] . ' başarısız' : ''),
-            'panel/eposta',
-        ];
-    }
-    ?>
-
-    <div class="cy-stats">
-        <?php foreach ($kartlar as [$ikon, $renk, $etiket, $deger, $ipucu, $yol]): ?>
-            <?php $etiketAdi = $yol !== '' ? 'a' : 'div'; ?>
-            <<?= $etiketAdi ?> class="cy-stat<?= $yol !== '' ? ' cy-stat--link' : '' ?>"<?= $yol !== '' ? ' href="' . e(url($yol)) . '"' : '' ?>>
-                <span class="cy-stat__icon cy-stat__icon--<?= e($renk) ?>"><?= icon($ikon) ?></span>
+<?php if ($kartlar !== []): ?>
+    <div class="cy-stats" style="--cy-stats-lg: <?= $genisSutun ?>; --cy-stats-md: <?= $kartSayisi === 3 ? 3 : 2 ?>">
+        <?php foreach ($kartlar as $kart): ?>
+            <?php $baglanti = $kart['yol'] !== ''; ?>
+            <<?= $baglanti ? 'a' : 'div' ?> class="cy-stat<?= $baglanti ? ' cy-stat--link' : '' ?>"<?= $baglanti ? ' href="' . e(url($kart['yol'])) . '"' : '' ?>>
+                <span class="cy-stat__icon cy-stat__icon--<?= e($kart['renk']) ?>"><?= icon($kart['ikon']) ?></span>
                 <span>
-                    <span class="cy-stat__label"><?= e($etiket) ?></span>
-                    <span class="cy-stat__value"><?= $deger ?></span>
-                    <span class="cy-stat__hint"><?= e($ipucu) ?></span>
+                    <span class="cy-stat__label"><?= e($kart['etiket']) ?></span>
+                    <span class="cy-stat__value"><?= e($kart['deger']) ?></span>
+                    <span class="cy-stat__hint"><?= e($kart['ipucu']) ?></span>
                 </span>
-            </<?= $etiketAdi ?>>
+            </<?= $baglanti ? 'a' : 'div' ?>>
         <?php endforeach; ?>
     </div>
+<?php endif; ?>
 
+<?php if ($latestUsers !== null): ?>
     <div class="row g-3">
         <div class="col-12 col-xl-8">
             <section class="cy-panel cy-panel--fill">
@@ -159,7 +134,7 @@ foreach ($cekirdek as [$yetki, $yol, $ikon, $baslik, $aciklama]) {
                 </header>
 
                 <?php $max = max([1, ...array_column($chart, 'value')]); ?>
-                <div class="cy-chart">
+                <div class="cy-chart" role="img" aria-label="Son 14 günde eklenen kullanıcı sayıları">
                     <?php foreach ($chart as $point): ?>
                         <?php $height = (int) round(($point['value'] / $max) * 100); ?>
                         <div class="cy-chart__bar" title="<?= e($point['label']) ?>: <?= (int) $point['value'] ?> kayıt">
@@ -178,12 +153,10 @@ foreach ($cekirdek as [$yetki, $yol, $ikon, $baslik, $aciklama]) {
             <section class="cy-panel cy-panel--fill">
                 <header class="cy-panel__head">
                     <h3 class="cy-panel__title"><?= icon('users', 'cy-icon cy-icon--sm') ?> Son eklenenler</h3>
-                    <?php if (can('users.view')): ?>
-                        <a class="cy-link small" href="<?= e(url('panel/kullanicilar')) ?>">Tümü →</a>
-                    <?php endif; ?>
+                    <a class="cy-link small" href="<?= e(url('panel/kullanicilar')) ?>">Tümü →</a>
                 </header>
                 <ul class="cy-people">
-                    <?php foreach (($latestUsers ?? []) as $item): ?>
+                    <?php foreach ($latestUsers as $item): ?>
                         <li class="cy-people__row">
                             <?php if ($item->avatarUrl() !== ''): ?>
                                 <img class="cy-avatar cy-avatar--sm" src="<?= e($item->avatarUrl()) ?>" alt="" loading="lazy">
@@ -198,68 +171,78 @@ foreach ($cekirdek as [$yetki, $yol, $ikon, $baslik, $aciklama]) {
                         </li>
                     <?php endforeach; ?>
                 </ul>
-                <?php if (($latestUsers ?? []) === []): ?>
+                <?php if ($latestUsers === []): ?>
                     <p class="cy-panel__empty">Henüz kullanıcı yok.</p>
                 <?php endif; ?>
             </section>
         </div>
     </div>
+<?php endif; ?>
 
-    <?php if ($messageStats !== null): ?>
-        <section class="cy-panel mt-3">
-            <header class="cy-panel__head">
-                <div>
-                    <h3 class="cy-panel__title"><?= icon('inbox', 'cy-icon cy-icon--sm') ?> Son mesajlar</h3>
-                    <p class="cy-panel__sub"><?= (int) $messageStats['unread'] ?> okunmamış</p>
-                </div>
-                <a class="cy-link small" href="<?= e(url('panel/mesajlar')) ?>">Tümü →</a>
-            </header>
-            <ul class="cy-people">
-                <?php foreach ($latestMessages as $mesaj): ?>
-                    <li class="cy-people__row">
-                        <span class="cy-avatar cy-avatar--sm cy-avatar--initial"><?= e(mb_strtoupper(mb_substr($mesaj->ad, 0, 1, 'UTF-8'), 'UTF-8')) ?></span>
-                        <span class="cy-people__body">
-                            <strong><?= e($mesaj->ad) ?> <span class="cy-people__muted">— <?= e($mesaj->konu !== '' ? $mesaj->konu : $mesaj->preview(40)) ?></span></strong>
-                            <small><?= e(\App\Models\Message::formatDate($mesaj->createdAt)) ?></small>
-                        </span>
-                        <?php if (!$mesaj->okundu): ?>
-                            <span class="cy-pill is-info">Yeni</span>
-                        <?php endif; ?>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-            <?php if ($latestMessages === []): ?>
-                <p class="cy-panel__empty">Henüz mesaj yok.</p>
-            <?php endif; ?>
-        </section>
-    <?php endif; ?>
+<?php if ($messageStats !== null): ?>
+    <section class="cy-panel mt-3">
+        <header class="cy-panel__head">
+            <div>
+                <h3 class="cy-panel__title"><?= icon('inbox', 'cy-icon cy-icon--sm') ?> Son mesajlar</h3>
+                <p class="cy-panel__sub"><?= (int) $messageStats['unread'] ?> okunmamış</p>
+            </div>
+            <a class="cy-link small" href="<?= e(url('panel/mesajlar')) ?>">Tümü →</a>
+        </header>
+        <ul class="cy-people">
+            <?php foreach ($latestMessages as $mesaj): ?>
+                <li class="cy-people__row">
+                    <span class="cy-avatar cy-avatar--sm cy-avatar--initial"><?= e(mb_strtoupper(mb_substr($mesaj->ad, 0, 1, 'UTF-8'), 'UTF-8')) ?></span>
+                    <span class="cy-people__body">
+                        <strong><?= e($mesaj->ad) ?> <span class="cy-people__muted">— <?= e($mesaj->konu !== '' ? $mesaj->konu : $mesaj->preview(40)) ?></span></strong>
+                        <small><?= e(\App\Models\Message::formatDate($mesaj->createdAt)) ?></small>
+                    </span>
+                    <?php if (!$mesaj->okundu): ?>
+                        <span class="cy-pill is-info">Yeni</span>
+                    <?php endif; ?>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+        <?php if ($latestMessages === []): ?>
+            <p class="cy-panel__empty">Henüz mesaj yok.</p>
+        <?php endif; ?>
+    </section>
+<?php endif; ?>
 
-<?php else: ?>
-
-    <section class="cy-panel mb-3">
+<?php if ($profil !== null && $currentUser !== null): ?>
+    <section class="cy-panel <?= $kartlar !== [] || $messageStats !== null ? 'mt-3' : '' ?> mb-3">
         <div class="cy-me">
-            <?php if ($currentUser !== null && $currentUser->avatarUrl() !== ''): ?>
+            <?php if ($currentUser->avatarUrl() !== ''): ?>
                 <img class="cy-avatar cy-avatar--md" src="<?= e($currentUser->avatarUrl()) ?>" alt="">
-            <?php elseif ($currentUser !== null): ?>
+            <?php else: ?>
                 <span class="cy-avatar cy-avatar--md cy-avatar--initial"><?= e($currentUser->initials()) ?></span>
             <?php endif; ?>
 
             <div class="cy-me__body">
-                <strong><?= e($currentUser?->fullName() ?? '') ?></strong>
+                <strong><?= e($currentUser->fullName()) ?></strong>
                 <small>
-                    <?php if ($currentUser !== null): ?>
-                        <span class="cy-role cy-role--<?= e(Role::variant($currentUser->rol)) ?>"><?= e($currentUser->roleLabel()) ?></span>
-                    <?php endif; ?>
-                    <?= e($currentUser?->eposta ?? '') ?> · son giriş <?= e(\App\Models\User::formatDate($currentUser?->sonGiris)) ?>
+                    <span class="cy-role cy-role--<?= e(Role::variant($currentUser->rol)) ?>"><?= e($currentUser->roleLabel()) ?></span>
+                    <?= e($currentUser->eposta) ?> · son giriş <?= e(\App\Models\User::formatDate($currentUser->sonGiris)) ?>
                 </small>
             </div>
+
+            <?php if ($profil['eksik'] !== []): ?>
+                <a class="cy-me__progress" href="<?= e(url('panel/hesabim')) ?>">
+                    <span class="cy-me__progress-head">
+                        <span>Profilini tamamla</span>
+                        <strong>%<?= (int) $profil['yuzde'] ?></strong>
+                    </span>
+                    <span class="cy-progress" role="progressbar" aria-valuenow="<?= (int) $profil['yuzde'] ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Profil tamamlanma oranı">
+                        <span class="cy-progress__bar" style="width: <?= (int) $profil['yuzde'] ?>%"></span>
+                    </span>
+                    <span class="cy-me__progress-hint">Eksik: <?= e(implode(', ', $profil['eksik'])) ?></span>
+                </a>
+            <?php endif; ?>
         </div>
     </section>
-
 <?php endif; ?>
 
-<?php if ($kisayollar !== [] && $stats === null): ?>
-    <h3 class="cy-section-label">Erişebildiğiniz bölümler</h3>
+<?php if ($kisayollar !== []): ?>
+    <h3 class="cy-section-label <?= $profil === null ? 'mt-3' : '' ?>">Erişebildiğiniz bölümler</h3>
     <div class="cy-shortcuts">
         <?php foreach ($kisayollar as $kisayol): ?>
             <a class="cy-shortcut" href="<?= e(url($kisayol['yol'])) ?>">

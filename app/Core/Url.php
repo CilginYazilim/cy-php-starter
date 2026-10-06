@@ -335,14 +335,18 @@ final class Url
     /**
      * Şu an bu rotadayız (ya da altındayız) — menüde aktif bağlantıyı
      * işaretlemek için.
+     *
+     * $exact = true → yalnızca tam eşleşme. "panel" (Kontrol Paneli)
+     * önek eşleşmesiyle her panel/* sayfasında da aktif görünüyordu;
+     * menüde iki öğe birden vurgulanıyordu.
      */
-    public static function isCurrent(string $path): bool
+    public static function isCurrent(string $path, bool $exact = false): bool
     {
         $path    = trim($path, '/');
         $current = self::current();
 
-        if ($path === '') {
-            return $current === '';
+        if ($path === '' || $exact) {
+            return $current === $path;
         }
 
         return $current === $path || str_starts_with($current, $path . '/');

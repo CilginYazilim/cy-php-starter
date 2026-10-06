@@ -57,7 +57,8 @@ $menu = [
     [
         'label' => 'Genel',
         'items' => [
-            ['route' => 'panel', 'icon' => 'dashboard', 'label' => 'Kontrol Paneli', 'can' => 'dashboard.view'],
+            // exact: "panel" her panel/* adresinin öneki; tam eşleşme olmazsa hep aktif görünür.
+            ['route' => 'panel', 'icon' => 'dashboard', 'label' => 'Kontrol Paneli', 'can' => 'dashboard.view', 'exact' => true],
         ],
     ],
 ];
@@ -125,10 +126,11 @@ $menu[] = [
                     <?php $children = $item['children'] ?? []; ?>
 
                     <?php if ($children === []): ?>
-                        <a class="cy-nav-link<?= is_route($item['route']) ? ' is-active' : '' ?>"
+                        <?php $aktif = is_route($item['route'], $item['exact'] ?? false); ?>
+                        <a class="cy-nav-link<?= $aktif ? ' is-active' : '' ?>"
                            href="<?= e(url($item['route'])) ?>"
                            data-title="<?= e($item['label']) ?>"
-                           <?= is_route($item['route']) ? 'aria-current="page"' : '' ?>>
+                           <?= $aktif ? 'aria-current="page"' : '' ?>>
                             <?= icon($item['icon']) ?>
                             <span class="cy-nav-link__text"><?= e($item['label']) ?></span>
                             <?php if (!empty($item['badge'])): ?>
@@ -149,7 +151,7 @@ $menu[] = [
 
                             <div class="cy-nav-submenu">
                                 <div class="cy-nav-submenu__inner">
-                                    <a class="cy-nav-sublink<?= App\Core\Url::current() === trim($item['route'], '/') ? ' is-active' : '' ?>"
+                                    <a class="cy-nav-sublink<?= is_route($item['route'], true) ? ' is-active' : '' ?>"
                                        href="<?= e(url($item['route'])) ?>">Genel Bakış</a>
 
                                     <?php foreach ($children as $child): ?>

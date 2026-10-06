@@ -40,8 +40,9 @@ $menude = array_key_exists('menude', $old) ? true : ($sayfa?->menude ?? false);
     <?= csrf_field() ?>
 
     <?php if ($errors !== []): ?>
-        <div class="cy-alert cy-alert--danger mb-3">
-            Lütfen işaretli alanları düzeltin. Sayfa kaydedilmedi.
+        <div class="cy-alert cy-alert--danger mb-3" role="alert">
+            <span class="cy-alert__icon"><?= icon('alert', 'cy-icon cy-icon--sm') ?></span>
+            <div class="cy-alert__body">Lütfen işaretli alanları düzeltin. Sayfa kaydedilmedi.</div>
         </div>
     <?php endif; ?>
 

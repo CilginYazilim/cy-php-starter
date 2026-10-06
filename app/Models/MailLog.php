@@ -22,6 +22,31 @@ final class MailLog
     public const DURUM_GONDERILDI = 'gonderildi';
     public const DURUM_BASARISIZ  = 'basarisiz';
 
+    /**
+     * GÜVENLİK BAĞLANTISI taşıyan şablonlar. Gövdeleri yalnızca
+     * kullanıcıları yönetebilen rollere gösterilir: e-posta geçmişini
+     * okuyabilen bir editör, başkasının doğrulama ya da parola sıfırlama
+     * bağlantısını açıp o hesabı ele geçirebilirdi.
+     */
+    public const GUVENLIK_SABLONLARI = ['dogrulama', 'parola-sifirlama'];
+
+    public function isSensitive(): bool
+    {
+        return in_array($this->sablon, self::GUVENLIK_SABLONLARI, true);
+    }
+
+    /** "elif.demir@ornek.com" → "e***@ornek.com" */
+    public static function maskEmail(string $email): string
+    {
+        $at = strrpos($email, '@');
+
+        if ($at === false || $at === 0) {
+            return $email === '' ? '' : mb_substr($email, 0, 1) . '***';
+        }
+
+        return mb_substr($email, 0, 1) . '***' . substr($email, $at);
+    }
+
     public function __construct(
         public readonly int     $id,
         public readonly string  $aliciEposta,
