@@ -21,7 +21,7 @@
  *  App\Core\Html::sanitize() içinde yapılır.
  * ================================================================== */
 
-/* global jQuery */
+/* global jQuery, CY */
 jQuery(function ($) {
     'use strict';
 
@@ -49,7 +49,8 @@ jQuery(function ($) {
         { sep: true },
         { action: 'link',   text: '🔗', title: 'Bağlantı ekle' },
         { action: 'unlink', text: '⛓', title: 'Bağlantıyı kaldır' },
-        { action: 'image',  text: '🖼', title: 'Görsel ekle (adres ile)' },
+        { action: 'upload', text: '🖼', title: 'Görsel yükle', upload: true },
+        { action: 'image',  text: '🌐', title: 'Görsel ekle (bu sitedeki adres ile)' },
         { sep: true },
         { cmd: 'removeFormat', text: '✕', title: 'Biçimi temizle' }
     ];
@@ -60,6 +61,7 @@ jQuery(function ($) {
         var $toolbar = $editor.find('.cy-editor__toolbar');
         var $count   = $editor.find('[data-cy-editor-count]');
         var $target  = $('#' + $editor.data('target'));
+        var yukleme  = $editor.data('upload-url') || '';
 
         if (!$area.length || !$target.length) { return; }
 
@@ -69,6 +71,9 @@ jQuery(function ($) {
                 $toolbar.append($('<span class="cy-editor__sep" aria-hidden="true"></span>'));
                 return;
             }
+
+            // Yükleme adresi verilmemiş editörde "Görsel yükle" düğmesi yok.
+            if (tool.upload && !yukleme) { return; }
 
             var $btn = $('<button type="button" class="cy-editor__btn"></button>')
                 .attr('title', tool.title)
@@ -99,6 +104,7 @@ jQuery(function ($) {
             if (tool.action === 'link')   { return insertLink(); }
             if (tool.action === 'unlink') { return document.execCommand('unlink', false, null); }
             if (tool.action === 'image')  { return insertImage(); }
+            if (tool.action === 'upload') { return uploadImage(); }
 
             /* formatBlock, Chrome dışında <h2> biçiminde bekleyebilir. */
             var deger = tool.value ? '<' + tool.value + '>' : null;
@@ -122,12 +128,88 @@ jQuery(function ($) {
             document.execCommand('createLink', false, adres.trim());
         }
 
+        /* Yalnızca BU sitedeki görseller: başka sitenin görseli CSP'ye
+         * takılıp kırık görünür, sunucu da kaydederken siler
+         * (bkz. Html::localImage). Kontrol burada erken uyarı içindir. */
         function insertImage() {
-            var adres = window.prompt('Görsel adresi (upload/ altındaki dosyanın tam adresi):', '');
+            var adres = window.prompt('Bu sitedeki görselin adresi (ör. ' + window.location.origin + '/…/upload/img/sayfa/…):', '');
 
             if (!adres) { return; }
 
-            document.execCommand('insertImage', false, adres.trim());
+            var baglanti = document.createElement('a');
+            baglanti.href = adres.trim();
+
+            if (baglanti.host !== window.location.host || !/^https?:$/.test(baglanti.protocol)) {
+                window.alert('Yalnızca bu sitedeki görseller eklenebilir. Başka bir yerdeki görseli önce indirip "Görsel yükle" ile ekleyin.');
+                return;
+            }
+
+            document.execCommand('insertImage', false, baglanti.href);
+        }
+
+        /* Seçimi sakla / geri yükle: dosya penceresi açılınca editör
+         * odağı kaybeder; görsel imlecin olduğu yere eklenmeli. */
+        function saklaSecim() {
+            var secim = window.getSelection();
+
+            if (!secim || !secim.rangeCount) { return null; }
+
+            var aralik = secim.getRangeAt(0);
+
+            return $area[0].contains(aralik.commonAncestorContainer) ? aralik.cloneRange() : null;
+        }
+
+        function geriYukleSecim(aralik) {
+            var secim = window.getSelection();
+
+            $area.trigger('focus');
+
+            if (!secim) { return; }
+
+            if (!aralik) {
+                aralik = document.createRange();
+                aralik.selectNodeContents($area[0]);
+                aralik.collapse(false);
+            }
+
+            secim.removeAllRanges();
+            secim.addRange(aralik);
+        }
+
+        function uploadImage() {
+            var aralik = saklaSecim();
+            var $girdi = $('<input type="file" accept="image/jpeg,image/png,image/gif,image/webp" hidden>');
+
+            $girdi.on('change', function () {
+                var dosya = this.files && this.files[0];
+
+                $girdi.remove();
+
+                if (!dosya) { return; }
+
+                var veri = new FormData();
+                veri.append('gorsel', dosya);
+
+                $editor.addClass('is-busy');
+
+                $.ajax({ url: yukleme, method: 'POST', data: veri, processData: false, contentType: false, dataType: 'json' })
+                    .done(function (yanit) {
+                        if (!yanit || !yanit.success || !yanit.url) {
+                            CY.notify((yanit && yanit.description) || 'Görsel yüklenemedi.', 'danger');
+                            return;
+                        }
+
+                        geriYukleSecim(aralik);
+                        document.execCommand('insertImage', false, yanit.url);
+                        sync();
+                        CY.notify(yanit.description || 'Görsel eklendi.', 'success');
+                    })
+                    .fail(function (xhr) { CY.ajaxError(xhr, 'Görsel yüklenemedi.'); })
+                    .always(function () { $editor.removeClass('is-busy'); });
+            });
+
+            $('body').append($girdi);
+            $girdi.trigger('click');
         }
 
         /* ---------------- Durum ve eşitleme ---------------- */

@@ -10,6 +10,15 @@
  *  İÇERİK NEREDE SÜZÜLÜR? Denetleyicide DEĞİL, PageRepository::bind()
  *  içinde. Kaydetmenin tek yolu depodan geçtiği için "bir yerde
  *  sanitize çağırmayı unutmak" mümkün değildir.
+ *
+ *  GÖRSELLER: Kapak (upload/img/kapak/) sayfanın üstünde ve paylaşım
+ *  görseli (og:image) olarak kullanılır. Editörden yüklenen görseller
+ *  upload/img/sayfa/ altına gider. İkisi de Uploader::image() ile
+ *  YENİDEN ÜRETİLİR; içerikteki <img> yalnızca kendi alan adımızı
+ *  gösterebilir (bkz. Html::localImage).
+ *
+ *  ÖNİZLEME: Taslak sayfa ön yüzde 404'tür. "Önizle" düğmesi 30 dakika
+ *  geçerli, APP_KEY ile imzalı bir adres üretir (onizleme/{id}?son=…&imza=…).
  * =====================================================================
  */
 
@@ -24,11 +33,17 @@ use App\Core\Html;
 use App\Core\Log\Logger;
 use App\Core\Request;
 use App\Core\Response;
+use App\Core\Signer;
+use App\Core\Uploader;
 use App\Http\Controller;
 use App\Repositories\PageRepository;
+use RuntimeException;
 
 final class PageController extends Controller
 {
+    /** Önizleme bağlantısının ömrü (saniye). */
+    public const ONIZLEME_SURESI = 1800;
+
     private function pages(): PageRepository
     {
         return new PageRepository($this->db);
@@ -83,12 +98,71 @@ final class PageController extends Controller
     }
 
     /* =================================================================
+     *  ÖNİZLEME
+     * ============================================================== */
+
+    /** "Önizle": her tıklamada yeni, 30 dakika geçerli bir imzalı adres. */
+    public function preview(Request $request, string $id): void
+    {
+        $sayfa = $this->pages()->find((int) $id);
+
+        if ($sayfa === null) {
+            throw HttpException::notFound('panel/sayfalar/' . $id);
+        }
+
+        Response::redirect(self::previewUrl($sayfa->id));
+    }
+
+    public static function previewUrl(int $id, ?int $now = null): string
+    {
+        $son = ($now ?? time()) + self::ONIZLEME_SURESI;
+
+        return url('onizleme/' . $id, ['son' => $son, 'imza' => Signer::sign(self::previewPayload($id, $son))]);
+    }
+
+    /** İmzalı önizleme adresi geçerli mi? (süresi dolmamış ve imza tutuyor) */
+    public static function previewValid(int $id, int $son, string $imza, ?int $now = null): bool
+    {
+        $now ??= time();
+
+        return $son >= $now
+            && $son <= $now + self::ONIZLEME_SURESI
+            && Signer::check(self::previewPayload($id, $son), $imza);
+    }
+
+    private static function previewPayload(int $id, int $son): string
+    {
+        return 'sayfa-onizleme|' . $id . '|' . $son;
+    }
+
+    /* =================================================================
+     *  EDİTÖRDEN GÖRSEL YÜKLEME (AJAX)
+     * ============================================================== */
+
+    public function uploadImage(Request $request): void
+    {
+        if (!$request->hasFile('gorsel')) {
+            Response::error('Bir görsel seçin.', 422);
+        }
+
+        try {
+            $yol = Uploader::image((array) $request->file('gorsel'), 'sayfa');
+        } catch (RuntimeException $e) {
+            Response::error($e->getMessage(), 422);
+        }
+
+        Logger::info('Sayfa görseli yüklendi', ['dosya' => $yol], 'app');
+
+        Response::success('Görsel eklendi.', ['url' => Uploader::url($yol)]);
+    }
+
+    /* =================================================================
      *  KAYDETME
      * ============================================================== */
 
     public function store(Request $request): void
     {
-        $this->save(null);
+        $this->save($request, null);
     }
 
     public function update(Request $request, string $id): void
@@ -99,7 +173,7 @@ final class PageController extends Controller
             throw HttpException::notFound('panel/sayfalar/' . $id);
         }
 
-        $this->save($sayfa);
+        $this->save($request, $sayfa);
     }
 
     /** POST'tan metin; dizi gönderilmişse varsayılan (bkz. Request::string). */
@@ -110,7 +184,7 @@ final class PageController extends Controller
         return is_scalar($value) ? (string) $value : $default;
     }
 
-    private function save(?\App\Models\Page $mevcut): void
+    private function save(Request $request, ?\App\Models\Page $mevcut): void
     {
         $depo   = $this->pages();
         $errors = [];
@@ -150,9 +224,28 @@ final class PageController extends Controller
             $errors['icerik'] = 'İçerik boş bırakılamaz.';
         }
 
+        $geri = url($mevcut === null ? 'panel/sayfalar/yeni' : 'panel/sayfalar/' . $mevcut->id);
+
         if ($errors !== []) {
             Flash::withInput($errors, $_POST);
-            Response::redirect(url($mevcut === null ? 'panel/sayfalar/yeni' : 'panel/sayfalar/' . $mevcut->id));
+            Response::redirect($geri);
+        }
+
+        /* KAPAK: yeni dosya → yüklenir; "kaldır" işaretli → boşalır;
+         * ikisi de yoksa eskisi kalır. Eski dosya ancak kayıt başarıyla
+         * yazıldıktan SONRA silinir. */
+        $eskiKapak = $mevcut?->kapak ?? '';
+        $kapak     = $eskiKapak;
+
+        if ($request->hasFile('kapak')) {
+            try {
+                $kapak = Uploader::image((array) $request->file('kapak'), 'kapak');
+            } catch (RuntimeException $e) {
+                Flash::withInput(['kapak' => $e->getMessage()], $_POST);
+                Response::redirect($geri);
+            }
+        } elseif (isset($_POST['kapak_kaldir'])) {
+            $kapak = '';
         }
 
         $veri = [
@@ -160,6 +253,7 @@ final class PageController extends Controller
             'slug'         => $slug,
             'ozet'         => trim(self::post('ozet')),
             'icerik'       => $icerik,
+            'kapak'        => $kapak,
             'durum'        => self::post('durum', 'taslak'),
             'menude'       => isset($_POST['menude']),
             // smallint unsigned sütun: dışarıdaki değer veritabanı hatasına dönüşmesin.
@@ -178,6 +272,10 @@ final class PageController extends Controller
             $depo->update($id, $veri);
             Logger::info('Sayfa güncellendi', ['sayfa' => $id, 'slug' => $slug], 'app');
             Flash::success('“' . $baslik . '” sayfası kaydedildi.');
+        }
+
+        if ($eskiKapak !== '' && $eskiKapak !== $kapak) {
+            Uploader::delete($eskiKapak);
         }
 
         Response::redirect(url('panel/sayfalar/' . $id));
@@ -201,6 +299,7 @@ final class PageController extends Controller
         }
 
         $this->pages()->delete($sayfa->id);
+        Uploader::delete($sayfa->kapak);
 
         Logger::warning('Sayfa silindi', ['sayfa' => $sayfa->id, 'slug' => $sayfa->slug], 'app');
 

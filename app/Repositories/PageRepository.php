@@ -186,9 +186,9 @@ final class PageRepository
     {
         $stmt = $this->db->prepare(
             'INSERT INTO sayfalar
-                (baslik, slug, ozet, icerik, durum, menude, sira, seo_baslik, seo_aciklama, yazar_id)
+                (baslik, slug, ozet, icerik, kapak, durum, menude, sira, seo_baslik, seo_aciklama, yazar_id)
              VALUES
-                (:baslik, :slug, :ozet, :icerik, :durum, :menude, :sira, :seo_baslik, :seo_aciklama, :yazar_id)'
+                (:baslik, :slug, :ozet, :icerik, :kapak, :durum, :menude, :sira, :seo_baslik, :seo_aciklama, :yazar_id)'
         );
 
         $stmt->execute($this->bind($data));
@@ -203,7 +203,7 @@ final class PageRepository
     {
         $stmt = $this->db->prepare(
             'UPDATE sayfalar SET
-                baslik = :baslik, slug = :slug, ozet = :ozet, icerik = :icerik,
+                baslik = :baslik, slug = :slug, ozet = :ozet, icerik = :icerik, kapak = :kapak,
                 durum = :durum, menude = :menude, sira = :sira,
                 seo_baslik = :seo_baslik, seo_aciklama = :seo_aciklama
               WHERE id = :id'
@@ -239,6 +239,7 @@ final class PageRepository
             ':slug'         => (string) ($data['slug'] ?? ''),
             ':ozet'         => mb_substr((string) ($data['ozet'] ?? ''), 0, 255),
             ':icerik'       => Html::sanitize((string) ($data['icerik'] ?? '')),
+            ':kapak'        => mb_substr((string) ($data['kapak'] ?? ''), 0, 191),
             ':durum'        => ($data['durum'] ?? 'taslak') === 'yayin' ? 'yayin' : 'taslak',
             ':menude'       => !empty($data['menude']) ? 1 : 0,
             ':sira'         => (int) ($data['sira'] ?? 0),

@@ -112,16 +112,16 @@ $ist   = $istatistik ?? ['toplam' => 0, 'aktif' => 0, 'pasif' => 0, 'yonetici' =
 
     <div class="cy-card__body cy-card__body--flush">
         <div class="cy-table-wrap">
-            <table id="user_table" class="table cy-table w-100">
+            <table id="user_table" class="table cy-table cy-table--cards w-100">
                 <thead>
                     <tr>
-                        <th scope="col" style="width:64px">#</th>
-                        <th scope="col" style="width:56px"><span class="cy-sr-only">Görsel</span></th>
-                        <th scope="col">Kullanıcı</th>
+                        <th scope="col" style="width:64px" data-kart="gizle">#</th>
+                        <th scope="col" style="width:56px" data-kart="gizle"><span class="cy-sr-only">Görsel</span></th>
+                        <th scope="col" data-kart="ana">Kullanıcı</th>
                         <th scope="col" class="cy-hide-sm">E-posta</th>
                         <th scope="col" style="width:110px">Rol</th>
                         <th scope="col" style="width:110px" class="cy-hide-xs">Durum</th>
-                        <th scope="col" style="width:130px" class="text-center">İşlemler</th>
+                        <th scope="col" style="width:130px" class="text-center" data-kart="islem">İşlemler</th>
                     </tr>
                 </thead>
             </table>

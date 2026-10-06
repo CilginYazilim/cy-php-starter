@@ -78,15 +78,15 @@ $istatistik = $istatistik ?? ['toplam' => 0, 'yayin' => 0, 'taslak' => 0, 'menud
             </div>
         <?php else: ?>
             <div class="cy-table-wrap">
-                <table class="table cy-table w-100">
+                <table class="table cy-table cy-table--cards w-100">
                     <thead>
                         <tr>
-                            <th scope="col" style="width:64px">Sıra</th>
-                            <th scope="col">Sayfa</th>
+                            <th scope="col" style="width:64px" data-kart="gizle">Sıra</th>
+                            <th scope="col" data-kart="ana">Sayfa</th>
                             <th scope="col" class="cy-hide-sm">Adres</th>
                             <th scope="col" style="width:110px">Durum</th>
                             <th scope="col" style="width:150px" class="cy-hide-sm">Güncelleme</th>
-                            <th scope="col" style="width:150px" class="text-center">İşlemler</th>
+                            <th scope="col" style="width:150px" class="text-center" data-kart="islem">İşlemler</th>
                         </tr>
                     </thead>
                     <tbody>

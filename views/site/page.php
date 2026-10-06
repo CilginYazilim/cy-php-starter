@@ -18,7 +18,22 @@ use App\Models\Page;
 
 $iletisim = $iletisim ?? [];
 $whatsapp = HomeController::whatsappLink();
+$kapak    = $kapak ?? '';
+$onizlemeBitis = $onizlemeBitis ?? null;
 ?>
+
+<?php if ($onizlemeBitis !== null): ?>
+    <div class="cy-preview-bar" role="status">
+        <div class="container">
+            <?= icon('eye', 'cy-icon cy-icon--sm') ?>
+            <strong>Önizleme</strong>
+            <span>
+                <?= $sayfa->yayinda() ? 'Bu sayfa yayında.' : 'Bu sayfa taslak; ziyaretçiler göremez.' ?>
+                Bağlantı <?= e(date('H:i', $onizlemeBitis)) ?>'de geçersiz olur.
+            </span>
+        </div>
+    </div>
+<?php endif; ?>
 
 <section class="cy-pagehero">
     <div class="container">
@@ -41,6 +56,9 @@ $whatsapp = HomeController::whatsappLink();
         <div class="row g-4">
             <div class="col-12 col-lg-8">
                 <article class="cy-card">
+                    <?php if ($kapak !== ''): ?>
+                        <img src="<?= e($kapak) ?>" class="cy-page-cover" alt="" fetchpriority="high">
+                    <?php endif; ?>
                     <div class="cy-card__body cy-card__body--roomy">
                         <div class="cy-prose"><?= $sayfa->icerik ?></div>
                     </div>

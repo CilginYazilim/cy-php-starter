@@ -3,8 +3,11 @@
  * =====================================================================
  *  GÖRÜNÜM: Sayfa oluştur / düzenle
  * ---------------------------------------------------------------------
- *  Sol sütun içerik, sağ sütun yayın ve SEO ayarları. Başlık üst
+ *  Sol sütun içerik, sağ sütun yayın, kapak ve SEO ayarları. Başlık üst
  *  çubukta yazdığı için burada tekrar edilmiyor.
+ *
+ *  Geniş ekranda sağ sütun kaydırırken yerinde kalır (Kaydet hep
+ *  görünür); dar ekranda altta sabit bir eylem çubuğu vardır.
  *
  *  @var App\Models\Page|null $sayfa
  *  @var array<string,string> $errors, $old
@@ -34,9 +37,12 @@ $eylem = $sayfa === null
 $icerik = App\Core\Html::sanitize($deger('icerik', $sayfa?->icerik ?? ''));
 $durum  = $deger('durum', $sayfa?->durum ?? 'taslak');
 $menude = array_key_exists('menude', $old) ? true : ($sayfa?->menude ?? false);
+$kapakUrl  = $sayfa?->kapakUrl() ?? '';
+$onizleme  = $sayfa !== null ? url('panel/sayfalar/' . $sayfa->id . '/onizle') : '';
+$enBuyukMb = max(1, (int) round(((int) App\Core\Config::get('upload.max_bytes',2 * 1024 * 1024)) / 1048576));
 ?>
 
-<form method="post" action="<?= e($eylem) ?>" id="cy_page_form" novalidate>
+<form method="post" action="<?= e($eylem) ?>" id="cy_page_form" class="cy-page-form" enctype="multipart/form-data" novalidate>
     <?= csrf_field() ?>
 
     <?php if ($errors !== []): ?>
@@ -108,7 +114,8 @@ $menude = array_key_exists('menude', $old) ? true : ($sayfa?->menude ?? false);
                         mevcut içerik KAYBOLMAZ — bozuk bir editör yüzünden
                         sayfa boşalmasın diye.
                     */ ?>
-                    <div class="cy-editor" data-cy-editor data-target="icerik">
+                    <div class="cy-editor" data-cy-editor data-target="icerik"
+                         data-upload-url="<?= e(url('panel/sayfalar/gorsel')) ?>">
                         <div class="cy-editor__toolbar" role="toolbar" aria-label="Biçimlendirme"></div>
                         <div class="cy-editor__area" contenteditable="true" role="textbox" aria-multiline="true"
                              data-placeholder="Sayfanın içeriğini buraya yazın…"><?= $icerik ?></div>
@@ -129,6 +136,7 @@ $menude = array_key_exists('menude', $old) ? true : ($sayfa?->menude ?? false);
 
         <!-- ================= SAĞ: YAYIN + SEO ================= -->
         <div class="col-12 col-xl-4">
+          <div class="cy-page-side">
             <div class="cy-card mb-3">
                 <div class="cy-card__header">
                     <h2 class="cy-section-title mb-0"><?= icon('send', 'cy-icon cy-icon--sm') ?> Yayın</h2>
@@ -156,6 +164,13 @@ $menude = array_key_exists('menude', $old) ? true : ($sayfa?->menude ?? false);
                             <?= icon('save', 'cy-icon cy-icon--sm') ?> Kaydet
                         </button>
 
+                        <?php if ($onizleme !== ''): ?>
+                            <a class="btn cy-btn cy-btn--ghost cy-btn--sm js-page-preview" href="<?= e($onizleme) ?>"
+                               target="_blank" rel="noopener" title="Kaydedilmiş hâli, 30 dakika geçerli özel bir bağlantıyla açılır">
+                                <?= icon('eye', 'cy-icon cy-icon--sm') ?> Önizle
+                            </a>
+                        <?php endif; ?>
+
                         <?php if ($sayfa !== null && $sayfa->yayinda()): ?>
                             <a class="btn cy-btn cy-btn--ghost cy-btn--sm" href="<?= e(url($sayfa->slug)) ?>"
                                target="_blank" rel="noopener">
@@ -181,6 +196,32 @@ $menude = array_key_exists('menude', $old) ? true : ($sayfa?->menude ?? false);
                 </div>
             </div>
 
+            <div class="cy-card mb-3">
+                <div class="cy-card__header">
+                    <h2 class="cy-section-title mb-0"><?= icon('file', 'cy-icon cy-icon--sm') ?> Kapak Görseli</h2>
+                </div>
+                <div class="cy-card__body">
+                    <?php if ($kapakUrl !== ''): ?>
+                        <img src="<?= e($kapakUrl) ?>" class="cy-cover-preview mb-2" alt="Şu anki kapak görseli">
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="kapak_kaldir" name="kapak_kaldir" value="1">
+                            <label class="form-check-label" for="kapak_kaldir">Kapağı kaldır</label>
+                        </div>
+                    <?php endif; ?>
+
+                    <label class="form-label" for="kapak"><?= $kapakUrl !== '' ? 'Yenisiyle değiştir' : 'Görsel seç' ?></label>
+                    <input type="file" class="form-control<?= isset($errors['kapak']) ? ' is-invalid' : '' ?>" id="kapak" name="kapak"
+                           accept="image/jpeg,image/png,image/webp,image/gif" aria-describedby="kapak_hint">
+                    <div class="form-text" id="kapak_hint">
+                        Sayfanın üstünde ve sosyal medya paylaşımlarında görünür.
+                        Önerilen 1200×630; JPG, PNG, WEBP, en fazla <?= $enBuyukMb ?> MB.
+                    </div>
+                    <?php if (isset($errors['kapak'])): ?>
+                        <div class="invalid-feedback d-block"><?= e($errors['kapak']) ?></div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <div class="cy-card">
                 <div class="cy-card__header">
                     <h2 class="cy-section-title mb-0"><?= icon('search', 'cy-icon cy-icon--sm') ?> Arama Motoru</h2>
@@ -198,6 +239,20 @@ $menude = array_key_exists('menude', $old) ? true : ($sayfa?->menude ?? false);
                     <div class="form-text">150–160 karakter arası ideal uzunluktur.</div>
                 </div>
             </div>
+          </div>
         </div>
+    </div>
+
+    <?php /* Dar ekranda altta sabit eylem çubuğu: uzun bir içerikte
+             "Kaydet" için en üste kaydırmak gerekmesin. */ ?>
+    <div class="cy-savebar">
+        <?php if ($onizleme !== ''): ?>
+            <a class="btn cy-btn cy-btn--ghost js-page-preview" href="<?= e($onizleme) ?>" target="_blank" rel="noopener">
+                <?= icon('eye', 'cy-icon cy-icon--sm') ?> Önizle
+            </a>
+        <?php endif; ?>
+        <button type="submit" class="btn cy-btn cy-btn--primary">
+            <?= icon('save', 'cy-icon cy-icon--sm') ?> Kaydet
+        </button>
     </div>
 </form>

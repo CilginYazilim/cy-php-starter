@@ -113,15 +113,15 @@ $smtpEksik = Setting::get('mail_surucu', 'kayit') === 'kayit';
 
     <div class="cy-card__body cy-card__body--flush">
         <div class="cy-table-wrap">
-            <table id="message_table" class="table cy-table w-100">
+            <table id="message_table" class="table cy-table cy-table--cards w-100">
                 <thead>
                     <tr>
-                        <th scope="col" style="width:40px"><input type="checkbox" class="form-check-input" id="select_all" aria-label="Tümünü seç"></th>
-                        <th scope="col">Gönderen</th>
+                        <th scope="col" style="width:40px" data-kart="secim"><input type="checkbox" class="form-check-input" id="select_all" aria-label="Tümünü seç"></th>
+                        <th scope="col" data-kart="ana">Gönderen</th>
                         <th scope="col">Konu</th>
                         <th scope="col" style="width:110px">Durum</th>
                         <th scope="col" style="width:150px" class="cy-hide-sm">Tarih</th>
-                        <th scope="col" style="width:130px" class="text-center">İşlemler</th>
+                        <th scope="col" style="width:130px" class="text-center" data-kart="islem">İşlemler</th>
                     </tr>
                 </thead>
             </table>

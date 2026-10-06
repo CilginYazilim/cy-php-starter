@@ -271,7 +271,7 @@ body.cy-app {
 
 /* Küçük, büyük harfli bölüm etiketi (menü grupları, kart başlıkları) */
 .cy-eyebrow {
-    font-size: .6875rem;
+    font-size: .75rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .09em;
@@ -680,7 +680,7 @@ button.cy-status:hover { border-color: var(--cy-border-strong); background: var(
     padding: .7rem 1rem;
     background: var(--cy-surface-soft);
     color: var(--cy-text-muted);
-    font-size: .6875rem;
+    font-size: .75rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .07em;
@@ -719,7 +719,7 @@ button.cy-status:hover { border-color: var(--cy-border-strong); background: var(
 .cy-cell-muted { color: var(--cy-text-soft); font-size: .875rem; }
 
 /* Ad + e-posta ikilisini taşıyan hücre */
-.cy-user-cell { display: flex; flex-direction: column; gap: .1rem; }
+.cy-user-cell { display: flex; flex-direction: column; align-items: flex-start; gap: .1rem; }
 .cy-user-cell__name { font-weight: 600; color: var(--cy-text); }
 
 /* E-posta alt satırı yalnızca DAR EKRANDA görünür; geniş ekranda
@@ -887,7 +887,7 @@ table.dataTable > thead .sorting_desc:after { display: none !important; }
     margin: 1.5rem 0 .75rem;
     padding-bottom: .4rem;
     border-bottom: 1px solid var(--cy-border);
-    font-size: .6875rem;
+    font-size: .75rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .08em;

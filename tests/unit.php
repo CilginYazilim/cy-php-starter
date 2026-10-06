@@ -453,6 +453,12 @@ if (is_file(CY_BASE . '/modules/Ornek/src/OrnekPolicy.php') && in_array('sqlite'
     dogrula('Kapsamlar: yönetici hepsi, editör onay dahil, üye kendi', $pY->scope() === 'hepsi' && $pE->scope() === 'editor' && $pU->scope() === 'kendi');
     dogrula('Giriş yapmamış kullanıcı hiçbir şey yapamaz', (new \Modules\Ornek\OrnekPolicy(null))->transitions($baskaYayinda) === [] && !(new \Modules\Ornek\OrnekPolicy(null))->canEdit($baskaYayinda));
 
+    $editorYayinda = ['kullanici_id' => 2, 'durum' => 'yayinda'];
+    dogrula('Editör başkasının yayındaki kaydını onaya geri gönderir', $pE->transitions($uyeYayinda) === ['onay'] && $pE->transitionLabel($uyeYayinda, 'onay') === 'Onaya geri gönder');
+    dogrula('Editör kendi yayındaki kaydını taslağa alır', $pE->transitions($editorYayinda) === ['taslak'] && $pE->transitionLabel($editorYayinda, 'taslak') === 'Taslağa al');
+    dogrula('Sahibi yayındakini "Taslağa al", onaydakini "Geri çek" görür', $pU->transitionLabel($uyeYayinda, 'taslak') === 'Taslağa al' && $pU->transitionLabel($uyeOnay, 'taslak') === 'Geri çek');
+    dogrula('Editör onaydaki kaydı "Onayla" ya da "Sahibine geri gönder"', $pE->transitionLabel($uyeOnay, 'yayinda') === 'Onayla' && $pE->transitionLabel($uyeOnay, 'taslak') === 'Sahibine geri gönder');
+
     App\Core\Setting::flush();
     Modules::forget();
 } else {
@@ -535,6 +541,60 @@ dogrula('Hiçbir sorgu sütunu fonksiyona sarıp karşılaştırmıyor (indeks k
 if ($fonksiyonluKarsilastirma !== []) {
     echo '    → ' . implode(', ', $fonksiyonluKarsilastirma) . "\n";
 }
+
+/* ---------------------------------------------------------------- */
+echo "\nHTML süzgeci (XSS) ve içerik görselleri\n";
+
+Config::set('app.url', 'https://site.ornek.com/proje');
+Config::set('security.csp_extra.img-src', ['https://cdn.ornek.net', '*.resim.org']);
+
+$xss = [
+    'script etiketi'                 => '<p>a</p><script>alert(1)</script>',
+    'img onerror'                    => '<img src="/upload/a.png" onerror="alert(1)">',
+    'javascript: bağlantı'           => '<a href="javascript:alert(1)">x</a>',
+    'büyük/küçük harf ve boşluk'     => '<a href=" JaVaScRiPt:alert(1)">x</a>',
+    'sekme gizlenmiş şema'           => "<a href=\"java\tscript:alert(1)\">x</a>",
+    'HTML varlığıyla gizlenmiş şema' => '<a href="&#106;avascript:alert(1)">x</a>',
+    'data: görsel'                   => '<img src="data:image/svg+xml;base64,PHN2ZyBvbmxvYWQ9YWxlcnQoMSk+">',
+    'svg onload'                     => '<svg onload="alert(1)"><circle/></svg>',
+    'iframe'                         => '<iframe src="https://kotu.com"></iframe>',
+    'style özniteliği'               => '<p style="background:url(javascript:alert(1))">x</p>',
+    'form/input'                     => '<form action="https://kotu.com"><input name="p"></form>',
+    'meta yenileme'                  => '<meta http-equiv="refresh" content="0;url=https://kotu.com">',
+    'koşullu yorum'                  => '<!--[if IE]><script>alert(1)</script><![endif]-->',
+    'vbscript şeması'                => '<a href="vbscript:msgbox(1)">x</a>',
+    'olay öznitelikli div'           => '<div onclick="alert(1)" onmouseover="alert(1)">x</div>',
+];
+foreach ($xss as $ad => $girdi) {
+    $cikti = App\Core\Html::sanitize($girdi);
+    dogrula('XSS süzülür: ' . $ad, preg_match('/<script|on[a-z]+\s*=|javascript:|vbscript:|data:|<iframe|<svg|<form|<input|<meta|style=/i', $cikti) !== 1, $cikti);
+}
+dogrula('Güvenli biçimlendirme korunur', App\Core\Html::sanitize('<h2>Başlık</h2><p><strong>kalın</strong> <a href="/iletisim">bağlantı</a></p>') === '<h2>Başlık</h2><p><strong>kalın</strong> <a href="/iletisim">bağlantı</a></p>');
+dogrula('Yeni sekme bağlantısına rel="noopener" eklenir', str_contains(App\Core\Html::sanitize('<a href="https://ornek.com" target="_blank">x</a>'), 'rel="noopener noreferrer"'));
+
+dogrula('Göreli görsel adresi yereldir', App\Core\Html::localImage('/proje/upload/img/sayfa/a.webp') && App\Core\Html::localImage('upload/a.png'));
+dogrula('Kendi alan adındaki tam adres yereldir', App\Core\Html::localImage('https://site.ornek.com/proje/upload/a.png'));
+dogrula('Başka alan adı yerel değildir', !App\Core\Html::localImage('https://kotu.com/a.png') && !App\Core\Html::localImage('//kotu.com/a.png'));
+dogrula('Alt alan adı taklidi yerel değildir', !App\Core\Html::localImage('https://site.ornek.com.kotu.com/a.png'));
+dogrula('CSP_IMG_SRC listesindeki adres (ve *. deseni) kabul edilir', App\Core\Html::localImage('https://cdn.ornek.net/a.png') && App\Core\Html::localImage('https://img.resim.org/a.png') && !App\Core\Html::localImage('https://resim.org.kotu.com/a.png'));
+dogrula('Dış görsel içerikten tamamen çıkarılır', App\Core\Html::sanitize('<p>x<img src="https://kotu.com/izle.png" alt="i"></p>') === '<p>x</p>');
+dogrula('Yerel görsel içerikte kalır', str_contains(App\Core\Html::sanitize('<p><img src="/proje/upload/img/sayfa/a.webp" alt="a"></p>'), '<img src="/proje/upload/img/sayfa/a.webp" alt="a">'));
+
+Config::set('app.url', '');
+Config::set('security.csp_extra.img-src', []);
+
+/* ---------------------------------------------------------------- */
+echo "\nSayfa önizleme bağlantısı (imzalı, 30 dk)\n";
+
+$simdi  = 1_800_000_000;
+$adres  = App\Http\Controllers\PageController::previewUrl(7, $simdi);
+parse_str((string) parse_url($adres, PHP_URL_QUERY), $sorgu);
+$Onizle = App\Http\Controllers\PageController::class;
+dogrula('Üretilen bağlantı geçerlidir', $Onizle::previewValid(7, (int) $sorgu['son'], (string) $sorgu['imza'], $simdi));
+dogrula('Başka sayfa kimliğiyle kullanılamaz', !$Onizle::previewValid(8, (int) $sorgu['son'], (string) $sorgu['imza'], $simdi));
+dogrula('Süresi dolunca geçersizdir', !$Onizle::previewValid(7, (int) $sorgu['son'], (string) $sorgu['imza'], $simdi + 1801));
+dogrula('Uzatılmış bitiş zamanı imzayı bozar', !$Onizle::previewValid(7, (int) $sorgu['son'] + 3600, (string) $sorgu['imza'], $simdi));
+dogrula('30 dakikadan uzun ömürlü bağlantı kabul edilmez', !$Onizle::previewValid(7, $simdi + 7200, Signer::sign('sayfa-onizleme|7|' . ($simdi + 7200)), $simdi));
 
 /* ---------------------------------------------------------------- */
 printf("\n%d geçti · %d kaldı\n\n", $gecti, $kaldi);

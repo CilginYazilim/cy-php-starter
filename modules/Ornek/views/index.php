@@ -39,19 +39,6 @@ $kapsamMetni = match ($policy->scope()) {
     default                    => 'Yalnızca yayındaki kayıtları görüyorsunuz.',
 };
 
-/* Durum düğmelerinin metni: aynı hedef, kimin bastığına göre farklı söylenir. */
-$gecisEtiketi = static function (string $simdiki, string $hedef): string {
-    return match ($hedef) {
-        'yayinda' => $simdiki === 'onay' ? 'Onayla' : 'Yayınla',
-        'onay'    => $simdiki === 'yayinda' ? 'Yayından kaldır' : 'Onaya gönder',
-        default   => match ($simdiki) {
-            'onay'    => 'Geri gönder',
-            'yayinda' => 'Yayından kaldır',
-            default   => 'Taslağa al',
-        },
-    };
-};
-
 $durumRengi = ['yayinda' => 'is-ok', 'onay' => 'is-warn', 'taslak' => ''];
 
 /* Form: yeni kayıt ya da düzenleme. Hata sonrası eski girdi önceliklidir. */
@@ -250,7 +237,7 @@ $secenekAdi = ['yayinda' => 'Yayında', 'taslak' => 'Taslak', 'onay' => 'Onaya g
                                         <?= csrf_field() ?>
                                         <input type="hidden" name="durum" value="<?= e($hedef) ?>">
                                         <button type="submit" class="cy-ornek__step<?= $hedef === 'yayinda' ? ' is-primary' : '' ?>">
-                                            <?= e($gecisEtiketi((string) $kayit['durum'], $hedef)) ?>
+                                            <?= e($policy->transitionLabel($kayit, $hedef)) ?>
                                         </button>
                                     </form>
                                 <?php endforeach; ?>

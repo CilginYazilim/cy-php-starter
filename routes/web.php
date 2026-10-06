@@ -91,6 +91,8 @@ $router->post('panel/sayfalar/yeni',    PageController::class, 'store',   ['inst
 $router->get('panel/sayfalar/{id}',     PageController::class, 'edit',    ['installed', 'auth', 'can:pages.manage']);
 $router->post('panel/sayfalar/{id}',    PageController::class, 'update',  ['installed', 'auth', 'csrf', 'can:pages.manage']);
 $router->post('panel/sayfalar/{id}/sil', PageController::class, 'destroy', ['installed', 'auth', 'csrf', 'can:pages.manage']);
+$router->get('panel/sayfalar/{id}/onizle', PageController::class, 'preview', ['installed', 'auth', 'can:pages.manage']);
+$router->post('panel/sayfalar/gorsel',  PageController::class, 'uploadImage', ['installed', 'auth', 'csrf', 'can:pages.manage']);
 
 // Ayarlar bölüm bölümdür: /panel/ayarlar genel bakış, /panel/ayarlar/eposta
 // yalnızca o grubu gösterir ve YALNIZCA onu kaydeder.
@@ -205,6 +207,7 @@ $router->group('api/v1', ['installed'], function (Router $r): void {
  *  ana sayfaya yönlendirmek hem ziyaretçiyi hem arama motorunu
  *  yanıltırdı.
  * ------------------------------------------------------------------ */
+$router->get('onizleme/{id}', SitePageController::class, 'preview', ['installed']);   // imzalı, 30 dk (bkz. PageController::previewUrl)
 $router->get('{slug}', SitePageController::class, 'show', ['installed']);
 
 /* ---------------------------------------------------------------------

@@ -341,8 +341,8 @@ a.cy-contact-card:hover { border-color: var(--cy-brand); color: inherit; }
     overflow-wrap: anywhere;
 }
 
-/* Sayfa hiçbir zaman yatay kaymasın. */
-.cy-site { overflow-x: hidden; }
+/* Sayfa hiçbir zaman yatay kaymasın (clip: yapışkan üst menüyü bozmaz). */
+.cy-site { overflow-x: hidden; overflow-x: clip; }
 
 /* --------------------------- ÜST ETİKET --------------------------- */
 .cy-eyebrow {

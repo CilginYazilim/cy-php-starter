@@ -18,6 +18,18 @@ jQuery(function ($) {
 
     if (!$form.length) { return; }
 
+    /* Önizleme KAYDEDİLMİŞ hâli gösterir. Değişiklik varsa ziyaretçinin
+     * şaşırmaması için önce kaydetmeyi hatırlatırız. */
+    var degisti = false;
+
+    $form.on('input change', function () { degisti = true; });
+
+    $('.js-page-preview').on('click', function (olay) {
+        if (degisti && !window.confirm('Kaydedilmemiş değişiklikleriniz önizlemede görünmez. Yine de açılsın mı?')) {
+            olay.preventDefault();
+        }
+    });
+
     var $baslik = $('#baslik');
     var $slug   = $('#slug');
 

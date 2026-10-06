@@ -48,7 +48,8 @@ $siteDil = substr($siteDil, 0, 5);
      * kendisi taban yolu ekler; ikisini birleştirmek yolu iki kez
      * yazıp paylaşım görselini kırıyordu. Yalnızca şema + alan adı
      * eklemek yeterli — tam adres verilmişse ona hiç dokunmuyoruz. */
-    $paylasim   = Setting::shareImage();
+    /* Sayfanın kendi kapağı varsa ($paylasimGorseli) paylaşım görseli odur. */
+    $paylasim   = ($paylasimGorseli ?? '') !== '' ? (string) $paylasimGorseli : Setting::shareImage();
     $ogGorsel   = str_starts_with($paylasim, 'http')
         ? $paylasim
         : App\Core\Url::origin() . '/' . ltrim($paylasim, '/');

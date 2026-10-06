@@ -166,6 +166,14 @@ final class Html
                 }
 
                 self::cleanAttributes($child, $etiket);
+
+                // Adresi süzgece takılan görsel boş bir kutu olarak kalmasın.
+                if ($etiket === 'img' && !$child->hasAttribute('src')) {
+                    $child->parentNode?->removeChild($child);
+
+                    continue;
+                }
+
                 self::clean($child);
 
                 continue;
@@ -193,6 +201,16 @@ final class Html
             }
 
             if (($ad === 'href' || $ad === 'src') && !self::safeUrl((string) $attribute->nodeValue)) {
+                $element->removeAttribute($attribute->nodeName);
+
+                continue;
+            }
+
+            /* Görsel YALNIZCA kendi alan adımızdan (ya da CSP_IMG_SRC ile
+             * izin verilen adreslerden) gelir. Başka bir sitedeki görsel
+             * zaten CSP tarafından engellenip kırık görünürdü; ayrıca her
+             * ziyaretçinin IP'sini o siteye sızdırırdı. */
+            if ($ad === 'src' && $etiket === 'img' && !self::localImage((string) $attribute->nodeValue)) {
                 $element->removeAttribute($attribute->nodeName);
             }
         }
@@ -251,6 +269,45 @@ final class Html
         }
 
         return in_array(strtolower(trim($onEk)), self::SCHEMES, true);
+    }
+
+    /**
+     * Görsel adresi bu siteye mi ait?
+     *
+     * Göreli adres ("/upload/img/sayfa/a.webp", "upload/…") her zaman
+     * yereldir. Tam adreste alan adı ya APP_URL'inki ya da .env'deki
+     * CSP_IMG_SRC listesinde olmalıdır ("*.ornek.com" deseni dahil).
+     * "//baska.com/x.png" gibi şemasız tam adresler de tam adres sayılır.
+     */
+    public static function localImage(string $src): bool
+    {
+        $src = trim($src);
+
+        if (str_starts_with($src, '//')) {
+            $src = 'https:' . $src;
+        }
+
+        $host = parse_url($src, PHP_URL_HOST);
+
+        if (!is_string($host) || $host === '') {
+            return preg_match('~^[a-z][a-z0-9+.\-]*:~i', $src) !== 1;   // şemalı ama alan adsız: hayır
+        }
+
+        $host   = strtolower($host);
+        $izinli = [strtolower((string) parse_url(Url::origin(), PHP_URL_HOST))];
+
+        foreach ((array) Config::get('security.csp_extra.img-src', []) as $kaynak) {
+            $kaynak = strtolower(trim((string) $kaynak));
+            $izinli[] = (string) (parse_url(str_contains($kaynak, '//') ? $kaynak : 'https://' . $kaynak, PHP_URL_HOST) ?: '');
+        }
+
+        foreach (array_filter($izinli) as $alan) {
+            if ($host === $alan || (str_starts_with($alan, '*.') && str_ends_with($host, substr($alan, 1)))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

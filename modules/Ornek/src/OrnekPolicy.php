@@ -21,6 +21,13 @@
  *         ▲                                 │                          │
  *         └──────(sahibi: geri çek)─────────┘◀──(düzenleme: yeniden)───┘
  *
+ *  YAYINDAKİ KAYDI GERİ ALMAK — kim bastığına göre iki ayrı iş:
+ *    Sahibi    → "Taslağa al": kayıt sahibinin masasına döner.
+ *    Editör    → "Onaya geri gönder": başkasının kaydıdır; editör o
+ *                taslağı göremeyeceği için kayıt ONAY sırasında kalır.
+ *  Düğme metinleri transitionLabel() ile buradan gelir; görünüm metin
+ *  uydurmaz, davranışla etiket hep aynı yerde değişir.
+ *
  *    Yönetici  (ornek.manage)   her kaydı görür, düzenler, siler, yayınlar
  *    Editör    (ornek.publish)  onay bekleyenleri görür ve yayınlar;
  *                               yalnızca KENDİ kaydını düzenler/siler
@@ -145,9 +152,32 @@ final class OrnekPolicy
         $simdiki = (string) ($kayit['durum'] ?? '');
 
         return match (true) {
+            // Yayınlayanın KENDİ yayındaki kaydı: sahibi gibi taslağa alır.
+            $this->canPublish() && $this->owns($kayit) && $simdiki === 'yayinda' => ['taslak'],
             $this->canPublish() && $this->canView($kayit)         => self::GECIS_YAYINCI[$simdiki] ?? [],
             $this->can('ornek.update.own') && $this->owns($kayit) => self::GECIS_SAHIP[$simdiki] ?? [],
             default                                               => [],
+        };
+    }
+
+    /**
+     * Durum düğmesinin metni: aynı hedef, kimin bastığına göre farklı
+     * söylenir (bkz. dosya başındaki akış).
+     *
+     * @param array<string,mixed> $kayit
+     */
+    public function transitionLabel(array $kayit, string $hedef): string
+    {
+        $simdiki = (string) ($kayit['durum'] ?? '');
+        $sahibi  = $this->owns($kayit);
+
+        return match ($hedef) {
+            'yayinda' => $simdiki === 'onay' ? 'Onayla' : 'Yayınla',
+            'onay'    => $simdiki === 'yayinda' ? 'Onaya geri gönder' : 'Onaya gönder',
+            default   => match ($simdiki) {
+                'onay'    => $sahibi ? 'Geri çek' : 'Sahibine geri gönder',
+                default   => 'Taslağa al',
+            },
         };
     }
 

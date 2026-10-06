@@ -114,8 +114,8 @@ $roles = $roles ?? [];
                         <p class="cy-form-section">Yetkilendirme</p>
                         <div class="row g-3">
                             <?php if (can('users.role')): ?>
-                                <div class="col-12 col-md-6">
-                                    <span class="form-label d-block">Rol</span>
+                                <fieldset class="col-12 col-md-6 cy-fieldset" aria-describedby="hata-rol">
+                                    <legend class="form-label">Rol</legend>
                                     <div class="cy-choice-group" id="rol_group">
                                         <?php foreach ($roles as $value => $label): ?>
                                             <input type="radio" class="cy-choice-group__input" name="rol"
@@ -125,13 +125,13 @@ $roles = $roles ?? [];
                                                    for="rol_<?= e($value) ?>"><?= e($label) ?></label>
                                         <?php endforeach; ?>
                                     </div>
-                                    <div class="invalid-feedback d-block" data-error-for="rol"></div>
-                                </div>
+                                    <div class="invalid-feedback d-block" id="hata-rol" data-error-for="rol"></div>
+                                </fieldset>
                             <?php endif; ?>
 
                             <?php if (can('users.status')): ?>
-                                <div class="col-12 col-md-6">
-                                    <span class="form-label d-block">Durum</span>
+                                <fieldset class="col-12 col-md-6 cy-fieldset" aria-describedby="hata-durum">
+                                    <legend class="form-label">Durum</legend>
                                     <div class="cy-choice-group" id="durum_group">
                                         <input type="radio" class="cy-choice-group__input" name="durum" id="durum_aktif" value="aktif" checked>
                                         <label class="cy-choice-group__pill cy-status is-active" for="durum_aktif">
@@ -153,8 +153,8 @@ $roles = $roles ?? [];
                                             <span class="cy-status__dot"></span>Onay bekliyor
                                         </label>
                                     </div>
-                                    <div class="invalid-feedback d-block" data-error-for="durum"></div>
-                                </div>
+                                    <div class="invalid-feedback d-block" id="hata-durum" data-error-for="durum"></div>
+                                </fieldset>
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>

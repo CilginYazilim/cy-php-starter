@@ -99,6 +99,12 @@ final class Page
         return $duz === '' ? '' : mb_strimwidth($duz, 0, 160, '…', 'UTF-8');
     }
 
+    /** Kapak görselinin adresi (yoksa boş). Paylaşım görseli olarak da kullanılır. */
+    public function kapakUrl(): string
+    {
+        return $this->kapak === '' ? '' : \App\Core\Uploader::url($this->kapak);
+    }
+
     /** Listede gösterilecek kısa özet. */
     public function onizleme(int $length = 90): string
     {

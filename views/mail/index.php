@@ -254,15 +254,15 @@ $ilkSekme  = $canSend ? 'gonder' : 'gecmis';
                 </div>
 
                 <div class="cy-table-wrap">
-                    <table id="mail_table" class="table cy-table w-100">
+                    <table id="mail_table" class="table cy-table cy-table--cards w-100">
                         <thead>
                             <tr>
-                                <th scope="col">Alıcı</th>
+                                <th scope="col" data-kart="ana">Alıcı</th>
                                 <th scope="col">Konu</th>
                                 <th scope="col" style="width:130px">Tür</th>
                                 <th scope="col" style="width:140px">Durum</th>
                                 <th scope="col" style="width:150px">Tarih</th>
-                                <th scope="col" style="width:120px" class="text-center">İşlemler</th>
+                                <th scope="col" style="width:120px" class="text-center" data-kart="islem">İşlemler</th>
                             </tr>
                         </thead>
                     </table>

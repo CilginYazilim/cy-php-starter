@@ -467,6 +467,65 @@ window.CY = (function ($) {
             }
         });
 
+        /* --- Form erişilebilirliği (tüm formlar için tek yerde) ---
+         * 1) Zorunlu alan: etiketinde kırmızı "*" olan alana aria-required
+         *    yazılır; yıldız ekran okuyucuda "yıldız" diye okunmaz.
+         *    Kimliği olan yıldız (ör. düzenlemede isteğe bağlı parola) JS ile
+         *    açılıp kapandığı için atlanır.
+         * 2) Hata kutusu: [data-error-for="ad"] kutusu #ad alanına
+         *    aria-describedby ile bağlanır; alan .is-invalid olunca
+         *    aria-invalid="true" olur. Böylece hata, alana odaklanınca okunur. */
+        $('label[for] .text-danger').each(function () {
+            if (this.id || $.trim($(this).text()) !== '*') { return; }
+            $(this).attr('aria-hidden', 'true');
+            $('#' + $(this).closest('label').attr('for')).attr('aria-required', 'true');
+        });
+
+        var hataGozcusu = window.MutationObserver ? new MutationObserver(function (degisimler) {
+            degisimler.forEach(function (d) {
+                d.target.setAttribute('aria-invalid', d.target.classList.contains('is-invalid') ? 'true' : 'false');
+            });
+        }) : null;
+
+        $('[data-error-for]').each(function () {
+            var alanAdi = $(this).attr('data-error-for');
+            var $alan   = $('#' + alanAdi);
+
+            if (!$alan.length || !$alan.is('input, select, textarea')) { return; }
+
+            if (!this.id) { this.id = 'hata-' + alanAdi; }
+            var bagli = ($alan.attr('aria-describedby') || '').split(/\s+/).filter(Boolean);
+            if (bagli.indexOf(this.id) === -1) { bagli.push(this.id); }
+            $alan.attr('aria-describedby', bagli.join(' '));
+
+            if (hataGozcusu) { hataGozcusu.observe($alan[0], { attributes: true, attributeFilter: ['class'] }); }
+        });
+
+        /* --- Tablolar mobilde kart (cy-table--cards) ---
+         * Her hücreye başlığının metnini (data-label) ve rolünü (data-kart:
+         * ana | islem | gizle | secim) yazar; CSS 768px altında satırı
+         * etiketli bir karta çevirir. DataTables her çizimde satırları
+         * yeniden ürettiği için "draw.dt" olayında da çalışır. */
+        function kartEtiketleri(tablo) {
+            var basliklar = $(tablo).find('thead th').map(function () {
+                return { metin: $.trim($(this).text()), rol: $(this).attr('data-kart') || '' };
+            }).get();
+
+            $(tablo).find('tbody tr').each(function () {
+                $(this).children('td').each(function (i) {
+                    // "Kayıt yok" gibi birleşik (colspan) hücreler etiketsiz kalır.
+                    if (basliklar[i] && !this.hasAttribute('colspan')) {
+                        $(this).attr('data-label', basliklar[i].metin).attr('data-kart', basliklar[i].rol);
+                    }
+                });
+            });
+        }
+
+        $('.cy-table--cards').each(function () { kartEtiketleri(this); });
+        $(document).on('draw.dt', function (olay, ayarlar) {
+            if ($(ayarlar.nTable).hasClass('cy-table--cards')) { kartEtiketleri(ayarlar.nTable); }
+        });
+
         /* --- Panel bildirimini kapat ---
          * Yalnızca bilgi bildirimlerinde düğme vardır. Kimlik SUNUCUDA
          * oturuma yazılır (bkz. PanelNotices::dismiss); sonraki sayfalarda
