@@ -26,6 +26,8 @@ final class Module
 {
     /**
      * @param array<string,array<int,string>> $yetkiler rol => yetki adları (module.json → "yetkiler")
+     * @param array{route:string,icon:string,label:string,can:string}|null $menu
+     *        Sol menü bağlantısı (module.json → "menu"); "menu": false ise null
      */
     public function __construct(
         public readonly string $ad,
@@ -35,6 +37,7 @@ final class Module
         public readonly string $surum,
         public readonly bool   $aktif,
         public readonly array  $yetkiler = [],
+        public readonly ?array $menu = null,
     ) {
     }
 
@@ -64,7 +67,33 @@ final class Module
             surum:    (string) ($data['surum'] ?? '1.0.0'),
             aktif:    $aktif,
             yetkiler: self::parseAbilities($data['yetkiler'] ?? []),
+            menu:     self::parseMenu($data, $ad, (string) ($data['baslik'] ?? $ad)),
         );
+    }
+
+    /**
+     * Sol menü bağlantısı. Tanımlanmayan alanlar addan türetilir:
+     * StokTakip → "panel/stok-takip", yetki "stok_takip.view".
+     * "menu": false yazan modül menüde görünmek istemiyordur → null.
+     *
+     * @param array<string,mixed> $data
+     * @return array{route:string,icon:string,label:string,can:string}|null
+     */
+    private static function parseMenu(array $data, string $ad, string $baslik): ?array
+    {
+        if (array_key_exists('menu', $data) && $data['menu'] === false) {
+            return null;
+        }
+
+        $tanim = is_array($data['menu'] ?? null) ? $data['menu'] : [];
+        $slug  = strtolower(preg_replace('/(?<!^)[A-Z]/', '-$0', $ad) ?? $ad);
+
+        return [
+            'route' => (string) ($tanim['route'] ?? 'panel/' . $slug),
+            'icon'  => (string) ($tanim['icon']  ?? 'server'),
+            'label' => (string) ($tanim['label'] ?? $baslik),
+            'can'   => (string) ($tanim['can']   ?? str_replace('-', '_', $slug) . '.view'),
+        ];
     }
 
     public function routesFile(): string

@@ -129,7 +129,7 @@ $whatsapp   = HomeController::whatsappLink();
                         <?php /* Sayfanın DÜZ METİN özeti: ana sayfada başlık ve
                                  liste basmak bölümü dağıtırdı. Tam metin
                                  sayfanın kendisinde. */ ?>
-                        <p><?= e(mb_strimwidth(trim(preg_replace('/\s+/u', ' ', strip_tags($hakkinda->icerik)) ?? ''), 0, 420, '…', 'UTF-8')) ?></p>
+                        <p><?= e(mb_strimwidth(\App\Core\Html::toText($hakkinda->icerik), 0, 420, '…', 'UTF-8')) ?></p>
                     </div>
 
                     <a class="btn cy-btn cy-btn--ghost mt-3" href="<?= e(url($hakkinda->slug)) ?>">

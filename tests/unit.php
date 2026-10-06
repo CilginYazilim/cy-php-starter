@@ -384,12 +384,76 @@ dogrula('Rol başka modülün yetkisini almaz', Modules::collectAbilities([$modu
 
 $ornekModul = Module::fromDirectory(CY_BASE . '/modules/Ornek', true);
 if (is_dir($ornekModul->yol)) {
-    dogrula('Ornek: editör görür, ekler, kendi kaydını yönetir', Modules::collectAbilities([$ornekModul], 'editor') === ['ornek.view', 'ornek.create', 'ornek.update.own']);
-    dogrula('Ornek: üye yalnızca görür', Modules::collectAbilities([$ornekModul], 'uye') === ['ornek.view']);
+    dogrula('Ornek: editör görür, ekler, kendi kaydını düzenler, yayınlar', Modules::collectAbilities([$ornekModul], 'editor') === ['ornek.view', 'ornek.create', 'ornek.update.own', 'ornek.publish']);
+    dogrula('Ornek: üye görür, ekler, kendi kaydını düzenler ama yayınlayamaz', Modules::collectAbilities([$ornekModul], 'uye') === ['ornek.view', 'ornek.create', 'ornek.update.own']);
+    dogrula('Ornek: menü tanımı module.json\'dan okunur', ($ornekModul->menu['route'] ?? '') === 'panel/ornek' && ($ornekModul->menu['can'] ?? '') === 'ornek.view');
     dogrula('Ornek: herkesi yönetme yetkisi hiçbir role dağıtılmaz (yalnız yönetici)', !in_array('ornek.manage', array_merge(...array_values($ornekModul->yetkiler)), true));
     dogrula('Ornek modülünün örnek verisi var', is_file(CY_BASE . '/modules/Ornek/seeders/OrnekIcerik.php'));
 }
 dogrula('Yönetici her yetkiye sahip, bilinmeyen rol hiçbirine', Role::can(Role::ADMIN, 'herhangi.bir') && !Role::can('hayalet', 'ornek.view'));
+$geciciModul = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'cy-modul-' . bin2hex(random_bytes(4)) . DIRECTORY_SEPARATOR . 'StokTakip';
+mkdir($geciciModul, 0777, true);
+file_put_contents($geciciModul . '/module.json', '{"baslik": "Stok Takibi"}');
+dogrula('Menü tanımsızsa addan türetilir (StokTakip → panel/stok-takip)', Module::fromDirectory($geciciModul, true)->menu === ['route' => 'panel/stok-takip', 'icon' => 'server', 'label' => 'Stok Takibi', 'can' => 'stok_takip.view']);
+file_put_contents($geciciModul . '/module.json', '{"menu": false}');
+dogrula('"menu": false yazan modülün menüsü yok', Module::fromDirectory($geciciModul, true)->menu === null);
+unlink($geciciModul . '/module.json');
+rmdir($geciciModul);
+rmdir(dirname($geciciModul));
+
+/* ---------------------------------------------------------------- */
+echo "\nÖrnek modül: kayıt düzeyi kurallar (OrnekPolicy)\n";
+
+/* Gerçek veritabanına dokunmadan "Ornek açık" durumu: ayarlar bellek
+ * içi SQLite'tan okunur, test bitince temizlenir. */
+if (is_file(CY_BASE . '/modules/Ornek/src/OrnekPolicy.php') && in_array('sqlite', PDO::getAvailableDrivers(), true)) {
+    $bellek = new PDO('sqlite::memory:');
+    $bellek->exec('CREATE TABLE ayarlar (anahtar TEXT, deger TEXT)');
+    $bellek->exec("INSERT INTO ayarlar VALUES ('aktif_moduller', '[\"Ornek\"]')");
+    App\Core\Setting::load($bellek);
+    Modules::forget();
+    Modules::boot();
+
+    $yonetici = new App\Models\User(id: 1, ad: 'Y', soyad: 'Y', kullaniciAdi: 'y', eposta: 'y@ornek.com', rol: Role::ADMIN);
+    $editor   = new App\Models\User(id: 2, ad: 'E', soyad: 'E', kullaniciAdi: 'e', eposta: 'e@ornek.com', rol: 'editor');
+    $uye      = new App\Models\User(id: 3, ad: 'U', soyad: 'U', kullaniciAdi: 'u', eposta: 'u@ornek.com', rol: 'uye');
+
+    $pY = new \Modules\Ornek\OrnekPolicy($yonetici);
+    $pE = new \Modules\Ornek\OrnekPolicy($editor);
+    $pU = new \Modules\Ornek\OrnekPolicy($uye);
+
+    $uyeTaslak    = ['kullanici_id' => 3, 'durum' => 'taslak'];
+    $uyeOnay      = ['kullanici_id' => 3, 'durum' => 'onay'];
+    $uyeYayinda   = ['kullanici_id' => 3, 'durum' => 'yayinda'];
+    $editorTaslak = ['kullanici_id' => 2, 'durum' => 'taslak'];
+    $baskaYayinda = ['kullanici_id' => 1, 'durum' => 'yayinda'];
+
+    dogrula('Yönetici her kaydı görür ve düzenler', $pY->canView($uyeTaslak) && $pY->canEdit($uyeTaslak) && $pY->canEdit($editorTaslak));
+    dogrula('Editör onay bekleyen üye kaydını görür ve onaylayabilir', $pE->canView($uyeOnay) && $pE->transitions($uyeOnay) === ['yayinda', 'taslak']);
+    dogrula('Editör başkasının taslağını görmez', !$pE->canView($uyeTaslak));
+    dogrula('Editör başkasının kaydını düzenleyemez, silemez', !$pE->canEdit($uyeOnay) && !$pE->canEdit($baskaYayinda));
+    dogrula('Editör kendi kaydını düzenler', $pE->canEdit($editorTaslak));
+    dogrula('Üye kendi kaydını düzenler, başkasınınkini düzenleyemez', $pU->canEdit($uyeTaslak) && !$pU->canEdit($baskaYayinda));
+    dogrula('Üye yalnızca onaya gönderebilir, yayına alamaz', $pU->transitions($uyeTaslak) === ['onay'] && !$pU->canMoveTo($uyeTaslak, 'yayinda'));
+    dogrula('Üye onaydaki kaydını geri çeker, yayındakini kaldırır', $pU->transitions($uyeOnay) === ['taslak'] && $pU->transitions($uyeYayinda) === ['taslak']);
+    dogrula('Üye başkasının kaydının durumunu değiştiremez', $pU->transitions($baskaYayinda) === []);
+    dogrula('Üye formunda "Yayında" seçeneği yok', !in_array('yayinda', $pU->formStatuses(), true) && in_array('yayinda', $pE->formStatuses(), true));
+    dogrula('Üyenin kaydı onaya düşer (elle "yayinda" gönderse bile)', $pU->statusAfterSave('yayinda') === 'onay' && $pE->statusAfterSave('yayinda') === 'yayinda');
+    dogrula('Kapsamlar: yönetici hepsi, editör onay dahil, üye kendi', $pY->scope() === 'hepsi' && $pE->scope() === 'editor' && $pU->scope() === 'kendi');
+    dogrula('Giriş yapmamış kullanıcı hiçbir şey yapamaz', (new \Modules\Ornek\OrnekPolicy(null))->transitions($baskaYayinda) === [] && !(new \Modules\Ornek\OrnekPolicy(null))->canEdit($baskaYayinda));
+
+    App\Core\Setting::flush();
+    Modules::forget();
+} else {
+    echo "  (modules/Ornek ya da pdo_sqlite yok; atlandı)\n";
+}
+
+/* ---------------------------------------------------------------- */
+echo "\nHTML → düz metin (özet ve meta açıklama)\n";
+
+dogrula('Blok sınırları boşluğa döner', App\Core\Html::toText('<h2>Biz kimiz?</h2><p>Bu metni<br>değiştirin.</p><ul><li>Bir</li><li>İki</li></ul>') === 'Biz kimiz? Bu metni değiştirin. Bir İki');
+dogrula('Satır içi etiketler kelimeyi bölmez', App\Core\Html::toText('<p>ka<strong>lın</strong> &amp; <em>eğik</em></p>') === 'kalın & eğik');
+dogrula('Boş HTML boş metin', App\Core\Html::toText('<p> </p><br>') === '');
 
 /* ---------------------------------------------------------------- */
 printf("\n%d geçti · %d kaldı\n\n", $gecti, $kaldi);

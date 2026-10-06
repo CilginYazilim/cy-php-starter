@@ -20,10 +20,14 @@ use PDO;
 
 final class OrnekRepository
 {
-    /** Rastgele örnek üretmenin üst sınırı: herkese açık demoda tablo şişmesin. */
-    public const UST_SINIR = 200;
+    /**
+     * Tablonun üst sınırı: herkese açık demoda üyeler de kayıt ekler;
+     * ne elle eklenen ne rastgele üretilen kayıt bu sayıyı aşar.
+     */
+    public const UST_SINIR = 300;
 
-    public const DURUMLAR = ['yayinda' => 'Yayında', 'taslak' => 'Taslak'];
+    /** Onay akışının durumları (bkz. OrnekPolicy). */
+    public const DURUMLAR = ['yayinda' => 'Yayında', 'onay' => 'Onay bekliyor', 'taslak' => 'Taslak'];
 
     public function __construct(private PDO $db)
     {
@@ -38,21 +42,25 @@ final class OrnekRepository
     {
         $limit  = max(1, min($limit, 1000));
         $kosul  = match ($kapsam) {
-            OrnekPolicy::KAPSAM_HEPSI => '1 = 1',
-            OrnekPolicy::KAPSAM_KENDI => "(o.durum = 'yayinda' OR o.kullanici_id = :kullanici)",
-            default                   => "o.durum = 'yayinda'",
+            OrnekPolicy::KAPSAM_HEPSI  => '1 = 1',
+            OrnekPolicy::KAPSAM_EDITOR => "(o.durum IN ('yayinda', 'onay') OR o.kullanici_id = :kullanici)",
+            OrnekPolicy::KAPSAM_KENDI  => "(o.durum = 'yayinda' OR o.kullanici_id = :kullanici)",
+            default                    => "o.durum = 'yayinda'",
         };
+
+        // Onay bekleyenler en üstte: editörün işi gözden kaçmasın.
+        $sira = "(o.durum = 'onay') DESC, o.id DESC";
 
         $stmt = $this->db->prepare(
             'SELECT o.*, k.ad AS sahip_ad, k.soyad AS sahip_soyad, k.rol AS sahip_rol
                FROM `ornek` o
                LEFT JOIN `kullanicilar` k ON k.id = o.kullanici_id
               WHERE ' . $kosul . '
-              ORDER BY o.id DESC
+              ORDER BY ' . $sira . '
               LIMIT ' . $limit
         );
 
-        if ($kapsam === OrnekPolicy::KAPSAM_KENDI) {
+        if (in_array($kapsam, [OrnekPolicy::KAPSAM_EDITOR, OrnekPolicy::KAPSAM_KENDI], true)) {
             $stmt->bindValue(':kullanici', $kullaniciId, PDO::PARAM_INT);
         }
 
@@ -93,6 +101,26 @@ final class OrnekRepository
         return (int) $this->db->lastInsertId();
     }
 
+    public function isFull(): bool
+    {
+        return $this->count() >= self::UST_SINIR;
+    }
+
+    public function update(int $id, string $baslik, string $aciklama, string $durum): bool
+    {
+        $statement = $this->db->prepare(
+            'UPDATE `ornek` SET baslik = :baslik, aciklama = :aciklama, durum = :durum WHERE id = :id'
+        );
+        $statement->execute([
+            ':baslik'   => $baslik,
+            ':aciklama' => $aciklama,
+            ':durum'    => array_key_exists($durum, self::DURUMLAR) ? $durum : 'taslak',
+            ':id'       => $id,
+        ]);
+
+        return $statement->rowCount() > 0;
+    }
+
     public function setStatus(int $id, string $durum): bool
     {
         if (!array_key_exists($durum, self::DURUMLAR)) {
@@ -114,17 +142,17 @@ final class OrnekRepository
     }
 
     /**
-     * Kayıt sahibi olabilecek kullanıcılar: aktif yönetici ve editörler.
-     * Rastgele örnekler bunlar arasında dağıtılır; böylece editör
-     * listede hem kendi kaydını (yönetebilir) hem başkasınınkini
-     * (kilitli) görür.
+     * Kayıt sahibi olabilecek kullanıcılar: aktif yönetici, editör ve
+     * üyeler. Rastgele örnekler bunlar arasında dağıtılır; böylece her
+     * rol listede hem kendi kaydını (düzenleyebilir) hem başkasınınkini
+     * (kilitli) görür, editör de onay bekleyen üye kayıtlarını bulur.
      *
      * @return array<int,int>
      */
     public function ownerCandidates(): array
     {
         return array_map('intval', $this->db->query(
-            "SELECT id FROM `kullanicilar` WHERE durum = 'aktif' AND rol IN ('admin', 'editor') ORDER BY id"
+            "SELECT id FROM `kullanicilar` WHERE durum = 'aktif' AND rol IN ('admin', 'editor', 'uye') ORDER BY id"
         )->fetchAll(PDO::FETCH_COLUMN));
     }
 
@@ -170,8 +198,9 @@ final class OrnekRepository
             $statement->execute([
                 ':baslik'    => $basliklar[random_int(0, count($basliklar) - 1)],
                 ':aciklama'  => $aciklamalar[random_int(0, count($aciklamalar) - 1)],
-                // Kabaca üçte biri taslak: üye görünümünde fark görünsün.
-                ':durum'     => random_int(1, 3) === 1 ? 'taslak' : 'yayinda',
+                // Yaklaşık %60 yayında, %20 onay bekliyor, %20 taslak:
+                // her rolün listesi gözle görülür biçimde farklı olsun.
+                ':durum'     => ['yayinda', 'yayinda', 'yayinda', 'onay', 'taslak'][random_int(0, 4)],
                 ':kullanici' => $sahipler === [] ? null : $sahipler[random_int(0, count($sahipler) - 1)],
                 ':tarih'     => date('Y-m-d H:i:s', time() - random_int(0, 30 * 86400)),
             ]);

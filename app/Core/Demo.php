@@ -68,7 +68,7 @@ final class Demo
     private const KILITLI = [
         'panel/hesabim/'          => 'Demo hesabının bilgileri, parolası, görseli ve API anahtarları değiştirilemez.',
         'panel/ayarlar/'          => 'Demo modunda site ayarları değiştirilemez.',
-        'panel/sistem/'           => 'Demo modunda sistem işlemleri (kuyruk, migration) kapalıdır.',
+        'panel/sistem/'           => 'Demo modunda sistem işlemleri (modül açma/kapama, kuyruk, migration) kapalıdır.',
         'api/kullanicilar/save'   => 'Demo modunda kullanıcı eklenemez ve düzenlenemez.',
         'api/kullanicilar/delete' => 'Demo modunda kullanıcı silinemez.',
         'api/kullanicilar/status' => 'Demo modunda kullanıcı durumu değiştirilemez.',
@@ -114,6 +114,20 @@ final class Demo
         }
 
         return null;
+    }
+
+    /**
+     * Giriş yapan örnek hesap bu adrese form gönderemiyorsa gerekçesi.
+     * Görünümler düğmeyi baştan kilitli çizmek için kullanır; asıl
+     * engel yine guard() içindedir.
+     */
+    public static function lockReason(string $path): ?string
+    {
+        if (!self::enabled() || !self::isDemoUser(Auth::user())) {
+            return null;
+        }
+
+        return self::blockReason('POST', $path);
     }
 
     /**

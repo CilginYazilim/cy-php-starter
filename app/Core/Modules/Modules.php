@@ -250,6 +250,21 @@ final class Modules
         return new \App\Core\Database\Migrator($db, $path, self::migrationPaths(), self::migrationPaths(true));
     }
 
+    /**
+     * YALNIZCA bu modülün migration'larını çalıştıran Migrator.
+     *
+     * Panelden bir modül açılırken kullanılır: modülü açmak, o sırada
+     * bekleyen ÇEKİRDEK migration'larını da habersizce çalıştırmamalı
+     * (onlar Sistem sayfasında ayrıca, yedek uyarısıyla sorulur).
+     * Uygulama klasörü boş verilir; Migrator var olmayan klasörü atlar.
+     */
+    public static function moduleMigrator(\PDO $db, Module $module): \App\Core\Database\Migrator
+    {
+        $kendi = $module->hasMigrations() ? [$module->ad => $module->migrationsPath()] : [];
+
+        return new \App\Core\Database\Migrator($db, '', $kendi, self::migrationPaths(true));
+    }
+
     /* =================================================================
      *  YETKİLER VE ÖRNEK VERİ
      * ============================================================== */

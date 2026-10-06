@@ -94,7 +94,7 @@ final class Page
             return $this->ozet;
         }
 
-        $duz = trim(preg_replace('/\s+/u', ' ', strip_tags($this->icerik)) ?? '');
+        $duz = \App\Core\Html::toText($this->icerik);
 
         return $duz === '' ? '' : mb_strimwidth($duz, 0, 160, '…', 'UTF-8');
     }
@@ -102,7 +102,7 @@ final class Page
     /** Listede gösterilecek kısa özet. */
     public function onizleme(int $length = 90): string
     {
-        $kaynak = $this->ozet !== '' ? $this->ozet : strip_tags($this->icerik);
+        $kaynak = $this->ozet !== '' ? $this->ozet : \App\Core\Html::toText($this->icerik);
         $kaynak = trim(preg_replace('/\s+/u', ' ', $kaynak) ?? '');
 
         return mb_strimwidth($kaynak, 0, $length, '…', 'UTF-8');
@@ -111,7 +111,7 @@ final class Page
     /** İçerikteki kelime sayısı — panelde "ne kadar yazılmış" göstergesi. */
     public function kelimeSayisi(): int
     {
-        $duz = trim(strip_tags($this->icerik));
+        $duz = \App\Core\Html::toText($this->icerik);
 
         return $duz === '' ? 0 : count(preg_split('/\s+/u', $duz) ?: []);
     }

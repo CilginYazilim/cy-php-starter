@@ -116,6 +116,9 @@ $router->post('panel/sistem/kuyruk/temizle', SystemController::class, 'queuePurg
 // SSH erişimi olmayan hostlarda bekleyen migration'lar buradan çalıştırılır.
 $router->post('panel/sistem/migrate', SystemController::class, 'migrate', ['installed', 'auth', 'csrf', 'can:system.manage']);
 
+// Modül aç/kapat ("php cy module --enable=Ad" komutunun panel karşılığı).
+$router->post('panel/sistem/modul/{ad}', SystemController::class, 'toggleModule', ['installed', 'auth', 'csrf', 'can:system.manage']);
+
 $router->get('panel/hesabim',              ProfileController::class, 'index',        ['installed', 'auth', 'can:profile.view']);
 $router->post('panel/hesabim/guncelle',    ProfileController::class, 'update',       ['installed', 'auth', 'csrf', 'can:profile.update']);
 $router->post('panel/hesabim/parola',      ProfileController::class, 'password',     ['installed', 'auth', 'csrf', 'can:profile.update']);

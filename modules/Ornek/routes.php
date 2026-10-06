@@ -8,8 +8,10 @@
  *
  *  Yetkiler ROL düzeyindedir ("bu rol kayıt ekleyebilir mi?"). Editör
  *  ve üyenin yetkileri module.json → "yetkiler" bloğundan gelir;
- *  yönetici her yetkiye sahiptir. "Bu KAYDI silebilir mi?" sorusunu
- *  denetleyici OrnekPolicy'ye sorar.
+ *  yönetici her yetkiye sahiptir. "Bu KAYDI düzenleyebilir mi?"
+ *  sorusunu denetleyici OrnekPolicy'ye sorar.
+ *
+ *  "can:a|b" → yetkilerden HERHANGİ BİRİ yeter.
  * =====================================================================
  */
 
@@ -26,8 +28,14 @@ $router->get('panel/ornek', OrnekController::class, 'index',
 $router->post('panel/ornek/kaydet', OrnekController::class, 'store',
     ['installed', 'auth', 'csrf', 'can:ornek.create']);
 
-$router->post('panel/ornek/durum/{id}', OrnekController::class, 'toggle',
+$router->get('panel/ornek/duzenle/{id}', OrnekController::class, 'edit',
+    ['installed', 'auth', 'can:ornek.update.own|ornek.manage']);
+
+$router->post('panel/ornek/duzenle/{id}', OrnekController::class, 'update',
     ['installed', 'auth', 'csrf', 'can:ornek.update.own|ornek.manage']);
+
+$router->post('panel/ornek/durum/{id}', OrnekController::class, 'status',
+    ['installed', 'auth', 'csrf', 'can:ornek.update.own|ornek.publish|ornek.manage']);
 
 $router->post('panel/ornek/sil/{id}', OrnekController::class, 'destroy',
     ['installed', 'auth', 'csrf', 'can:ornek.update.own|ornek.manage']);

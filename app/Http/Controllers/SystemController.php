@@ -18,6 +18,7 @@ namespace App\Http\Controllers;
 
 use App\Core\Cache\Cache;
 use App\Core\Config;
+use App\Core\Exceptions\HttpException;
 use App\Core\Flash;
 use App\Core\Log\Logger;
 use App\Core\Mail\Mailer;
@@ -117,6 +118,56 @@ final class SystemController extends Controller
     private function migrator(): \App\Core\Database\Migrator
     {
         return Modules::migrator($this->db, (string) Config::get('db.migrations'));
+    }
+
+    /* =================================================================
+     *  MODÜL AÇ / KAPAT
+     * -----------------------------------------------------------------
+     *  "php cy module --enable=Ad" komutunun panel karşılığı.
+     *
+     *  Açarken modülün KENDİ migration'ları da çalışır: tablosu olmayan
+     *  bir modülün sayfası açıldığı an 500 verirdi. Migration patlarsa
+     *  modül yeniden kapatılır; yarım açık modül bırakılmaz.
+     *
+     *  Kapatmak hiçbir şey SİLMEZ: tablolar ve kayıtlar yerinde kalır,
+     *  yalnızca rotalar, menü ve yetkiler devreden çıkar. Yeniden
+     *  açıldığında modül kaldığı yerden devam eder.
+     * ============================================================== */
+
+    public function toggleModule(Request $request, string $ad): void
+    {
+        $modul = Modules::find($ad);
+
+        if ($modul === null) {
+            throw HttpException::notFound('panel/sistem/modul/' . $ad);
+        }
+
+        $geri = url('panel/sistem') . '#moduller';
+
+        if (!$request->bool('durum')) {
+            Modules::disable($modul->ad);
+
+            Logger::info('Modül kapatıldı', ['modul' => $modul->ad], 'app');
+            Flash::success($modul->baslik . ' kapatıldı. Tabloları ve kayıtları silinmedi; yeniden açınca kaldığı yerden devam eder.');
+            Response::redirect($geri);
+        }
+
+        Modules::enable($modul->ad);
+
+        try {
+            $calisan = Modules::moduleMigrator($this->db, $modul)->run();
+        } catch (Throwable $e) {
+            Modules::disable($modul->ad);
+
+            Logger::error('Modül açılamadı, migration hatası: ' . $e->getMessage(), ['modul' => $modul->ad], 'app');
+            Flash::error($modul->baslik . ' açılamadı: tabloları kurulurken hata oluştu (' . $e->getMessage() . '). Modül kapalı bırakıldı.');
+            Response::redirect($geri);
+        }
+
+        Logger::info('Modül açıldı', ['modul' => $modul->ad, 'migration' => $calisan], 'app');
+        Flash::success($modul->baslik . ' açıldı'
+            . ($calisan === [] ? '.' : '; ' . count($calisan) . ' tablo değişikliği uygulandı.'));
+        Response::redirect($geri);
     }
 
     /* =================================================================

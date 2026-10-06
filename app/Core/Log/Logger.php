@@ -198,8 +198,17 @@ final class Logger
 
         $parts = ['ip=' . $ip];
 
-        $path = is_string($_GET['r'] ?? null) ? $_GET['r'] : '';
-        $parts[] = 'yol=' . ($path !== '' ? self::singleLine(mb_substr($path, 0, 120)) : '/');
+        /* Rota Url::current() ile çözülür: temiz adres (SEO) kipinde yol
+         * ?r= parametresinde değil REQUEST_URI'dedir. Eskiden yalnızca
+         * ?r= okunuyordu ve her satır "yol=/" yazıyordu — hangi sayfada
+         * hata alındığı günlükten anlaşılmıyordu. */
+        try {
+            $path = \App\Core\Url::current();
+        } catch (\Throwable) {
+            $path = is_string($_GET['r'] ?? null) ? $_GET['r'] : '';
+        }
+
+        $parts[] = 'yol=/' . self::singleLine(mb_substr(ltrim($path, '/'), 0, 120));
 
         // Oturuma DOĞRUDAN bakıyoruz; Auth::user() veritabanına gider
         // ve hata zaten veritabanı kaynaklıysa döngüye girerdik.

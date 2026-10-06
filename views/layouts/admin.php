@@ -67,15 +67,37 @@ $flashes      = Flash::pull();
 
             <main class="cy-content" id="cy-content">
                 <?php /* Yönetici uyarıları (debug açık + yerel değil, bekleyen
-                         migration, APP_KEY boş…). Bkz. App\Core\PanelNotices. */ ?>
-                <?php foreach (PanelNotices::forCurrentUser() as $uyari): ?>
-                    <div class="cy-alert cy-alert--<?= e($uyari['tur']) ?> mb-3" role="alert">
-                        <?= e($uyari['metin']) ?>
-                        <?php if ($uyari['yol'] !== ''): ?>
-                            <a href="<?= e(url($uyari['yol'])) ?>" class="ms-1 fw-semibold"><?= e($uyari['baglanti']) ?> →</a>
-                        <?php endif; ?>
+                         migration, APP_KEY boş…). Bkz. App\Core\PanelNotices.
+                         Hepsi TEK bir kutuda alt alta: her biri ayrı renkli
+                         şerit olunca sayfanın üstü bir uyarı yığınına dönüyordu. */ ?>
+                <?php
+                $uyarilar = array_values(array_filter(
+                    PanelNotices::forCurrentUser(),
+                    static fn (array $u): bool => !PanelNotices::dismissed($u)
+                ));
+                $uyariIkon = ['danger' => 'alert', 'warning' => 'alert', 'info' => 'info', 'success' => 'check'];
+                ?>
+                <?php if ($uyarilar !== []): ?>
+                    <div class="cy-notices" role="region" aria-label="Bildirimler">
+                        <?php foreach ($uyarilar as $uyari): ?>
+                            <div class="cy-notice cy-notice--<?= e($uyari['tur']) ?>" data-notice="<?= e($uyari['id']) ?>"<?= $uyari['tur'] === 'danger' ? ' role="alert"' : '' ?>>
+                                <span class="cy-notice__icon"><?= icon($uyariIkon[$uyari['tur']] ?? 'info', 'cy-icon cy-icon--sm') ?></span>
+                                <p class="cy-notice__text">
+                                    <strong><?= e($uyari['baslik']) ?></strong>
+                                    <span><?= e($uyari['metin']) ?></span>
+                                </p>
+                                <?php if ($uyari['yol'] !== ''): ?>
+                                    <a href="<?= e(url($uyari['yol'])) ?>" class="cy-notice__action"><?= e($uyari['baglanti']) ?> →</a>
+                                <?php endif; ?>
+                                <?php if ($uyari['kapatilabilir']): ?>
+                                    <button type="button" class="cy-notice__close js-notice-close" aria-label="Bildirimi kapat" title="Bu oturumda gösterme">
+                                        <?= icon('close', 'cy-icon cy-icon--sm') ?>
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
-                <?php endforeach; ?>
+                <?php endif; ?>
 
                 <?= $content ?? '' ?>
             </main>

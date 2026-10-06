@@ -254,6 +254,23 @@ final class Html
     }
 
     /**
+     * HTML'den tek satırlık düz metin (özet, meta açıklama, kelime sayımı).
+     *
+     * strip_tags tek başına blok sınırlarını SİLER ama yerine boşluk
+     * koymaz: "<h2>Biz kimiz?</h2><p>Bu metni…" → "Biz kimiz?Bu metni…".
+     * Ana sayfadaki Hakkımızda özeti ve sayfaların meta açıklaması
+     * böyle bitişik cümlelerle çıkıyordu. Önce her blok ve satır sonu
+     * etiketinin yerine boşluk konur, sonra etiketler silinir.
+     */
+    public static function toText(string $html): string
+    {
+        $html = preg_replace('#<(br|hr)\b[^>]*>|</?(p|div|h[1-6]|li|ul|ol|blockquote|pre|tr|td|th|table|section|article|figure|figcaption)\b[^>]*>#i', ' ', $html) ?? $html;
+        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        return trim(preg_replace('/\s+/u', ' ', $text) ?? $text);
+    }
+
+    /**
      * Başlıktan adres parçası (slug) üretir.
      *
      * Türkçe harfler ASCII karşılıklarına çevrilir: "Sıkça Sorulan

@@ -351,14 +351,13 @@ body.cy-app {
 
 /* Birincil eylem – sayfada TEK olmalıdır. */
 .cy-btn--primary {
-    background: var(--cy-gradient);
+    background: var(--cy-brand-600);
     color: #fff;
-    box-shadow: 0 2px 8px rgba(11, 92, 181, .28);
 }
 .cy-btn--primary:hover,
 .cy-btn--primary:focus {
+    background: var(--cy-brand-700);
     color: #fff;
-    box-shadow: 0 4px 14px rgba(11, 92, 181, .38);
 }
 
 /* İkincil eylem – çizgili, sakin */
@@ -974,20 +973,31 @@ table.dataTable > thead .sorting_desc:after { display: none !important; }
 /* ------------------------------------------------------------------
  * 14) UYARI KUTUSU · BOŞ DURUM
  * ------------------------------------------------------------------ */
+/* Renk yalnızca soldaki şeritte ve ikonda; metin her zaman okunur
+ * gri tonda kalır. Eskiden bütün kutu renkli zemin + renkli yazıydı:
+ * uzun bir açıklama mavi üstüne mavi okunuyordu. Hata kutusu,
+ * gözden kaçmasın diye hafif kırmızı zemini korur. */
 .cy-alert {
+    --ton: var(--cy-info);
     display: flex;
     align-items: flex-start;
     gap: .6rem;
-    padding: .75rem .9rem;
+    padding: .65rem .85rem;
+    border: 1px solid var(--cy-border);
+    border-left: 3px solid var(--ton);
     border-radius: var(--cy-radius-sm);
+    background: var(--cy-surface);
+    color: var(--cy-text-soft);
     font-size: .8125rem;
-    border: 1px solid transparent;
+    line-height: 1.55;
 }
+.cy-alert strong { color: var(--cy-text); }
+.cy-alert > .cy-icon:first-child { flex-shrink: 0; margin-top: .15rem; color: var(--ton); }
 
-.cy-alert--danger  { background: var(--cy-danger-soft);  color: var(--cy-danger); }
-.cy-alert--success { background: var(--cy-success-soft); color: var(--cy-success); }
-.cy-alert--warning { background: var(--cy-warning-soft); color: var(--cy-warning); }
-.cy-alert--info    { background: var(--cy-info-soft);    color: var(--cy-info); }
+.cy-alert--danger  { --ton: var(--cy-danger); background: var(--cy-danger-soft); border-color: transparent; color: var(--cy-text); }
+.cy-alert--success { --ton: var(--cy-success); }
+.cy-alert--warning { --ton: var(--cy-warning); }
+.cy-alert--info    { --ton: var(--cy-info); }
 
 /* Kontrol listesi (gereksinim kontrolleri, sistem sağlığı vb.) */
 .cy-timeline { display: flex; flex-direction: column; }

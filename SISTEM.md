@@ -1120,6 +1120,13 @@ php cy module                  # listele
 php cy module --disable=Stok
 ```
 
+**Panelden aç/kapa:** Sistem Bilgisi → **Modüller** bölümünde her modülün
+yanında bir düğme vardır (`POST panel/sistem/modul/{ad}`, `system.manage`).
+Açarken yalnızca o modülün migration'ları çalışır
+(`Modules::moduleMigrator`) — bekleyen çekirdek migration'ları yedek
+uyarısıyla ayrıca sorulur. Migration patlarsa modül yeniden kapatılır.
+Kapatmak tablo ve kayıt silmez. Demo hesabında kilitlidir.
+
 **Kapalı modül hiç yüklenmez:** rotaları tanımlanmaz, sınıfları
 yüklenmez, olayları dinlenmez, migration'ları çalışmaz. "Kapalı ama
 hâlâ çalışıyor" diye bir ara durum yoktur.
@@ -1139,8 +1146,7 @@ görünür; `"menu": false` derseniz görünmez.
 
 **Kurulumda açık gelen modül:** `module.json` içinde
 `"kurulumda_acik": true` olan modül, sihirbazın Site Ayarları adımında
-işaretli gelir; kurulum onu açar ve tablolarını kurar (SSH gerekmez —
-panelde modül aç/kapa ekranı yoktur). Şablondaki `Ornek` modülü
+işaretli gelir; kurulum onu açar ve tablolarını kurar. Şablondaki `Ornek` modülü
 böyledir: kurulumdan sonra **Panel → Örnek Modül** (`/panel/ornek`)
 hazırdır. Modül migration'ları temel partiye değil 1. partiye yazılır;
 çekirdekten farklı olarak geri alınabilirler.
@@ -1170,23 +1176,29 @@ extends App\Core\Database\Seeder {…};`) `php cy db:seed` ile ve
 sihirbazda "Örnek verileri de yükle" seçildiğinde çalışır — yalnızca
 açık modüllerinkiler.
 
-**Örnek modül — RBAC örneği:** `modules/Ornek` bu yapının hepsini
-çalışır hâlde gösterir. Kayıtların sahibi ve durumu (taslak / yayında)
-vardır; kurulum 12 rastgele kayıt üretir (yönetici ve editörler
-arasında dağıtılmış).
+**Örnek modül — kopyalanacak şablon:** `modules/Ornek` bu yapının hepsini
+çalışır hâlde gösterir: liste, ekleme, düzenleme, silme ve **onay akışı**
+(taslak → onay bekliyor → yayında). Kurulum 12 rastgele kayıt üretir;
+sahipleri yönetici, editör ve üyeler arasında dağılır. Adım adım
+rehber: [modules/Ornek/README.md](https://github.com/CilginYazilim/cy-php-starter/blob/main/modules/Ornek/README.md).
 
 | Rol | Görür | Yapabilir |
 |---|---|---|
-| Yönetici (`ornek.manage`) | her kaydı | her kaydı yayınlar/siler, "Rastgele 5 örnek ekle" |
-| Editör (`ornek.create`, `ornek.update.own`) | yayındakiler + kendi taslakları | kayıt ekler, **yalnızca kendi** kaydını yayınlar/siler |
-| Üye (`ornek.view`) | yalnızca yayındakiler | yalnızca görür |
+| Yönetici (`ornek.manage`) | her kaydı | her kaydı düzenler, siler, yayınlar; "Rastgele 5 kayıt ekle" |
+| Editör (`+ ornek.publish`) | yayındakiler, onay bekleyenler, kendi kayıtları | onaylar ve yayınlar; **yalnızca kendi** kaydını düzenler/siler |
+| Üye (`ornek.create`, `ornek.update.own`) | yayındakiler ve kendi kayıtları | yazar, düzenler, siler, onaya gönderir; **yayınlayamaz** |
+
+Üye yayındaki kaydını değiştirirse kayıt yeniden onaya düşer. Editörün
+yayından kaldırdığı kayıt taslağa değil onay sırasına döner (başkasının
+taslağını göremeyen editör onu kaybetmesin).
 
 Her işlem iki kapıdan geçer: rotadaki `can:…` (rol) ve denetleyicideki
 `OrnekPolicy` (kayıt). Kilitli bir kayda elle gönderilen istek `403`,
 göremediği bir kayda (başkasının taslağı) gönderilen istek `404` alır —
 kaydın varlığı da ele verilmez. Ekrandaki yetki matrisi elle yazılmış
 bir tablo değil, `Role::can()`'in o anki cevabıdır. Kendi projenizde
-istemiyorsanız: `php cy module --disable=Ornek` ve klasörü silin.
+istemiyorsanız Sistem Bilgisi → Modüller'den kapatın (ya da
+`php cy module --disable=Ornek`) ve klasörü silin.
 
 **Migration adlandırma:** modül migration'ları `Stok/2026_…` biçiminde
 kaydedilir; iki modül aynı dosya adını kullansa bile çakışmaz.

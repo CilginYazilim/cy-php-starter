@@ -23,10 +23,18 @@ use Throwable;
 
 final class PanelNotices
 {
-    /** @var array<int,array{tur:string,metin:string,yol:string,baglanti:string}>|null */
+    /** @var array<int,array{id:string,tur:string,baslik:string,metin:string,yol:string,baglanti:string,kapatilabilir:bool}>|null */
     private static ?array $cache = null;
 
-    /** @return array<int,array{tur:string,metin:string,yol:string,baglanti:string}> */
+    /**
+     * BİLDİRİM BİÇİMİ: kısa başlık + tek cümle açıklama + (varsa)
+     * düzeltmenin yapılacağı sayfaya bağlantı. Yalnızca BİLGİ türündekiler
+     * kapatılabilir; uyarılar sorun çözülene kadar her sayfada kalır.
+     * Kapatılan bildirim tarayıcı oturumu boyunca gizlenir (çerez:
+     * cy_uyari_<id>, bkz. layouts/admin.php ve app.js).
+     *
+     * @return array<int,array{id:string,tur:string,baslik:string,metin:string,yol:string,baglanti:string,kapatilabilir:bool}>
+     */
     public static function forCurrentUser(): array
     {
         if (self::$cache !== null) {
@@ -40,12 +48,9 @@ final class PanelNotices
         $demoHesabi = Demo::enabled() && Demo::isDemoUser(Auth::user());
 
         if ($demoHesabi) {
-            $notices[] = [
-                'tur'      => 'info',
-                'metin'    => 'Demo hesabıyla giriş yaptınız. Her şeyi gezip deneyebilirsiniz; hesap bilgileri, kullanıcılar, site ayarları, sistem işlemleri ve e-posta gönderimi bu hesapta kilitlidir.',
-                'yol'      => '',
-                'baglanti' => '',
-            ];
+            $notices[] = self::notice('demo-hesabi', 'info', 'Demo hesabı',
+                'Her şeyi gezip deneyebilirsiniz; hesap bilgileri, kullanıcılar, site ayarları, sistem işlemleri ve e-posta gönderimi bu hesapta kilitli.',
+                kapatilabilir: true);
         }
 
         if (!Auth::can('system.view')) {
@@ -53,67 +58,65 @@ final class PanelNotices
         }
 
         if (Demo::enabled() && !$demoHesabi) {
-            $notices[] = [
-                'tur'      => 'warning',
-                'metin'    => 'Demo modu AÇIK: giriş ekranı örnek hesapları parolasıyla listeliyor. Bu bir demo sitesi değilse .env dosyasında APP_DEMO=false yapın.',
-                'yol'      => '',
-                'baglanti' => '',
-            ];
+            $notices[] = self::notice('demo-modu', 'warning', 'Demo modu açık',
+                'Giriş ekranı örnek hesapları parolasıyla listeliyor. Bu bir demo sitesi değilse .env dosyasında APP_DEMO=false yapın.');
         }
 
         /* Demo modu kapalı ama parolası herkesçe bilinen (Demo1234!)
          * örnek hesaplar duruyor: yerel makine dışında bu bir açıktır —
          * örnek veride bir YÖNETİCİ hesabı da var. */
         if (!Demo::enabled() && !self::isLocalRequest() && Demo::existing(Database::connection()) !== []) {
-            $notices[] = [
-                'tur'      => 'danger',
-                'metin'    => 'Örnek hesaplar (parolaları herkesçe bilinen "' . Demo::PAROLA . '") hâlâ duruyor. Silin: DELETE FROM kullanicilar WHERE eposta LIKE \'%.demo@ornek.com\';',
-                'yol'      => 'panel/kullanicilar',
-                'baglanti' => 'Kullanıcılar',
-            ];
+            $notices[] = self::notice('ornek-hesaplar', 'danger', 'Örnek hesaplar duruyor',
+                'Parolaları herkesçe bilinen ("' . Demo::PAROLA . '") hesapları silin: DELETE FROM kullanicilar WHERE eposta LIKE \'%.demo@ornek.com\';',
+                'panel/kullanicilar', 'Kullanıcılar');
         }
 
         if (Config::isDebug() && !self::isLocalRequest()) {
-            $notices[] = [
-                'tur'      => 'danger',
-                'metin'    => 'Hata ayıklama modu AÇIK ve site yerel bir bilgisayarda çalışmıyor: bir hata olduğunda ziyaretçi dosya yollarını ve SQL sorgularını görür. .env dosyasında APP_ENV=production ve APP_DEBUG=false yapın.',
-                'yol'      => 'panel/sistem',
-                'baglanti' => 'Sistem sayfası',
-            ];
+            $notices[] = self::notice('hata-ayiklama', 'danger', 'Hata ayıklama açık',
+                'Site yerel bir bilgisayarda çalışmıyor; bir hata olduğunda ziyaretçi dosya yollarını ve SQL sorgularını görür. .env dosyasında APP_ENV=production ve APP_DEBUG=false yapın.',
+                'panel/sistem', 'Sistem sayfası');
         }
 
         $bekleyen = self::pendingMigrations();
 
         if ($bekleyen > 0) {
-            $notices[] = [
-                'tur'      => 'warning',
-                'metin'    => $bekleyen . ' migration bekliyor. Güncellemeden sonra çalıştırılmazsa bazı özellikler eksik ya da hatalı çalışır.',
-                'yol'      => 'panel/sistem#migration',
-                'baglanti' => 'Şimdi çalıştır',
-            ];
+            $notices[] = self::notice('migration', 'warning', $bekleyen . ' migration bekliyor',
+                'Güncellemeden sonra çalıştırılmazsa bazı özellikler eksik ya da hatalı çalışır.',
+                'panel/sistem#migration', 'Şimdi çalıştır');
         }
 
         if (trim((string) Config::get('app.key', '')) === '') {
-            $notices[] = [
-                'tur'      => 'warning',
-                'metin'    => '.env dosyasında APP_KEY boş. Oturumlar kurulum klasörüne bağlı kalır (her dağıtımda herkes çıkış yapar). Üretmek için: php -r "echo bin2hex(random_bytes(32));"',
-                'yol'      => '',
-                'baglanti' => '',
-            ];
+            $notices[] = self::notice('app-key', 'warning', 'APP_KEY boş',
+                'Oturumlar kurulum klasörüne bağlı kalır (her dağıtımda herkes çıkış yapar). Üretmek için: php -r "echo bin2hex(random_bytes(32));"');
         }
 
         $kayit = Registration::closedReason();
 
         if ($kayit !== '') {
-            $notices[] = [
-                'tur'      => 'info',
-                'metin'    => $kayit,
-                'yol'      => 'panel/ayarlar/eposta',
-                'baglanti' => 'E-posta ayarları',
-            ];
+            $notices[] = self::notice('kayit-kapali', 'info', 'Üye kaydı kapalı', $kayit,
+                'panel/ayarlar/eposta', 'E-posta ayarları', kapatilabilir: true);
         }
 
         return self::$cache = $notices;
+    }
+
+    /** @return array{id:string,tur:string,baslik:string,metin:string,yol:string,baglanti:string,kapatilabilir:bool} */
+    private static function notice(
+        string $id,
+        string $tur,
+        string $baslik,
+        string $metin,
+        string $yol = '',
+        string $baglanti = '',
+        bool $kapatilabilir = false,
+    ): array {
+        return compact('id', 'tur', 'baslik', 'metin', 'yol', 'baglanti', 'kapatilabilir');
+    }
+
+    /** Kullanıcı bu bildirimi bu tarayıcı oturumunda kapatmış mı? */
+    public static function dismissed(array $notice): bool
+    {
+        return $notice['kapatilabilir'] && ($_COOKIE['cy_uyari_' . $notice['id']] ?? '') === '1';
     }
 
     /**

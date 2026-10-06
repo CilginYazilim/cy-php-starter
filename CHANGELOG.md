@@ -12,7 +12,7 @@ sayfasındadır.
 
 | Sürüm | Tarih | Özet |
 |---|---|---|
-| [1.5.0](#150--2026-10-06) | 2026-10-06 | Demo modu (tek tıkla giriş), modül yetkileri ve RBAC örnek modülü, sade Sistem sayfası |
+| [1.5.0](#150--2026-10-07) | 2026-10-07 | Demo modu (tek tıkla giriş), panelden modül aç/kapa, onay akışlı RBAC örnek modülü, sade panel tasarımı |
 | [1.4.0](#140--2026-10-06) | 2026-10-06 | İkinci güvenlik incelemesi |
 | [1.3.0](#130--2026-10-06) | 2026-10-06 | Güvenlik ve kararlılık |
 | [1.2.1](#121--2026-09-05) | 2026-09-05 | Takma ad (vitrin) adresi düzeltmesi |
@@ -22,10 +22,11 @@ sayfasındadır.
 
 ---
 
-## [1.5.0] — 2026-10-06
+## [1.5.0] — 2026-10-07
 
-Herkese açık deneme siteleri için demo modu ve kurulumla birlikte açık
-gelen örnek modül.
+Herkese açık deneme siteleri için demo modu, panelden açılıp kapanan
+modüller, kendi modülünüzü yazarken kopyalayacağınız onay akışlı örnek
+modül ve baştan sona sadeleşen panel.
 
 ### Eklendi
 
@@ -47,8 +48,13 @@ gelen örnek modül.
 - **Örnek modül kurulumda açık gelir.** Sihirbazın Site Ayarları
   adımında **Modüller** bölümü var; `module.json`'da
   `"kurulumda_acik": true` olan modül işaretli gelir. Kurulum modülü açar
-  ve tablolarını kurar — panelde modül aç/kapa ekranı olmadığı için
-  SSH'siz hostingte modül açmanın tek yolu buydu.
+  ve tablolarını kurar.
+- **Panelden modül aç/kapa:** Sistem Bilgisi → **Modüller** bölümünde her
+  modülün yanında bir düğme. Açarken modülün yalnızca KENDİ migration'ları
+  çalışır (bekleyen çekirdek migration'ları habersizce çalışmaz); hata
+  olursa modül yeniden kapatılır. Kapatmak tablo ve kayıt silmez. Demo
+  hesabında kilitlidir. Eskiden SSH'siz hostingte kurulumdan sonra modül
+  açmanın yolu yoktu.
 - Panel uyarıları: demo hesabına kilitli işlemler; asıl yöneticiye "demo
   modu açık"; demo modu kapalı bir sitede örnek hesaplar duruyorsa
   kırmızı uyarı.
@@ -59,14 +65,18 @@ gelen örnek modül.
   üretir.
 - **Modül örnek verisi:** `modules/Ad/seeders/*.php`; `php cy db:seed` ve
   sihirbazın "Örnek verileri de yükle"si açık modüllerinkini de çalıştırır.
-- **Örnek Modül artık bir RBAC örneği:** kayıtların sahibi ve durumu
-  (taslak / yayında) var. Yönetici her kaydı yönetir, editör yalnızca
-  kendisininkini (başkasının taslağını görmez), üye yalnızca yayındakileri
-  görür. Kural `OrnekPolicy`'de; görünüm ve denetleyici aynı sınıfa sorar,
-  elle gönderilen yetkisiz istek 403/404 alır. Ekranda "Sizin
-  yetkileriniz", `Role::can()`'in gerçek cevabından üretilen yetki
-  matrisi ve "Rastgele 5 örnek ekle" (yönetici). Kurulum 12 rastgele
-  kayıt üretir.
+- **Örnek Modül 1.2.0 — CRUD, onay akışı ve RBAC örneği.** Kayıtların
+  sahibi ve durumu var (taslak → onay bekliyor → yayında). **Üye** kayıt
+  yazar, düzenler, siler ve onaya gönderir ama yayınlayamaz; yayındaki
+  kaydını değiştirirse kayıt yeniden onaya düşer. **Editör** onay
+  bekleyenleri görür ve yayınlar (`ornek.publish`), yalnızca kendi kaydını
+  düzenler. **Yönetici** her şeyi yapar. Kural `OrnekPolicy`'de; görünüm ve
+  denetleyici aynı sınıfa sorar, elle gönderilen yetkisiz istek 403,
+  görülemeyen kayda istek 404 alır. Ekranda "Bu modül bir şablondur"
+  açıklaması (dosya yapısı, üç adım), "Sizin yetkileriniz", `Role::can()`'in
+  gerçek cevabından üretilen yetki matrisi ve "Rastgele 5 kayıt ekle"
+  (yönetici). Kurulum 12 rastgele kayıt üretir; sahipleri yönetici, editör
+  ve üyeler arasında dağılır. Adım adım rehber: `modules/Ornek/README.md`.
 - **Sistem Bilgisi → Kuyruklar kartı:** iş kuyruğu ve e-posta kuyruğu
   birlikte; son başarısız e-postalar; gönderim yöntemi "Kayıt" ise
   mektupların gönderilmeyip `storage/mail`'e yazıldığı açıkça yazar.
@@ -74,7 +84,11 @@ gelen örnek modül.
   hiç çıkmıyordu.
 - Hesabım → API anahtarı: yeni anahtar için **Kopyala** düğmesi ve
   listede "anahtarın tamamı yalnızca bir kez gösterilir" açıklaması.
-- Birim testleri 112 → 154.
+- Kontrol paneli, istatistik yetkisi olmayan rollere (editör, üye) boş
+  bir sayfa yerine erişebildikleri bölümlerin kısayollarını gösterir;
+  açık modüller kendiliğinden eklenir.
+- `Html::toText()`: HTML'den düz metin (özet, meta açıklama, kelime sayısı).
+- Birim testleri 112 → 173.
 
 ### Değiştirildi
 
@@ -89,18 +103,41 @@ gelen örnek modül.
   denetimlerde uyarılar önce ve açıklamalı, geçenler tek satır; bilgi
   kartları sütunlara akar (yanındakinin boyuna gerilip boş kutu
   bırakmaz). Masaüstünde sayfa ~%35 kısaldı.
+- **Sade panel tasarımı.** Kontrol panelindeki gradyan karşılama şeridi ve
+  renkli istatistik kartları kaldırıldı: tek satır selamlama, düz kartlar,
+  her sayı ilgili sayfaya bağlantı. Kartlarda gölge yok, birincil düğme düz
+  renk, grafikte boş günler soluk.
+- **Panel bildirimleri düzenlendi:** her sayfanın üstündeki uyarılar tek bir
+  kutuda alt alta; her biri ikon, kısa başlık, tek cümle ve sağda bağlantı.
+  Bilgi bildirimleri (ör. demo hesabı) kapatılabilir, tarayıcı oturumu
+  boyunca gizlenir. Sayfa içi uyarı kutuları (`cy-alert`) renkli zemin
+  yerine soldaki renk şeridiyle gösterilir; metin okunur kalır.
+- Ana sayfadaki özellik ızgarası geniş ekranda 3 + 3 dizilir (eskiden
+  4 + 2, ikinci satır yarım kalıyordu).
+- Sol menüdeki modül bağlantıları `Module::$menu`'den gelir (künye bir kez
+  okunur).
 - Panoya kopyalama ortak yardımcıya taşındı (`CY.copy`, `data-copy-target`).
 - Duman testi demo modunda demo parolası denetimini atlar (bilinçli
   gösterim).
+
+### Düzeltildi
+
+- Ana sayfadaki Hakkımızda özeti ve sayfaların meta açıklaması cümleleri
+  bitişik basıyordu ("Biz kimiz?Bu metni…"): `strip_tags` blok
+  sınırlarına boşluk koymuyordu.
+- Günlük satırları temiz adres kipinde hep `yol=/` yazıyordu; artık
+  isteğin gerçek adresini yazar.
 
 ### Güncelleme (1.4.0 → 1.5.0)
 
 Çekirdekte migration yok. Kodu çekmeniz yeterli; demo modu varsayılan
 olarak kapalıdır. Var olan bir kurulumda:
 
-- Örnek modülü açıp doldurmak için: `php cy module --enable=Ornek`,
-  `php cy migrate` ve `php cy db:seed --class=OrnekIcerik`. Modül zaten
-  açıksa `php cy migrate` yeni sütunları (sahip, durum, açıklama) ekler.
+- Örnek modülü açmak için panelde Sistem Bilgisi → Modüller'deki düğme
+  yeterli (tablolarını da kurar). Komut satırından: `php cy module
+  --enable=Ornek` ve `php cy migrate`; doldurmak için `php cy db:seed
+  --class=OrnekIcerik`. Modül zaten açıksa `php cy migrate` yeni
+  sütunları (sahip, durum, açıklama) ekler.
 - Demo modunu açmak için `.env`'ye `APP_DEMO=true` ekleyin. Giriş
   ekranı yalnızca veritabanında duran örnek hesapları listeler;
   `ali.yonetici` hesabı eski kurulumlarda yoktur (yeniden kurulumla

@@ -159,6 +159,74 @@ $bilgiKarti = static function (string $baslik, string $ikon, array $satirlar): v
     </div>
 </div>
 
+<!-- MODÜLLER — panelden aç/kapat (bkz. SystemController::toggleModule).
+     Düğme bir <button>: JavaScript olmadan da çalışır. Açarken modülün
+     tabloları kurulur; kapatmak hiçbir veriyi silmez. -->
+<?php
+$acikModul  = count(array_filter($moduller, static fn ($m): bool => $m->aktif));
+$modulKilit = !can('system.manage')
+    ? 'Modülleri açıp kapatma yetkiniz yok.'
+    : \App\Core\Demo::lockReason('panel/sistem/modul');
+?>
+<section class="cy-panel mb-3" id="moduller">
+    <header class="cy-panel__head">
+        <div>
+            <h3 class="cy-panel__title"><?= icon('box', 'cy-icon cy-icon--sm') ?> Modüller</h3>
+            <p class="cy-panel__sub">Açık modülün menüsü, sayfaları ve yetkileri devrededir. Kapatmak tablolarını ve kayıtlarını silmez.</p>
+        </div>
+        <span class="cy-pill"><?= $acikModul ?> / <?= count($moduller) ?> açık</span>
+    </header>
+
+    <?php if ($moduller === []): ?>
+        <p class="cy-panel__note">Henüz modül yok. Oluşturmak için: <code class="cy-mono">php cy make:module Stok</code></p>
+    <?php else: ?>
+        <ul class="cy-modules">
+            <?php foreach ($moduller as $modul): ?>
+                <?php
+                $rolYetkisi = array_sum(array_map('count', $modul->yetkiler));
+                $migrasyon  = $modul->hasMigrations() ? count(glob($modul->migrationsPath() . '/*.php') ?: []) : 0;
+                ?>
+                <li class="cy-module<?= $modul->aktif ? ' is-on' : '' ?>">
+                    <span class="cy-module__icon"><?= icon($modul->menu['icon'] ?? 'box', 'cy-icon cy-icon--sm') ?></span>
+
+                    <span class="cy-module__body">
+                        <strong><?= e($modul->baslik) ?> <small>v<?= e($modul->surum) ?></small></strong>
+                        <?php if ($modul->aciklama !== ''): ?>
+                            <span class="cy-module__desc"><?= e($modul->aciklama) ?></span>
+                        <?php endif; ?>
+                        <span class="cy-module__meta">
+                            <span class="cy-mono">modules/<?= e($modul->ad) ?></span>
+                            <?php if ($rolYetkisi > 0): ?><span><?= $rolYetkisi ?> rol yetkisi</span><?php endif; ?>
+                            <?php if ($migrasyon > 0): ?><span><?= $migrasyon ?> migration</span><?php endif; ?>
+                            <?php if ($modul->aktif && $modul->menu !== null): ?>
+                                <a class="cy-link" href="<?= e(url($modul->menu['route'])) ?>">Modüle git →</a>
+                            <?php endif; ?>
+                        </span>
+                    </span>
+
+                    <form method="post" action="<?= e(url('panel/sistem/modul/' . $modul->ad)) ?>" class="cy-module__toggle"
+                          <?php if ($modul->aktif): ?>data-confirm="<?= e($modul->baslik) ?> kapatılsın mı? Menüsü ve sayfaları kapanır; tabloları ve kayıtları silinmez."<?php endif; ?>>
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="durum" value="<?= $modul->aktif ? '0' : '1' ?>">
+                        <button type="submit" class="cy-switch<?= $modul->aktif ? ' is-on' : '' ?>" role="switch"
+                                aria-checked="<?= $modul->aktif ? 'true' : 'false' ?>"
+                                aria-label="<?= e($modul->baslik) ?> modülünü <?= $modul->aktif ? 'kapat' : 'aç' ?>"
+                                <?php if ($modulKilit !== null): ?>disabled title="<?= e($modulKilit) ?>"<?php endif; ?>>
+                            <span class="cy-switch__track" aria-hidden="true"><span class="cy-switch__thumb"></span></span>
+                            <span class="cy-switch__text"><?= $modul->aktif ? 'Açık' : 'Kapalı' ?></span>
+                        </button>
+                    </form>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+        <p class="cy-panel__note">
+            Yeni modül için <code class="cy-mono">php cy make:module Stok</code> ya da Örnek Modül'ü kopyalayın —
+            adım adım rehber: <code class="cy-mono">modules/Ornek/README.md</code>.
+            <?php if ($modulKilit !== null): ?><br><span class="text-muted"><?= e($modulKilit) ?></span><?php endif; ?>
+        </p>
+    <?php endif; ?>
+</section>
+
 <!-- BİLGİ KARTLARI — sütunlara akar, boş kutu kalmaz -->
 <div class="cy-masonry">
 
@@ -296,29 +364,6 @@ $bilgiKarti = static function (string $baslik, string $ikon, array $satirlar): v
                 </span>
             <?php endforeach; ?>
         </div>
-    </section>
-
-    <!-- MODÜLLER -->
-    <section class="cy-panel">
-        <header class="cy-panel__head">
-            <h3 class="cy-panel__title"><?= icon('server', 'cy-icon cy-icon--sm') ?> Modüller</h3>
-        </header>
-        <?php if ($moduller === []): ?>
-            <p class="cy-panel__note">Henüz modül yok. Oluşturmak için: <code class="cy-mono">php cy make:module Stok</code></p>
-        <?php else: ?>
-            <ul class="cy-list">
-                <?php foreach ($moduller as $modul): ?>
-                    <li class="cy-list__row">
-                        <span>
-                            <strong><?= e($modul->baslik) ?> <span class="cy-list__meta">v<?= e($modul->surum) ?></span></strong>
-                            <small><?= e($modul->aciklama) ?></small>
-                        </span>
-                        <span class="cy-dot <?= $modul->aktif ? 'is-ok' : 'is-off' ?>"><?= $modul->aktif ? 'Açık' : 'Kapalı' ?></span>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-            <p class="cy-panel__note">Açma/kapatma: <code class="cy-mono">php cy module --enable=Ad</code></p>
-        <?php endif; ?>
     </section>
 
 </div>

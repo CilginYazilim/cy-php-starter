@@ -10,7 +10,7 @@
 [![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?style=flat-square&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 ![Bağımlılık: sıfır](https://img.shields.io/badge/Bağımlılık-Sıfır-16a34a?style=flat-square)
-[![Testler](https://img.shields.io/badge/Birim_testi-154-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/actions)
+[![Testler](https://img.shields.io/badge/Birim_testi-173-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/actions)
 [![Lisans](https://img.shields.io/badge/Lisans-MIT-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/blob/main/LICENSE)
 
 [**▶ Canlı Demo**](https://cilginyazilim.com/kutuphane/uygulama/cy-php-starter/) · [PHP Başlangıç Şablonu sayfası](https://cilginyazilim.com/kutuphane/php-baslangic-sablonu) · [Çılgın Yazılım](https://cilginyazilim.com)
@@ -174,7 +174,7 @@ seçimdir. Bu şablon, şu durumlar için yazıldı:
 | **Zamanlayıcı** | Tek cron satırı · üst üste binme koruması |
 | **E-posta** | SMTP / mail() / diske yazma · toplu gönderim · kuyruk · panel arayüzü |
 | **REST API** | Standart yanıt zarfı · süreli Bearer anahtarı (yalnızca SHA-256 özeti saklanır) · hız sınırı · sayfalama |
-| **Modüller** | Aç/kapa · kendi rotaları, tabloları, görünümleri, menüsü, **rollere dağıttığı yetkileri** ve örnek verisi · RBAC'ı gösteren **Örnek Modül** kurulumda açık gelir |
+| **Modüller** | **Panelden tek tıkla aç/kapa** · kendi rotaları, tabloları, görünümleri, menüsü, **rollere dağıttığı yetkileri** ve örnek verisi · CRUD, onay akışı ve RBAC'ı gösteren **Örnek Modül** kurulumda açık gelir |
 | **Demo modu** | Herkese açık deneme sitesi için: giriş ekranında Yönetici / Editör / Üye ile **tek tıkla giriş** · örnek hesaplara parola, kullanıcı, ayar ve e-posta kilidi |
 | **PWA** | Panelden yönetilen künye (ad, simge, açılış adresi, görüntüleme modu, renk) · servis çalışanı · çevrimdışı sayfa |
 | **İçerik** | **Sayfa yönetimi** — zengin metin editörü · adres (slug) üretimi · taslak/yayın · menü · sayfa bazlı SEO |
@@ -184,7 +184,7 @@ seçimdir. Bu şablon, şu durumlar için yazıldı:
 | **Tema** | Tek renk seçin, panelin ve sitenin tamamı yeniden renklensin |
 | **Mobil** | Ön yüz ve panelin tamamı mobil öncelikli · 44px dokunma hedefleri · yapışkan menü · iOS yakınlaştırma ve çentik payı çözülmüş |
 | **Konsol** | `php cy` — 21 komut, üreteçler dahil |
-| **Testler** | 154 birim testi (veritabanı gerektirmez) · kurulu siteye duman testi · GitHub Actions'ta PHP 8.1–8.4 |
+| **Testler** | 173 birim testi (veritabanı gerektirmez) · kurulu siteye duman testi · GitHub Actions'ta PHP 8.1–8.4 |
 
 ---
 
@@ -388,7 +388,7 @@ php tests/smoke.php http://localhost/proje           # kurulu siteye HTTP deneti
 php tests/smoke.php http://localhost/proje --kullanici=admin --parola=… --api=cy_…
 ```
 
-`unit.php` 154 testi veritabanı olmadan çalıştırır. `smoke.php` siteyi
+`unit.php` 173 testi veritabanı olmadan çalıştırır. `smoke.php` siteyi
 değiştirmez: kurulum kilidi, gizli dosyalar (`.env`, `.git/`), açık
 yönlendirme, kaba kuvvet kilidi, kullanıcı tespiti, oturum çerezi, servis
 çalışanı ve API'yi dışarıdan sınar. Kısa sürede arka arkaya
@@ -411,6 +411,10 @@ php cy migrate
 Panelde `/panel/stok` hazır: listeleme, ekleme, silme. Modül kendi
 rotalarını, tablolarını, görünümlerini ve menü girdisini taşır.
 
+SSH erişimi yoksa modülü panelden açın: **Sistem Bilgisi → Modüller**
+bölümündeki düğme modülü açar ve tablolarını kurar. Kapatmak hiçbir
+veriyi silmez; menüsü, sayfaları ve yetkileri devreden çıkar.
+
 **Kapalı modül hiç yüklenmez** — rotaları tanımlanmaz, sınıfları
 yüklenmez, olayları dinlenmez.
 
@@ -421,10 +425,24 @@ dokunulmaz:
 "yetkiler": { "editor": ["stok.view", "stok.create"], "uye": ["stok.view"] }
 ```
 
-Nereden başlayacağınızı görmek için `modules/Ornek` klasörüne bakın:
-rol yetkisi (`module.json`), kayıt düzeyi kural (`OrnekPolicy`),
-migration, seeder, Repository ve görünümüyle eksiksiz çalışan bir
-örnektir. `module.json` içinde `"kurulumda_acik": true` yazan her modül
+### Örnek Modül: kopyalanacak şablon
+
+`modules/Ornek` kendi modülünüzü yazarken örnek alacağınız, kurulumda
+açık gelen eksiksiz bir modüldür: liste, ekleme, düzenleme, silme ve
+**onay akışı** (üye yazar, editör onaylar, sonra yayına çıkar).
+
+| Rol | Görür | Yapar |
+|---|---|---|
+| Yönetici | Her kaydı | Her kaydı düzenler, siler, yayınlar |
+| Editör | Yayındakileri, onay bekleyenleri, kendi kayıtlarını | Onaylar ve yayınlar; yalnızca kendi kaydını düzenler |
+| Üye | Yayındakileri ve kendi kayıtlarını | Yazar, düzenler, onaya gönderir; **yayınlayamaz** |
+
+Rol yetkisi `module.json`'da, kayıt düzeyi kural `OrnekPolicy`'dedir.
+Görünüm ve denetleyici aynı sınıfa sorar; elle gönderilen yetkisiz
+istek 403, görülemeyen kayda istek 404 alır. Adım adım rehber:
+[modules/Ornek/README.md](https://github.com/CilginYazilim/cy-php-starter/blob/main/modules/Ornek/README.md).
+
+`module.json` içinde `"kurulumda_acik": true` yazan her modül
 sihirbazda işaretli gelir.
 
 ---
@@ -614,7 +632,7 @@ rengini kendinize göre ayarlayın; arayüz anında yeni renginizi alır.
 
 ## Sürüm
 
-Güncel sürüm **1.5.0** (6 Ekim 2026). Sürüm numarası **kodda, tek yerde**
+Güncel sürüm **1.5.0** (7 Ekim 2026). Sürüm numarası **kodda, tek yerde**
 durur:
 
 ```php
@@ -629,7 +647,7 @@ numara kendiliğinden gelir; veritabanında ayrıca tutulmaz.
 
 | Sürüm | Tarih | Öne çıkanlar |
 |---|---|---|
-| [1.5.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.5.0) | 2026-10-06 | Demo modu (tek tıkla giriş, örnek hesaplara kilit); modüllerin rollere yetki dağıtması ve RBAC'ı gösteren Örnek Modül; sade Sistem Bilgisi sayfası |
+| [1.5.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.5.0) | 2026-10-07 | Demo modu (tek tıkla giriş, örnek hesaplara kilit); panelden modül aç/kapa; modüllerin rollere yetki dağıtması ve onay akışlı RBAC örnek modülü; sade panel tasarımı |
 | [1.4.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.4.0) | 2026-10-06 | İkinci güvenlik incelemesi: boşluklu/Türkçe klasörde ve Redis oturumunda giriş, kuyrukta kilitlenme, kayıtta e-posta doğrulaması, parola değişince düşen API anahtarları, hizmet engellemeye dayanıklı IP kilidi |
 | [1.3.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.3.0) | 2026-10-06 | Kapsamlı güvenlik incelemesi: kurulum sihirbazı ele geçirme, açık yönlendirme, kaba kuvvet kilidi, oturum sürümü; REST API anahtarları, birim ve duman testleri, GitHub Actions |
 | [1.2.1](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.2.1) | 2026-09-05 | Takma ad (vitrin) adresinden servis edilen kurulumda 404 ve yönlendirme döngüsü düzeltildi |
@@ -643,8 +661,10 @@ Her sürümün ayrıntısı:
 ### Güncelleme (1.4.0 → 1.5.0)
 
 Çekirdekte migration yok; kodu çekmeniz yeterli. Demo modu varsayılan
-olarak kapalıdır. Var olan bir kurulumda Örnek Modül'ü açmak ve deneme
-kayıtlarıyla doldurmak için:
+olarak kapalıdır. Var olan bir kurulumda Örnek Modül'ü açmanın en kolay
+yolu panel: **Sistem Bilgisi → Modüller** bölümündeki düğme modülü açar
+ve tablolarını kurar. Komut satırından açıp deneme kayıtlarıyla
+doldurmak için:
 
 ```bash
 php cy module --enable=Ornek

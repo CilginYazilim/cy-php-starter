@@ -47,23 +47,10 @@ foreach (Setting::groupLabels() as $anahtar => $baslik) {
 $modulOgeleri = [];
 
 foreach (Modules::enabled() as $modul) {
-    $json = $modul->yol . DIRECTORY_SEPARATOR . 'module.json';
-    $data = is_file($json) ? (json_decode((string) @file_get_contents($json), true) ?: []) : [];
-
-    // "menu": false → modül menüde görünmek istemiyor.
-    if (array_key_exists('menu', $data) && $data['menu'] === false) {
-        continue;
+    // "menu": false → modül menüde görünmek istemiyor (bkz. Module::parseMenu).
+    if ($modul->menu !== null) {
+        $modulOgeleri[] = $modul->menu;
     }
-
-    $tanim = is_array($data['menu'] ?? null) ? $data['menu'] : [];
-    $slug  = strtolower(preg_replace('/(?<!^)[A-Z]/', '-$0', $modul->ad) ?? $modul->ad);
-
-    $modulOgeleri[] = [
-        'route' => (string) ($tanim['route'] ?? 'panel/' . $slug),
-        'icon'  => (string) ($tanim['icon']  ?? 'server'),
-        'label' => (string) ($tanim['label'] ?? $modul->baslik),
-        'can'   => (string) ($tanim['can']   ?? str_replace('-', '_', $slug) . '.view'),
-    ];
 }
 
 $menu = [

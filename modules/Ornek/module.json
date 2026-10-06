@@ -1,17 +1,17 @@
 {
     "baslik": "Örnek Modül",
-    "aciklama": "Modül sisteminin ve rol tabanlı yetkinin (RBAC) çalışan örneği — inceleyip silebilirsiniz",
-    "surum": "1.1.0",
+    "aciklama": "Kendi modülünüzü yazarken kopyalayacağınız çalışan örnek: CRUD, onay akışı ve rol tabanlı yetki (RBAC)",
+    "surum": "1.2.0",
     "kurulumda_acik": true,
 
     "yetkiler": {
-        "editor": ["ornek.view", "ornek.create", "ornek.update.own"],
-        "uye":    ["ornek.view"]
+        "editor": ["ornek.view", "ornek.create", "ornek.update.own", "ornek.publish"],
+        "uye":    ["ornek.view", "ornek.create", "ornek.update.own"]
     },
 
     "menu": {
         "route": "panel/ornek",
-        "icon": "inbox",
+        "icon": "box",
         "label": "Örnek Modül",
         "can": "ornek.view"
     }

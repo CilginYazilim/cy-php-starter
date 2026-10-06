@@ -60,12 +60,13 @@ window.CY = (function ($) {
     };
 
     /** Çerez yazar (tema ve menü tercihi için). */
+    /* days = 0 → oturum çerezi: tarayıcı kapanınca silinir. */
     CY.setCookie = function (name, value, days) {
-        var expires = new Date(Date.now() + (days || 365) * 864e5).toUTCString();
+        var expires = days === 0 ? '' : '; expires=' + new Date(Date.now() + (days || 365) * 864e5).toUTCString();
         var secure  = location.protocol === 'https:' ? '; Secure' : '';
 
         document.cookie = name + '=' + encodeURIComponent(value) +
-                          '; expires=' + expires + '; path=/; SameSite=Lax' + secure;
+                          expires + '; path=/; SameSite=Lax' + secure;
     };
 
     CY.getCookie = function (name) {
@@ -464,6 +465,20 @@ window.CY = (function ($) {
             if (!window.confirm($(this).data('confirm'))) {
                 event.preventDefault();
             }
+        });
+
+        /* --- Panel bildirimini kapat ---
+         * Yalnızca bilgi bildirimlerinde düğme vardır. Tarayıcı oturumu
+         * boyunca gizlenir: sunucu çerezi görür ve bildirimi hiç basmaz
+         * (bkz. PanelNotices::dismissed), sayfa yüklenirken yanıp sönmez. */
+        $(document).on('click', '.js-notice-close', function () {
+            var $bildirim = $(this).closest('[data-notice]');
+            var $kutu     = $bildirim.parent();
+
+            CY.setCookie('cy_uyari_' + $bildirim.data('notice'), '1', 0);
+            $bildirim.remove();
+
+            if (!$kutu.children().length) { $kutu.remove(); }
         });
 
         /* --- Kopyala düğmesi ---

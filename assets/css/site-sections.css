@@ -129,11 +129,15 @@
 }
 
 /* ---------------------------- ÖZELLİK ----------------------------- */
+/* Sütun sayısı SABİT: auto-fit geniş ekranda 4 sütun açıyor, altı
+ * özellik 4 + 2 dizilip ikinci satır yarım kalıyordu. 3 + 3 dengeli. */
 .cy-feature-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    grid-template-columns: 1fr;
     gap: 1rem;
 }
+@media (min-width: 576px) { .cy-feature-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 992px) { .cy-feature-grid { grid-template-columns: repeat(3, 1fr); } }
 
 .cy-feature-grid--compact {
     grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -144,23 +148,19 @@
     background: var(--cy-surface);
     border: 1px solid var(--cy-border);
     border-radius: 14px;
-    transition: border-color .15s, transform .15s, box-shadow .15s;
+    transition: border-color .15s;
 }
 
-.cy-feature:hover {
-    border-color: var(--cy-brand);
-    transform: translateY(-2px);
-    box-shadow: 0 10px 28px rgba(15, 23, 42, .07);
-}
+.cy-feature:hover { border-color: var(--cy-brand-200); }
 
 .cy-feature__icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 46px;
-    height: 46px;
-    border-radius: 12px;
-    margin-bottom: .9rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    margin-bottom: .8rem;
     background: var(--cy-brand-soft);
     color: var(--cy-brand);
 }
@@ -226,9 +226,11 @@
 }
 
 /* ---------------------------- İLETİŞİM ---------------------------- */
+/* 200px: e-posta, telefon, WhatsApp, saatler ve adres geniş ekranda tek
+ * satıra sığar. 240px'te beşinci kart alt satırda yalnız kalıyordu. */
 .cy-contact-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: .75rem;
 }
 
@@ -466,6 +468,11 @@ a.cy-contact-card:hover { border-color: var(--cy-brand); color: inherit; }
 @media (max-width: 575.98px) {
     .cy-whatsapp-fab span { display: none; }
     .cy-whatsapp-fab { padding: .8rem; }
+}
+
+/* Yüzen düğme, sayfanın en altındaki telif satırının üstüne binmesin. */
+@media (min-width: 576px) {
+    body:has(.cy-whatsapp-fab) .cy-site-footer__bottom { padding-right: 9.5rem; }
 }
 
 /* ---------------------- ÖN YÜZ METİN BLOĞU ------------------------
