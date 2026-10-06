@@ -510,3 +510,283 @@ a.cy-contact-card:hover { border-color: var(--cy-brand); color: inherit; }
 .cy-detail--compact { display: grid; grid-template-columns: auto 1fr; gap: .35rem .9rem; margin: 0; }
 .cy-detail--compact dt { font-size: .78rem; color: var(--cy-text-muted); font-weight: 600; }
 .cy-detail--compact dd { margin: 0; font-size: .88rem; color: var(--cy-text); overflow-wrap: anywhere; }
+
+/* ==================================================================
+ *  ANA SAYFA (1.6.0) — panelden beslenen bölümler
+ * ------------------------------------------------------------------
+ *  Minimal: dikey boşluklar clamp(3rem, 8vw, 6rem); içerik en fazla
+ *  1140px. Renkler --cy-* değişkenlerinden; koyu tema eksiksiz.
+ *  Hareket (data-reveal) home.js'te; "hareketi azalt"ta kapalıdır.
+ * ================================================================== */
+
+.cy-home-container { width: 100%; max-width: 1140px; margin: 0 auto; padding-inline: 1rem; }
+
+.cy-home-section { padding-block: clamp(3rem, 8vw, 6rem); }
+.cy-home-section--alt { background: var(--cy-surface-soft); }
+.cy-home-section--tight { padding-block: clamp(2rem, 5vw, 3.5rem); }
+
+.cy-home-head { max-width: 680px; margin: 0 auto clamp(1.75rem, 4vw, 2.75rem); text-align: center; }
+.cy-home-head h2 { margin: .35rem 0 0; font-size: clamp(1.5rem, 3.2vw, 2.25rem); font-weight: 750; letter-spacing: -.02em; line-height: 1.2; }
+.cy-home-head p { margin: .6rem 0 0; color: var(--cy-text-soft); font-size: 1.02rem; }
+
+/* --- Karşılama --- */
+.cy-home-hero {
+    position: relative;
+    overflow: hidden;
+    padding-block: clamp(2.75rem, 7vw, 5.5rem) clamp(2.5rem, 6vw, 4.5rem);
+    background:
+        radial-gradient(60% 55% at 85% 10%, color-mix(in srgb, var(--cy-brand) 14%, transparent), transparent 70%),
+        radial-gradient(45% 45% at 5% 90%, color-mix(in srgb, var(--cy-brand) 9%, transparent), transparent 70%),
+        var(--cy-bg);
+}
+.cy-home-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(color-mix(in srgb, var(--cy-text) 9%, transparent) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: linear-gradient(to bottom, #000 30%, transparent 85%);
+    pointer-events: none;
+}
+.cy-home-hero__inner { position: relative; display: grid; grid-template-columns: 1fr; gap: clamp(2rem, 5vw, 3.5rem); align-items: center; }
+@media (min-width: 992px) { .cy-home-hero__inner { grid-template-columns: 1.02fr 1fr; } }
+
+.cy-home-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .3rem .75rem;
+    border: 1px solid color-mix(in srgb, var(--cy-brand) 25%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--cy-brand) 8%, var(--cy-surface));
+    color: var(--cy-brand-700);
+    font-size: .8rem;
+    font-weight: 650;
+}
+.cy-home-hero__title {
+    margin: 1rem 0 0;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    letter-spacing: -.03em;
+    line-height: 1.08;
+    text-wrap: balance;
+}
+.cy-home-hero__lead { max-width: 34rem; margin: 1.1rem 0 0; font-size: clamp(1rem, 1.6vw, 1.15rem); line-height: 1.65; color: var(--cy-text-soft); }
+.cy-home-hero__actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.6rem; }
+.cy-btn--lg { min-height: 48px; padding: .7rem 1.25rem; font-size: .98rem; border-radius: var(--cy-radius); }
+.cy-home-hero__trust { margin: 1.1rem 0 0; font-size: .85rem; color: var(--cy-text-muted); }
+
+/* Tarayıcı çerçevesi içinde panel ekran görüntüsü */
+.cy-home-hero__visual { position: relative; }
+.cy-browser {
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--cy-border);
+    border-radius: 14px;
+    background: var(--cy-surface);
+    box-shadow: 0 30px 60px -30px rgba(15, 23, 42, .35), 0 8px 20px -12px rgba(15, 23, 42, .2);
+}
+.cy-browser__bar { display: flex; align-items: center; gap: .35rem; padding: .55rem .8rem; border-bottom: 1px solid var(--cy-border); background: var(--cy-surface-soft); }
+.cy-browser__bar span { width: 9px; height: 9px; border-radius: 50%; background: var(--cy-border-strong); }
+.cy-browser__bar em { margin-left: .6rem; font-style: normal; font-size: .72rem; color: var(--cy-text-muted); }
+.cy-shot { display: block; width: 100%; height: auto; }
+.cy-shot--dark { display: none; }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-cy-theme="light"]) .cy-shot--light { display: none; }
+    :root:not([data-cy-theme="light"]) .cy-shot--dark { display: block; }
+}
+[data-cy-theme="dark"] .cy-shot--light { display: none; }
+[data-cy-theme="dark"] .cy-shot--dark { display: block; }
+
+.cy-home-chips { position: absolute; inset: auto 0 -1.1rem 0; display: flex; justify-content: center; flex-wrap: wrap; gap: .45rem; margin: 0; padding: 0; list-style: none; }
+.cy-home-chips li {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .38rem .7rem;
+    border: 1px solid var(--cy-border);
+    border-radius: 999px;
+    background: var(--cy-surface);
+    box-shadow: 0 6px 16px -10px rgba(15, 23, 42, .35);
+    font-size: .78rem;
+    font-weight: 600;
+}
+.cy-home-chips .cy-icon { color: var(--cy-success); }
+
+.cy-home-hero__img { width: 100%; height: auto; border-radius: 14px; }
+.cy-home-logo {
+    display: grid;
+    place-items: center;
+    gap: .75rem;
+    max-width: 340px;
+    margin-inline: auto;
+    padding: 2.25rem;
+    border: 1px solid var(--cy-border);
+    border-radius: 20px;
+    background: var(--cy-surface);
+    text-align: center;
+    font-weight: 700;
+}
+.cy-home-logo img { width: 140px; height: 140px; object-fit: contain; }
+
+/* --- Teknoloji şeridi --- */
+.cy-home-tech { padding-block: 1.25rem; border-block: 1px solid var(--cy-border); background: var(--cy-surface); }
+.cy-home-tech__list { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem 2rem; margin: 0 auto; list-style: none; }
+.cy-home-tech__list li { display: inline-flex; align-items: center; gap: .4rem; color: var(--cy-text-muted); font-size: .9rem; font-weight: 600; transition: color .15s; }
+.cy-home-tech__list li:hover { color: var(--cy-brand-600); }
+
+/* --- Adımlar: yatay zaman çizelgesi, mobilde dikey --- */
+.cy-home-steps { display: grid; grid-template-columns: 1fr; gap: 1.25rem; margin: 0; padding: 0; list-style: none; counter-reset: adim; }
+@media (min-width: 768px) { .cy-home-steps { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 2rem; } }
+.cy-home-steps li { position: relative; padding-left: 3.25rem; }
+@media (min-width: 768px) {
+    .cy-home-steps li { padding-left: 0; padding-top: 3.5rem; text-align: center; }
+    .cy-home-steps li:not(:last-child)::after { content: ""; position: absolute; top: 1.2rem; left: calc(50% + 1.75rem); right: calc(-50% + 1.75rem); height: 2px; background: var(--cy-border); }
+}
+.cy-home-steps__no {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: grid;
+    place-items: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    background: var(--cy-brand-600);
+    color: #fff;
+    font-weight: 800;
+}
+@media (min-width: 768px) { .cy-home-steps__no { left: 50%; transform: translateX(-50%); } }
+.cy-home-steps h3 { margin: 0 0 .3rem; font-size: 1.05rem; font-weight: 700; }
+.cy-home-steps p { margin: 0; color: var(--cy-text-soft); font-size: .93rem; line-height: 1.6; }
+
+/* --- Özellikler: bento (2 büyük + küçükler) --- */
+.cy-bento { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+@media (min-width: 992px) { .cy-bento { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; } }
+.cy-bento__item {
+    padding: 1.25rem;
+    border: 1px solid var(--cy-border);
+    border-radius: 16px;
+    background: var(--cy-surface);
+    transition: border-color .15s;
+}
+.cy-bento__item:hover { border-color: var(--cy-brand-200); }
+@media (min-width: 992px) {
+    .cy-bento__item.is-wide { grid-column: span 2; padding: 1.6rem; }
+    .cy-bento__item.is-wide h3 { font-size: 1.2rem; }
+}
+.cy-bento__icon { display: inline-grid; place-items: center; width: 42px; height: 42px; margin-bottom: .9rem; border-radius: 11px; background: var(--cy-brand-100); color: var(--cy-brand-600); }
+.cy-bento__item h3 { margin: 0 0 .35rem; font-size: 1.02rem; font-weight: 700; }
+.cy-bento__item p { margin: 0; color: var(--cy-text-soft); font-size: .9rem; line-height: 1.6; }
+@media (max-width: 575.98px) {
+    .cy-bento__item { padding: 1rem; }
+    .cy-bento__item p { font-size: .84rem; }
+}
+
+/* --- Rolleri deneyin --- */
+.cy-roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+.cy-roles__card { display: flex; flex-direction: column; gap: .9rem; padding: 1.35rem; border: 1px solid var(--cy-border); border-radius: 16px; background: var(--cy-surface); }
+.cy-roles__card .cy-role { align-self: flex-start; }
+.cy-roles__card ul { flex: 1; margin: 0; padding: 0; list-style: none; font-size: .9rem; }
+.cy-roles__card li { display: flex; gap: .45rem; padding: .25rem 0; color: var(--cy-text-soft); }
+.cy-roles__card li .cy-icon { flex-shrink: 0; margin-top: .2rem; color: var(--cy-success); }
+
+/* --- Kod örneği (koyu kart, sekmeli) --- */
+.cy-code-wrap { max-width: 820px; }
+.cy-code { overflow: hidden; border-radius: 16px; background: #0b1220; color: #e2e8f0; box-shadow: 0 30px 60px -35px rgba(15, 23, 42, .6); }
+.cy-code__tabs { display: flex; gap: .25rem; padding: .55rem .6rem 0; border-bottom: 1px solid #1e293b; }
+.cy-code__tabs button {
+    padding: .5rem .9rem;
+    border: 0;
+    border-radius: 8px 8px 0 0;
+    background: transparent;
+    color: #94a3b8;
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.cy-code__tabs button[aria-selected="true"] { background: #131c2e; color: #fff; }
+.cy-code__tabs button:focus-visible { outline: 2px solid var(--cy-brand-400); outline-offset: -2px; }
+.cy-code__panel { position: relative; background: #131c2e; }
+.cy-code__panel[hidden] { display: none; }
+.cy-code__panel + .cy-code__panel { border-top: 1px solid #1e293b; }
+.cy-code pre { margin: 0; padding: 1.25rem 1.25rem 1.4rem; overflow-x: auto; font-size: .86rem; line-height: 1.7; }
+.cy-code code { color: inherit; font-family: var(--cy-font-mono); white-space: pre; }
+.cy-code__copy {
+    position: absolute;
+    top: .6rem;
+    right: .6rem;
+    padding: .25rem .6rem;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    background: #0b1220;
+    color: #cbd5e1;
+    font-size: .75rem;
+    cursor: pointer;
+}
+.cy-code__copy:hover { color: #fff; border-color: #64748b; }
+
+/* --- Sık sorulan sorular (JavaScript'siz <details>) --- */
+.cy-faq-wrap { max-width: 760px; }
+.cy-faq details { border-bottom: 1px solid var(--cy-border); }
+.cy-faq summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.05rem 0;
+    font-weight: 650;
+    cursor: pointer;
+    list-style: none;
+}
+.cy-faq summary::-webkit-details-marker { display: none; }
+.cy-faq summary::after { content: "+"; flex-shrink: 0; color: var(--cy-brand-600); font-size: 1.25rem; line-height: 1; transition: transform .2s; }
+.cy-faq details[open] summary::after { transform: rotate(45deg); }
+.cy-faq summary:focus-visible { outline: 2px solid var(--cy-brand); outline-offset: 2px; border-radius: 4px; }
+.cy-faq details p { margin: 0 0 1.1rem; color: var(--cy-text-soft); line-height: 1.7; }
+
+/* --- Hakkımızda özeti --- */
+.cy-home-about { display: grid; grid-template-columns: 1fr; gap: 1rem 3rem; }
+@media (min-width: 992px) { .cy-home-about { grid-template-columns: .8fr 1.2fr; align-items: start; } }
+.cy-home-about h2 { margin: .35rem 0 0; font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 750; letter-spacing: -.02em; }
+.cy-home-about p { color: var(--cy-text-soft); line-height: 1.75; }
+
+/* --- Son çağrı bandı --- */
+.cy-home-cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.25rem;
+    padding: clamp(1.75rem, 4vw, 2.75rem);
+    border-radius: 20px;
+    background: linear-gradient(135deg, var(--cy-brand-600), var(--cy-brand-700));
+    color: #fff;
+}
+.cy-home-cta h2 { margin: 0; font-size: clamp(1.35rem, 3vw, 1.9rem); font-weight: 750; letter-spacing: -.02em; color: #fff; }
+.cy-home-cta p { margin: .4rem 0 0; color: rgba(255, 255, 255, .85); }
+.cy-home-cta__actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.cy-btn--light { background: #fff; color: var(--cy-brand-700); border-color: #fff; }
+.cy-btn--light:hover { background: var(--cy-brand-50); color: var(--cy-brand-700); }
+.cy-btn--outline-light { background: transparent; color: #fff; border-color: rgba(255, 255, 255, .55); }
+.cy-btn--outline-light:hover { background: rgba(255, 255, 255, .12); color: #fff; border-color: #fff; }
+
+/* --- Görünürken hafifçe belir (home.js) --- */
+.cy-reveal-ready [data-reveal] { opacity: 0; transform: translateY(14px); transition: opacity .5s ease, transform .5s ease; }
+.cy-reveal-ready [data-reveal].is-visible { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+    .cy-reveal-ready [data-reveal] { opacity: 1; transform: none; transition: none; }
+}
+
+/* --- Sabit WhatsApp düğmesi alt bilgide gizlenir (app.js) --- */
+.cy-whatsapp-fab { transition: transform .2s, opacity .2s, box-shadow .15s; }
+.cy-whatsapp-fab.is-hidden { opacity: 0; transform: translateY(12px); pointer-events: none; }
+@media (max-width: 575.98px) {
+    .cy-whatsapp-fab { width: 56px; height: 56px; justify-content: center; bottom: calc(1rem + env(safe-area-inset-bottom)); }
+}
+
+/* E-posta adresi "@"tan sonra kırılır (görünümde <wbr>), kelime ortasından değil. */
+.cy-contact-card__value { overflow-wrap: normal; word-break: normal; }
+@media (max-width: 575.98px) {
+    /* "Kopyala" düğmesi kodun ilk satırına binmesin. */
+    .cy-code pre { padding-top: 2.6rem; }
+}

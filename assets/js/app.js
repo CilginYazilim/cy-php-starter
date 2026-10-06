@@ -486,6 +486,18 @@ window.CY = (function ($) {
             $(this).closest('.cy-notice').toggleClass('is-open');
         });
 
+        /* --- Sabit WhatsApp düğmesi alt bilgiye gelince gizlenir ---
+         * Sayfanın sonundaki düğmelerin ve telif satırının üstüne
+         * binmesin. Alt bilgi görünür olduğu sürece saklı kalır. */
+        var fab    = document.querySelector('.cy-whatsapp-fab');
+        var altlik = document.querySelector('.cy-site-footer');
+
+        if (fab && altlik && 'IntersectionObserver' in window) {
+            new IntersectionObserver(function (girdiler) {
+                fab.classList.toggle('is-hidden', girdiler[0].isIntersecting);
+            }).observe(altlik);
+        }
+
         /* --- Kopyala düğmesi ---
          * <button data-copy-target="#alan" data-copy-label="API anahtarı">
          * hedef alanın değerini panoya alır. */

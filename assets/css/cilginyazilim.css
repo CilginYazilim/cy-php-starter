@@ -85,7 +85,7 @@
 
     --cy-text:         #0f172a;
     --cy-text-soft:    #475569;
-    --cy-text-muted:   #94a3b8;
+    --cy-text-muted:   #64748b;  /* beyazda 4.76:1 (WCAG AA); eskiden #94a3b8 = 2.56:1 */
 
     --cy-border:       #e6ebf2;
     --cy-border-strong:#d3dbe6;
@@ -1119,6 +1119,21 @@ table.dataTable > thead .sorting_desc:after { display: none !important; }
 .cy-divider   { height: 1px; background: var(--cy-border); border: 0; margin: 1rem 0; }
 .cy-link      { color: var(--cy-brand-600); text-decoration: none; font-weight: 600; }
 .cy-link:hover { text-decoration: underline; color: var(--cy-brand-700); }
+
+/* "İçeriğe geç": klavyeyle gezinen ilk Tab'da görür, menüyü atlar. */
+.cy-skip {
+    position: absolute;
+    top: -100px;
+    left: 1rem;
+    z-index: 2000;
+    padding: .6rem 1rem;
+    border-radius: var(--cy-radius-sm);
+    background: var(--cy-brand-600);
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+}
+.cy-skip:focus { top: 1rem; color: #fff; outline: 3px solid var(--cy-brand-200); }
 
 /* Yalnızca ekran okuyucular için (görsel olarak gizli) */
 .cy-sr-only {

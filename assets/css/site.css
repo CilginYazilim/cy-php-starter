@@ -323,3 +323,10 @@ body.cy-site { background: var(--cy-bg); }
 @supports (padding: max(0px)) {
     .cy-site-footer { padding-bottom: max(1.75rem, env(safe-area-inset-bottom)); }
 }
+
+/* Ana sayfadaki "Bu rolle gir" ile gelinen demo hesabı (login.js). */
+.cy-quick-login__item.is-highlight {
+    border-color: var(--cy-brand);
+    background: color-mix(in srgb, var(--cy-brand) 7%, var(--cy-surface));
+    box-shadow: 0 0 0 3px var(--cy-brand-100);
+}

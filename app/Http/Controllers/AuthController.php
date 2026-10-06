@@ -49,6 +49,8 @@ final class AuthController extends Controller
              * ekranı "Demo1234!" parolasını öneriyordu. */
             'demoAccounts' => Demo::loginAccounts($this->db),
             'demoMode'     => Demo::enabled(),
+            // Ana sayfadaki "Bu rolle gir": hesap vurgulanır. Parola adreste ASLA taşınmaz.
+            'vurgulanan'   => $request->input('demo'),
         ], 'layouts/site');
     }
 

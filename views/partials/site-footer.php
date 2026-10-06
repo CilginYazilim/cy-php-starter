@@ -28,7 +28,15 @@ $socials = [
     'sosyal_linkedin'  => ['label' => 'LinkedIn',    'icon' => 'linkedin'],
     'sosyal_youtube'   => ['label' => 'YouTube',     'icon' => 'youtube'],
     'sosyal_github'    => ['label' => 'GitHub',      'icon' => 'github'],
+    'sosyal_pinterest' => ['label' => 'Pinterest',   'icon' => 'pinterest'],
 ];
+
+/* Şablon vitrini (Örnek Kodlar sütunu) ve imza satırı AYARDIR:
+ * örnek veriyle kurulumda açık gelir, kendi projenizde kapatırsınız
+ * (Ayarlar → Genel). Eskiden koda gömülüydü; şablonu alan herkesin
+ * sitesinde bizim bağlantılarımız görünüyordu. */
+$vitrin = Setting::bool('vitrin_tanitim_goster', false);
+$imza   = Setting::bool('site_imza_goster', true);
 
 $whatsapp = HomeController::whatsappLink();
 $eposta   = Setting::get('iletisim_eposta');
@@ -121,6 +129,7 @@ $kaynaklar = [
                 </ul>
             </div>
 
+            <?php if ($vitrin): ?>
             <div class="col-12 col-sm-6 col-lg-3">
                 <span class="cy-eyebrow d-block mb-2">Örnek Kodlar</span>
                 <ul class="cy-footer-list cy-footer-list--icons">
@@ -134,14 +143,15 @@ $kaynaklar = [
                     <?php endforeach; ?>
                 </ul>
             </div>
+            <?php endif; ?>
 
-            <div class="col-12 col-lg-3">
+            <div class="col-12 <?= $vitrin ? 'col-lg-3' : 'col-sm-6 col-lg-6' ?>">
                 <span class="cy-eyebrow d-block mb-2">İletişim</span>
                 <ul class="cy-footer-list cy-footer-list--icons">
                     <?php if ($eposta !== ''): ?>
                         <li>
                             <?= icon('mail', 'cy-icon cy-icon--sm') ?>
-                            <a href="mailto:<?= e($eposta) ?>"><?= e($eposta) ?></a>
+                            <a href="mailto:<?= e($eposta) ?>"><?= str_replace('@', '@<wbr>', e($eposta)) ?></a>
                         </li>
                     <?php endif; ?>
 
@@ -175,13 +185,13 @@ $kaynaklar = [
         <hr class="cy-divider">
 
         <div class="cy-site-footer__bottom d-flex flex-wrap justify-content-between gap-2 small cy-muted">
-            <span><?= date('Y') ?> © <?= e(Setting::get('site_adi', $appName ?? '')) ?>. Tüm hakları saklıdır.</span>
-            <span>
-                <a class="cy-link" href="https://cilginyazilim.com/kutuphane" target="_blank" rel="noopener">Kod Kütüphanesi</a>
-                ·
-                <a class="cy-link" href="https://cilginyazilim.com" target="_blank" rel="noopener">cilginyazilim.com</a>
-                ile geliştirildi
-            </span>
+            <span><?= date('Y') ?> © <?= e(site_brand()) ?>. Tüm hakları saklıdır.<?php if (($kvkk = Setting::get('sistem_kvkk_sayfa')) !== ''): ?> · <a class="cy-link" href="<?= e(url($kvkk)) ?>">Gizlilik ve KVKK</a><?php endif; ?></span>
+            <?php if ($imza): ?>
+                <span>
+                    <a class="cy-link" href="https://cilginyazilim.com/kutuphane/php-baslangic-sablonu" target="_blank" rel="noopener">CY PHP Starter</a>
+                    ile geliştirildi
+                </span>
+            <?php endif; ?>
         </div>
     </div>
 </footer>

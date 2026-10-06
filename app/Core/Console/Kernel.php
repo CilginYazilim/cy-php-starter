@@ -78,6 +78,12 @@ final class Kernel
         ApiTokenCommand::class,
     ];
 
+    /** Kayıtlı komut sayısı — ana sayfadaki {komut} yer tutucusu için. */
+    public static function commandCount(): int
+    {
+        return count(self::COMMANDS);
+    }
+
     /** @param array<int,string> $argv */
     public function run(array $argv): int
     {

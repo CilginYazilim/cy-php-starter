@@ -1,0 +1,12 @@
+CY PHP Starter — örnek dosya
+
+Bu dosya, REST API'nin dosya uçlarını denemeniz için örnek veriyle gelir.
+Mobil uygulamanız oturum açtıktan sonra şu uçlarla dosyaları listeler ve indirir:
+
+  GET /api/v1/dosyalar          Dosya listesi (ad, boyut, tür, indirme adresi)
+  GET /api/v1/dosyalar/{ad}     Dosyanın kendisi (Bearer anahtarı gerekir)
+
+Dosyalar storage/files/ornek/ klasöründedir; web'den doğrudan erişilemez,
+yalnızca oturum açmış kullanıcıya API üzerinden verilir.
+
+ÇILGIN Yazılım · https://cilginyazilim.com/kutuphane

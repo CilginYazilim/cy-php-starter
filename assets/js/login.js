@@ -30,6 +30,16 @@ jQuery(function ($) {
         $form.trigger('submit');
     });
 
+    /* Ana sayfadaki "Bu rolle gir" (?demo=…): o hesap vurgulanır ve
+     * alanlar doldurulur ama form GÖNDERİLMEZ; ziyaretçi onaylar. */
+    var $vurgu = $('.js-quick-login.is-highlight').first();
+
+    if ($vurgu.length) {
+        $('#identifier').val($vurgu.data('identifier'));
+        $('#password').val($vurgu.data('password'));
+        $vurgu.trigger('focus');
+    }
+
     $form.on('submit', function () {
         var $button = $form.find('button[type="submit"]');
 

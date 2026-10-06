@@ -106,7 +106,7 @@ final class PanelNotices
         $kayit = Registration::closedReason();
 
         if ($kayit !== '') {
-            $notices[] = self::notice('kayit-kapali', 'info', 'Üye kaydı kapalı', $kayit,
+            $notices[] = self::notice('kayit-kapali', 'info', Registration::developmentPreview() ? 'Doğrulama mektupları gönderilmiyor' : 'Üye kaydı kapalı', $kayit,
                 'panel/ayarlar/eposta', 'E-posta ayarları', kapatilabilir: true);
         }
 

@@ -106,7 +106,10 @@ $menu[] = [
         </span>
         <span class="cy-sidebar__title">
             <strong><?= e(Setting::get('site_adi', $appName ?? '')) ?></strong>
-            <span><?= e($appBrand ?? 'Çılgın Yazılım') ?></span>
+            <?php /* Marka site adından farklıysa altında küçük satır. */ ?>
+            <?php if (site_brand() !== Setting::get('site_adi', $appName ?? '')): ?>
+                <span><?= e(site_brand()) ?></span>
+            <?php endif; ?>
         </span>
     </a>
 

@@ -101,8 +101,15 @@ $whatsapp = HomeController::whatsappLink();
                                 <dt>Slogan</dt>
                                 <dd><?= e(Setting::get('site_slogan')) ?></dd>
                             <?php endif; ?>
-                            <dt>Geliştirici</dt>
-                            <dd><a class="cy-link" href="https://cilginyazilim.com" target="_blank" rel="noopener">cilginyazilim.com</a></dd>
+                            <?php if (site_brand() !== Setting::get('site_adi', $appName ?? '')): ?>
+                                <dt>Kurum</dt>
+                                <dd><?= e(site_brand()) ?></dd>
+                            <?php endif; ?>
+                            <?php /* Şablon imzası Ayarlar → Genel'den kapatılabilir. */ ?>
+                            <?php if (Setting::bool('site_imza_goster', true)): ?>
+                                <dt>Altyapı</dt>
+                                <dd><a class="cy-link" href="https://cilginyazilim.com/kutuphane/php-baslangic-sablonu" target="_blank" rel="noopener">CY PHP Starter</a></dd>
+                            <?php endif; ?>
                         </dl>
                     </div>
                 </div>

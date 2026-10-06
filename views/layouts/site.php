@@ -66,7 +66,11 @@ $siteDil = substr($siteDil, 0, 5);
     <meta property="og:description" content="<?= e($ogAciklama) ?>">
     <meta property="og:url" content="<?= e($kanonik) ?>">
     <meta property="og:image" content="<?= e($ogGorsel) ?>">
-    <meta property="og:locale" content="tr_TR">
+    <?php /* Sitenin diline göre (Ayarlar → Genel → Dil). */ ?>
+    <meta property="og:locale" content="<?= e(['tr' => 'tr_TR', 'en' => 'en_US', 'de' => 'de_DE', 'fr' => 'fr_FR', 'ar' => 'ar_AR'][$siteDil] ?? 'tr_TR') ?>">
+    <?php if (isset($ogTur)): ?>
+        <meta property="article:modified_time" content="<?= e($ogDegisiklik ?? '') ?>">
+    <?php endif; ?>
 
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="<?= e($ogBaslik) ?>">
@@ -101,6 +105,13 @@ $siteDil = substr($siteDil, 0, 5);
     <?php /* Ayarlar → Sistem → Tema Rengi. Varsayılan renkte hiçbir şey basılmaz. */ ?>
     <?= App\Core\Theme::styleTag() ?>
 
+    <?php /* YAPISAL VERİ (JSON-LD). Veri bloğudur, ÇALIŞTIRILMAZ: İçerik
+             Güvenliği Politikası (script-src 'self') onu engellemez.
+             JSON_HEX_TAG, metindeki "</script>" ile bloğun kapanmasını önler. */ ?>
+    <?php if (!empty($jsonLd)): ?>
+        <script type="application/ld+json"><?= json_encode(count($jsonLd) === 1 ? $jsonLd[0] : $jsonLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+    <?php endif; ?>
+
     <?php
     /* ANALYTICS KODU (Ayarlar → SEO)
      *
@@ -122,6 +133,8 @@ $siteDil = substr($siteDil, 0, 5);
     <?php endif; ?>
 </head>
 <body class="cy-app cy-site"<?= ($currentUser ?? null) !== null ? ' data-cy-auth="1"' : '' ?>>
+
+    <a href="#icerik" class="cy-skip">İçeriğe geç</a>
 
     <?php View::partial('partials/site-nav'); ?>
 
@@ -155,7 +168,7 @@ $siteDil = substr($siteDil, 0, 5);
             </div>
         </div>
     <?php else: ?>
-        <main>
+        <main id="icerik" tabindex="-1">
             <?= $content ?? '' ?>
         </main>
     <?php endif; ?>
@@ -166,8 +179,8 @@ $siteDil = substr($siteDil, 0, 5);
 
     <script type="application/json" id="cy_flash"><?= json_encode($flashes, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 
-    <script src="<?= e(asset('js/jquery-3.7.0.js')) ?>"></script>
-    <script src="<?= e(asset('js/bootstrap.bundle.js')) ?>"></script>
+    <script src="<?= e(asset('js/jquery-3.7.0.min.js')) ?>"></script>
+    <script src="<?= e(asset('js/bootstrap.bundle.min.js')) ?>"></script>
     <script src="<?= e(asset('js/app.js')) ?>"></script>
 
     <?php foreach (($scripts ?? []) as $script): ?>

@@ -14,7 +14,10 @@ use App\Core\Env;
 
 return [
     'name'  => Env::get('APP_NAME', 'Yeni Proje'),
-    'brand' => 'Çılgın Yazılım',
+
+    /* Marka adı ARTIK AYARDADIR (Ayarlar → Genel → Marka / Kurum Adı;
+     * bkz. site_brand()). Koda gömülü "Çılgın Yazılım" her projenin
+     * panelinde ve künyesinde görünüyordu. */
 
     /* -----------------------------------------------------------------
      *  ŞABLON SÜRÜMÜ  —  TEK DOĞRU KAYNAK
@@ -32,9 +35,13 @@ return [
      *  (github.com/CilginYazilim/cy-php-starter/releases) ve anlamsal
      *  sürümleme kullanır: BÜYÜK.KÜÇÜK.YAMA
      * -------------------------------------------------------------- */
-    'version' => '1.5.1',
+    'version' => '1.6.0',
 
-    'desc'  => Env::get('APP_DESCRIPTION', 'Çılgın Yazılım örnek uygulaması'),
+    /* Birim testi sayısı — ana sayfadaki {test} yer tutucusu. tests/unit.php
+     * gerçek sayıyla karşılaştırır; test eklenip burası güncellenmezse kırılır. */
+    'test_sayisi' => 0,
+
+    'desc'  => Env::get('APP_DESCRIPTION', ''),
     'url'   => Env::get('APP_URL', ''),
 
     /* Kuruluma özel gizli anahtar (64 onaltılık karakter). Kurulum

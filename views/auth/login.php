@@ -93,8 +93,9 @@ $demoMode     = $demoMode ?? false;
 
                                 <div class="cy-quick-login__list">
                                     <?php foreach ($demoAccounts as $account): ?>
+                                        <?php $vurgu = ($vurgulanan ?? '') === $account['kullanici_adi']; ?>
                                         <button type="button"
-                                                class="cy-quick-login__item js-quick-login"
+                                                class="cy-quick-login__item js-quick-login<?= $vurgu ? ' is-highlight' : '' ?>"
                                                 data-identifier="<?= e($account['kullanici_adi']) ?>"
                                                 data-password="<?= e($account['parola']) ?>"
                                                 aria-label="<?= e($account['etiket']) ?> hesabıyla giriş yap">
