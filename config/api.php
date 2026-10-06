@@ -23,6 +23,10 @@ return [
     'rate_limit'  => Env::int('API_RATE_LIMIT', 120),
     'rate_window' => Env::int('API_RATE_WINDOW', 60), // saniye
 
+    /* Mobil oturumun ömrü (gün): POST api/v1/oturum ile alınan token.
+       Kullanıcı Hesabım → Bağlı cihazlar'dan istediği an kapatabilir. */
+    'session_days' => Env::int('API_SESSION_DAYS', 30),
+
     /* Sayfalama */
     'per_page'     => 25,
     'max_per_page' => 100,

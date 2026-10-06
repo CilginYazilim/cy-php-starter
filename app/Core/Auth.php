@@ -153,6 +153,64 @@ final class Auth
      */
     public static function attempt(string $identifier, string $password, Request $request, bool $remember = false): array
     {
+        $sonuc = self::verifyCredentials($identifier, $password, $request);
+
+        if (!$sonuc['ok']) {
+            return $sonuc;
+        }
+
+        /** @var User $user */
+        $user  = $sonuc['user'];
+        $ip    = $request->ip();
+        $users = new UserRepository(Database::connection());
+
+        self::login($user);
+        $users->touchLogin($user->id, $ip);
+
+        /* "Beni hatırla" YALNIZCA kullanıcı istediğinde. İşaretlenmemiş
+         * bir girişte eski jetonu da temizliyoruz: kullanıcının
+         * "bu sefer hatırlama" tercihi, önceki oturumdan kalan çerezi
+         * de geçersiz kılmalı. */
+        if ($remember) {
+            self::rememberUser($user);
+        } else {
+            self::forgetRemember($user->id);
+        }
+
+        self::issueDevice($user, $sonuc['cihaz']);
+
+        Logger::info('Giriş yapıldı', [
+            'kullanici' => $user->id,
+            'rol'       => $user->rol,
+            'ip'        => $ip,
+        ], 'auth');
+
+        /* Olay, oturum AÇILDIKTAN sonra yayınlanır: dinleyiciler
+         * Auth::user() ile kullanıcıya erişebilir. */
+        Events::dispatch(new UserLoggedIn($user, $ip));
+
+        $mesaj = 'Hoş geldiniz, ' . $user->ad . '.';
+
+        // Silinmeyi bekleyen hesap: giriş yapmak silmeyi iptal eder (bkz. AccountDeletion).
+        if (AccountDeletion::cancel($user->id)) {
+            $mesaj .= ' Hesap silme isteğiniz iptal edildi.';
+        }
+
+        return ['ok' => true, 'message' => $mesaj, 'user' => $user];
+    }
+
+    /**
+     * Kimlik bilgilerini DOĞRULAR ama oturum AÇMAZ.
+     *
+     * Kaba kuvvet sayacı, kilit, zamanlama eşitlemesi ve hesap durumu
+     * denetimi buradadır. Tarayıcı girişi (attempt) ve mobil API girişi
+     * (POST api/v1/oturum) aynı kapıdan geçer; ikinci bir "daha gevşek"
+     * giriş yolu olmaz.
+     *
+     * @return array{ok:bool,message:string,user:?User,cihaz?:?string,onay?:User}
+     */
+    public static function verifyCredentials(string $identifier, string $password, Request $request): array
+    {
         $db      = Database::connection();
         $users   = new UserRepository($db);
         $limiter = new RateLimiter($db);
@@ -254,32 +312,7 @@ final class Auth
             $users->updatePasswordHash($user->id, password_hash($password, PASSWORD_DEFAULT));
         }
 
-        self::login($user);
-        $users->touchLogin($user->id, $ip);
-
-        /* "Beni hatırla" YALNIZCA kullanıcı istediğinde. İşaretlenmemiş
-         * bir girişte eski jetonu da temizliyoruz: kullanıcının
-         * "bu sefer hatırlama" tercihi, önceki oturumdan kalan çerezi
-         * de geçersiz kılmalı. */
-        if ($remember) {
-            self::rememberUser($user);
-        } else {
-            self::forgetRemember($user->id);
-        }
-
-        self::issueDevice($user, $cihaz);
-
-        Logger::info('Giriş yapıldı', [
-            'kullanici' => $user->id,
-            'rol'       => $user->rol,
-            'ip'        => $ip,
-        ], 'auth');
-
-        /* Olay, oturum AÇILDIKTAN sonra yayınlanır: dinleyiciler
-         * Auth::user() ile kullanıcıya erişebilir. */
-        Events::dispatch(new UserLoggedIn($user, $ip));
-
-        return ['ok' => true, 'message' => 'Hoş geldiniz, ' . $user->ad . '.', 'user' => $user];
+        return ['ok' => true, 'message' => '', 'user' => $user, 'cihaz' => $cihaz];
     }
 
     /**

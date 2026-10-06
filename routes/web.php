@@ -19,6 +19,7 @@ declare(strict_types=1);
 use App\Core\Router;
 use App\Http\Controllers\Api\MailApiController;
 use App\Http\Controllers\Api\MessageApiController;
+use App\Http\Controllers\Api\MobileController;
 use App\Http\Controllers\Api\UserApiController;
 use App\Http\Controllers\Api\V1Controller;
 use App\Http\Controllers\AuthController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PwaController;
 use App\Http\Controllers\Site\ContactController;
@@ -68,6 +70,12 @@ $router->post('kayit',  AuthController::class, 'register',     ['installed', 'ba
 
 // E-postadaki doğrulama bağlantısı. Oturum açmaz; yalnızca hesabı etkinleştirir.
 $router->get('kayit/dogrula', AuthController::class, 'verify', ['installed']);
+
+// Parolamı unuttum: e-postaya tek kullanımlık, 60 dk geçerli bağlantı (bkz. App\Core\PasswordReset).
+$router->get('parolami-unuttum',  PasswordResetController::class, 'showRequest', ['installed', 'guest']);
+$router->post('parolami-unuttum', PasswordResetController::class, 'sendLink',    ['installed', 'guest', 'csrf']);
+$router->get('parola-sifirla',    PasswordResetController::class, 'showReset',   ['installed', 'guest']);
+$router->post('parola-sifirla',   PasswordResetController::class, 'reset',       ['installed', 'guest', 'csrf']);
 
 // Çıkış POST ile yapılır: bir <img> etiketinin oturumunuzu kapatmasını
 // engellemek için (CSRF koruması).
@@ -173,6 +181,8 @@ $router->post('api/eposta/baglanti', MailApiController::class, 'verify',  ['inst
 $router->post('panel/hesabim/api-anahtari',     ProfileController::class, 'createToken',  ['installed', 'auth', 'csrf', 'can:profile.api']);
 $router->post('panel/hesabim/api-anahtari/sil', ProfileController::class, 'revokeToken',  ['installed', 'auth', 'csrf', 'can:profile.api']);
 $router->post('panel/hesabim/oturumlari-kapat', ProfileController::class, 'logoutOthers', ['installed', 'auth', 'csrf', 'can:profile.update']);
+$router->post('panel/hesabim/cihaz/sil',        ProfileController::class, 'revokeSession', ['installed', 'auth', 'csrf', 'can:profile.update']);
+$router->post('panel/hesabim/sil',              ProfileController::class, 'deleteAccount', ['installed', 'auth', 'csrf', 'can:profile.update']);
 
 /* ---------------------------------------------------------------------
  *  REST API (dış istemciler) — "Authorization: Bearer cy_…"
@@ -190,6 +200,14 @@ $router->group('api/v1', ['installed'], function (Router $r): void {
     $r->get('kullanicilar',   V1Controller::class, 'kullanicilar', ['api', 'api.can:users.view']);
     $r->get('sayfalar',       V1Controller::class, 'sayfalar',     ['api.guest']);
     $r->get('sayfalar/{slug}', V1Controller::class, 'sayfa',       ['api.guest']);
+
+    // Mobil uygulama: giriş/çıkış, cihazlar, örnek dosyalar (bkz. MobileController, docs/MOBIL-API.md)
+    $r->post('oturum',            MobileController::class, 'login',         ['api.guest']);
+    $r->delete('oturum',          MobileController::class, 'logout',        ['api']);
+    $r->get('oturumlar',          MobileController::class, 'sessions',      ['api']);
+    $r->delete('oturumlar/{id}',  MobileController::class, 'revokeSession', ['api']);
+    $r->get('dosyalar',           MobileController::class, 'files',         ['api']);
+    $r->get('dosyalar/{ad}',      MobileController::class, 'file',          ['api']);
 });
 
 /* ---------------------------------------------------------------------

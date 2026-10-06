@@ -597,6 +597,53 @@ dogrula('Uzatılmış bitiş zamanı imzayı bozar', !$Onizle::previewValid(7, (
 dogrula('30 dakikadan uzun ömürlü bağlantı kabul edilmez', !$Onizle::previewValid(7, $simdi + 7200, Signer::sign('sayfa-onizleme|7|' . ($simdi + 7200)), $simdi));
 
 /* ---------------------------------------------------------------- */
+echo "\nParola sıfırlama, KVKK, API kapsamı, hesap silme (1.6.0)\n";
+
+dogrula('Sıfırlama jetonu biçimi denetlenir (veritabanına gitmeden)',
+    App\Core\PasswordReset::find('') === null
+    && App\Core\PasswordReset::find('abc') === null
+    && App\Core\PasswordReset::find(str_repeat('g', 64)) === null
+    && App\Core\PasswordReset::find(str_repeat('a', 64) . "\n") === null);
+dogrula('Sıfırlama bağlantısı 60 dakika geçerli', App\Core\PasswordReset::DAKIKA === 60);
+
+$sifirlamaKaynak = (string) file_get_contents(CY_BASE . '/app/Core/PasswordReset.php');
+dogrula('Jetonun yalnızca SHA-256 özeti saklanır', str_contains($sifirlamaKaynak, "hash('sha256', \$jeton)") && !str_contains($sifirlamaKaynak, "':ozet'      => \$jeton"));
+dogrula('Jeton tek kullanımlık (koşullu UPDATE + rowCount)', str_contains($sifirlamaKaynak, 'kullanildi_at IS NULL AND son_gecerlilik > NOW()') && str_contains($sifirlamaKaynak, 'rowCount() !== 1'));
+dogrula('Parola sıfırlama gövdesi panelde gizli (güvenlik şablonu)', in_array('parola-sifirlama', App\Models\MailLog::GUVENLIK_SABLONLARI, true));
+dogrula('PasswordChanged olayı kaynağı taşır', (new App\Events\PasswordChanged(1, kaynak: App\Events\PasswordChanged::SIFIRLAMA))->toArray()['kaynak'] === 'sifirlama');
+
+$olaylar = (string) file_get_contents(CY_BASE . '/routes/events.php');
+dogrula('"Parolanız değişti" dinleyicisi bağlı', str_contains($olaylar, 'Events::listen(PasswordChanged::class, ParolaDegistiBildir::class)'));
+
+$web = (string) file_get_contents(CY_BASE . '/routes/web.php');
+dogrula('Parola sıfırlama rotaları misafire açık, POST\'lar CSRF korumalı',
+    str_contains($web, "post('parolami-unuttum', PasswordResetController::class, 'sendLink',    ['installed', 'guest', 'csrf'])")
+    && str_contains($web, "post('parola-sifirla',   PasswordResetController::class, 'reset',       ['installed', 'guest', 'csrf'])"));
+dogrula('Mobil API rotaları: giriş anahtarsız, diğerleri Bearer ister',
+    str_contains($web, "post('oturum',            MobileController::class, 'login',         ['api.guest'])")
+    && preg_match_all("/MobileController::class, '(logout|sessions|revokeSession|files|file)',\s+\['api'\]/", $web) === 5);
+
+dogrula('Saklama süresi 0 ise anonimleştirme çalışmaz', App\Core\Privacy::anonymizeMessages(null, 0) === 0);
+dogrula('Hesap silme bekleme süresi 7 gün', App\Core\AccountDeletion::GUN === 7);
+dogrula('API kapsamları: okuma / yazma', App\Core\Api\ApiToken::OKUMA === 'okuma' && App\Core\Api\ApiToken::YAZMA === 'yazma');
+
+$koruma = (string) file_get_contents(CY_BASE . '/app/Core/Api/ApiGuard.php');
+dogrula('Okuma anahtarı yalnızca GET/HEAD/OPTIONS yapar (çıkış hariç)', str_contains($koruma, "\$kayit['kapsam'] === ApiToken::OKUMA") && str_contains($koruma, "'kapsam_yetersiz'"));
+
+$auth = (string) file_get_contents(CY_BASE . '/app/Core/Auth.php');
+dogrula('Mobil giriş tarayıcı girişiyle aynı kapıdan geçer', str_contains($auth, 'public static function verifyCredentials(')
+    && str_contains((string) file_get_contents(CY_BASE . '/app/Http/Controllers/Api/MobileController.php'), 'Auth::verifyCredentials('));
+dogrula('Giriş, bekleyen hesap silmeyi iptal eder', str_contains($auth, 'AccountDeletion::cancel($user->id)'));
+
+$_SERVER['REQUEST_URI'] = '/api/v1/dosyalar/rapor.pdf';
+unset($_GET['r']);
+Url::forgetCurrent();
+dogrula('Rota parametresi nokta içerebilir, ".." içeremez',
+    Url::current() === 'api/v1/dosyalar/rapor.pdf'
+    && (function (): bool { $_SERVER['REQUEST_URI'] = '/api/v1/dosyalar/../.env'; Url::forgetCurrent(); return Url::current() === ''; })());
+Url::forgetCurrent();
+
+/* ---------------------------------------------------------------- */
 printf("\n%d geçti · %d kaldı\n\n", $gecti, $kaldi);
 
 exit($kaldi > 0 ? 1 : 0);

@@ -696,7 +696,10 @@ body.is-sidebar-open .cy-backdrop { opacity: 1; visibility: visible; }
  * ------------------------------------------------------------------ */
 .cy-profile-grid {
     display: grid;
-    grid-template-columns: 320px 1fr;
+    /* minmax(0, 1fr): içerideki geniş tablo (API anahtarları) sütunu
+       genişletmesin, kendi kabında kaysın. Düz 1fr ile mobilde bütün
+       sayfa ekrandan taşıyordu. */
+    grid-template-columns: 320px minmax(0, 1fr);
     gap: 1.15rem;
     align-items: start;
 }
@@ -854,7 +857,7 @@ body.is-sidebar-open .cy-backdrop { opacity: 1; visibility: visible; }
 /* --- 1200px altı: içerik boşluklarını daralt --- */
 @media (max-width: 1199.98px) {
     .cy-content { padding: 1.25rem 1rem 2rem; }
-    .cy-profile-grid { grid-template-columns: 280px 1fr; }
+    .cy-profile-grid { grid-template-columns: 280px minmax(0, 1fr); }
 }
 
 /* --- 992px altı: TABLET ve MOBİL – menü çekmeceye dönüşür --- */
@@ -891,7 +894,7 @@ body.is-sidebar-open .cy-backdrop { opacity: 1; visibility: visible; }
     /* Menüdeki bağlantılar parmakla rahat seçilsin */
     .cy-nav-link { padding: .75rem .7rem; font-size: .9375rem; }
 
-    .cy-profile-grid { grid-template-columns: 1fr; }
+    .cy-profile-grid { grid-template-columns: minmax(0, 1fr); }
 
     /* Giriş ekranında tanıtım paneli gizlenir, form tam ekran olur */
     .cy-auth { grid-template-columns: 1fr; }
@@ -2445,3 +2448,7 @@ a.cy-stat--link:focus-visible { outline: 2px solid var(--cy-brand); outline-offs
 }
 
 .cy-editor.is-busy { opacity: .7; pointer-events: none; }
+
+/* Geri dönüşü zor işlemler (Hesabımı sil): kırmızı ince çerçeve */
+.cy-card--danger { border-color: color-mix(in srgb, var(--cy-danger) 35%, var(--cy-border)); }
+.cy-card--danger .cy-section-title { color: var(--cy-danger); }

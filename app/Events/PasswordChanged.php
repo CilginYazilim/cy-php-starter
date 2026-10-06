@@ -5,7 +5,11 @@
  * ---------------------------------------------------------------------
  *  GÜVENLİK AÇISINDAN ÖNEMLİ BİR OLAYDIR. Parolayı kullanıcının
  *  kendisi mi değiştirdi, yoksa bir yönetici mi sıfırladı — $kendisi
- *  bunu söyler.
+ *  bunu söyler; $kaynak da NEREDEN değiştiğini (profil, e-posta
+ *  bağlantısı, yönetici paneli).
+ *
+ *  Varsayılan dinleyici: App\Listeners\ParolaDegistiBildir — sahibine
+ *  "parolanız değiştirildi" mektubu (bkz. routes/events.php).
  *
  *  TİPİK DİNLEYİCİLER
  *    · "Parolanız değişti" bilgilendirme e-postası (hesap çalındıysa
@@ -24,15 +28,20 @@ use App\Core\Events\Event;
 
 final class PasswordChanged extends Event
 {
+    public const PROFIL    = 'profil';
+    public const SIFIRLAMA = 'sifirlama';
+    public const YONETICI  = 'yonetici';
+
     public function __construct(
         public readonly int $userId,
         public readonly bool $kendisi = true,
+        public readonly string $kaynak = self::PROFIL,
     ) {
         parent::__construct();
     }
 
     public function toArray(): array
     {
-        return ['kullanici' => $this->userId, 'kendisi' => $this->kendisi];
+        return ['kullanici' => $this->userId, 'kendisi' => $this->kendisi, 'kaynak' => $this->kaynak];
     }
 }

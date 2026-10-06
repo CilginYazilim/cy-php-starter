@@ -201,6 +201,59 @@ final class Notifier
     }
 
     /** Bu adrese, bu şablonla son $dakika içinde mektup gitti mi? (veritabanı yoksa "evet") */
+    /**
+     * "Parolamı unuttum" bağlantısı. Aynı adrese 2 dakikada en fazla
+     * BİR mektup: formu art arda göndermek gelen kutusunu doldurmasın.
+     */
+    public static function parolaSifirlama(User $user, string $link, int $dakika): bool
+    {
+        if (self::sentRecently($user->eposta, 'parola-sifirlama', 2)) {
+            return false;
+        }
+
+        $siteAdi = Setting::get('site_adi', 'Site');
+
+        $mail = Mailable::make()
+            ->to($user->eposta, $user->fullName())
+            ->subject($siteAdi . ' – Parola sıfırlama')
+            ->type('sistem')
+            ->forUser($user->id)
+            ->view('emails/parola-sifirlama', [
+                'siteAdi'      => $siteAdi,
+                'sifirlamaUrl' => $link,
+                'dakika'       => $dakika,
+            ]);
+
+        return Mailer::send($mail);
+    }
+
+    /** "Parolanız değiştirildi" bilgilendirmesi (bkz. Listeners\ParolaDegistiBildir). */
+    public static function parolaDegisti(User $user, string $kaynak = 'profil'): bool
+    {
+        $siteAdi = Setting::get('site_adi', 'Site');
+        $nasil   = match ($kaynak) {
+            'sifirlama' => 'e-posta ile gönderilen sıfırlama bağlantısıyla',
+            'yonetici'  => 'site yöneticisi tarafından',
+            default     => 'hesap ayarlarınızdan',
+        };
+
+        $mail = Mailable::make()
+            ->to($user->eposta, $user->fullName())
+            ->subject($siteAdi . ' – Parolanız değiştirildi')
+            ->type('sistem')
+            ->forUser($user->id)
+            ->view('emails/parola-degisti', [
+                'siteAdi'      => $siteAdi,
+                'ad'           => $user->ad,
+                'nasil'        => $nasil,
+                'tarih'        => date('d.m.Y H:i'),
+                'sifirlamaUrl' => \App\Core\PasswordReset::enabled() ? Mailer::absolute(url('parolami-unuttum')) : '',
+                'girisUrl'     => Mailer::absolute(url('giris')),
+            ]);
+
+        return Mailer::send($mail);
+    }
+
     private static function sentRecently(string $email, string $template, int $dakika): bool
     {
         try {

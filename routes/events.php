@@ -34,6 +34,7 @@ use App\Events\UserLoggedOut;
 use App\Events\UserRegistered;
 use App\Listeners\HosgeldinMailiGonder;
 use App\Listeners\IletisimMesajiniBildir;
+use App\Listeners\ParolaDegistiBildir;
 
 /* ---------------------------------------------------------------------
  *  ÜYELİK
@@ -42,6 +43,9 @@ use App\Listeners\IletisimMesajiniBildir;
 // Karşılama mektubunu kapatmak için bu satırı silmeniz yeterli;
 // çekirdek kodda hiçbir değişiklik gerekmez.
 Events::listen(UserRegistered::class, HosgeldinMailiGonder::class);
+
+// Parola değişince sahibine bilgilendirme (profil, sıfırlama bağlantısı, yönetici).
+Events::listen(PasswordChanged::class, ParolaDegistiBildir::class);
 
 /* ---------------------------------------------------------------------
  *  İLETİŞİM FORMU
@@ -67,13 +71,6 @@ if (App\Core\Config::isDebug()) {
  * ---------------------------------------------------------------------
  *  Aşağıdakiler çalışır durumda DEĞİLDİR; olay sisteminin nasıl
  *  kullanılacağını göstermek için buradalar.
- *
- *  // Parola değişince kullanıcıyı bilgilendir (hesabı çalınmışsa
- *  // fark etmesinin tek yolu budur):
- *  Events::listen(PasswordChanged::class, function (PasswordChanged $e) {
- *      if ($e->kendisi) { return; }
- *      // Notifier::parolaDegisti($e->userId);
- *  });
  *
  *  // Yüklenen her görselden küçük resim üret:
  *  Events::listen(FileUploaded::class, [ThumbnailUret::class, 'handle']);

@@ -5,6 +5,7 @@
  * =====================================================================
  */
 
+use App\Core\PasswordReset;
 use App\Core\Registration;
 use App\Core\Setting;
 
@@ -42,7 +43,14 @@ $demoMode     = $demoMode ?? false;
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label" for="password">Parola</label>
+                                <div class="d-flex justify-content-between align-items-baseline gap-2">
+                                    <label class="form-label" for="password">Parola</label>
+                                    <?php /* Bağlantı yalnızca site e-posta gönderebiliyorsa ve
+                                             ayar açıksa görünür (bkz. PasswordReset::enabled). */ ?>
+                                    <?php if (PasswordReset::enabled()): ?>
+                                        <a class="cy-link small" href="<?= e(url('parolami-unuttum')) ?>">Parolamı unuttum</a>
+                                    <?php endif; ?>
+                                </div>
                                 <div class="cy-password">
                                     <input type="password" class="form-control<?= isset($errors['password']) ? ' is-invalid' : '' ?>"
                                            id="password" name="password" autocomplete="current-password" required>

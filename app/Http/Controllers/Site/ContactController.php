@@ -17,6 +17,7 @@ use App\Core\Auth;
 use App\Core\Events\Events;
 use App\Core\Exceptions\HttpException;
 use App\Core\Log\Logger;
+use App\Core\Privacy;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
@@ -131,6 +132,11 @@ final class ContactController extends Controller
                   ->email('eposta')
                   ->text('konu', 'Konu', 0, 190)
                   ->text('mesaj', 'Mesaj', 10, 4000, true);
+
+        // KVKK: aydınlatma metni onayı (ayardan kapatılabilir, bkz. Privacy).
+        if (Privacy::consentRequired() && !$request->bool('kvkk_onay')) {
+            $validator->addError('kvkk_onay', Privacy::consentError());
+        }
 
         if ($validator->fails()) {
             Response::error('Lütfen formdaki hataları düzeltin.', 422, ['errors' => $validator->errors()]);

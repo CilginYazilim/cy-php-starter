@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Core\AccountDeletion;
 use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\Events\Events;
@@ -50,7 +51,12 @@ final class ProfileController extends Controller
             'user'      => $user,
             'errors'    => Flash::errors(),
             'old'       => Flash::old(),
-            'apiTokens' => $user !== null && Auth::can('profile.api') ? $this->tokens($user->id) : null,
+            'apiTokens' => $user !== null && Auth::can('profile.api') ? $this->tokens($user->id, ApiToken::TUR_ANAHTAR) : null,
+            // Mobil uygulamadan açılan oturumlar (POST api/v1/oturum); her rol görür.
+            'mobilOturumlar' => $user !== null ? $this->tokens($user->id, ApiToken::TUR_OTURUM) : [],
+            // Demo hesapları ortaktır: silme bölümü hiç gösterilmez (istek de Demo::guard'a takılır).
+            'hesapSilme'     => $user !== null && AccountDeletion::enabled() && AccountDeletion::allowedFor($user)
+                                && !(\App\Core\Demo::enabled() && \App\Core\Demo::isDemoUser($user)),
             /* Yeni anahtarın AÇIK HALİ yalnızca bir kez, üretildiği
              * isteğin hemen ardından gösterilir; sonra oturumdan silinir. */
             'yeniAnahtar' => Session::pull('_yeni_api_anahtari'),
@@ -58,10 +64,10 @@ final class ProfileController extends Controller
     }
 
     /** @return array<int,array<string,mixed>> Tablo henüz yoksa boş */
-    private function tokens(int $userId): array
+    private function tokens(int $userId, ?string $tur = null): array
     {
         try {
-            return ApiToken::forUser($userId);
+            return ApiToken::forUser($userId, $tur);
         } catch (Throwable) {
             return [];
         }
@@ -240,8 +246,9 @@ final class ProfileController extends Controller
             Response::redirect(url('giris'));
         }
 
-        $ad  = trim($request->input('anahtar_adi'));
-        $gun = $request->int('anahtar_gun');
+        $ad     = trim($request->input('anahtar_adi'));
+        $gun    = $request->int('anahtar_gun');
+        $kapsam = $request->input('anahtar_kapsam') === ApiToken::YAZMA ? ApiToken::YAZMA : ApiToken::OKUMA;
 
         if ($ad === '' || mb_strlen($ad) > 100) {
             Flash::error('Anahtara 1-100 karakterlik bir ad verin (örn. "Mobil uygulama").');
@@ -268,16 +275,16 @@ final class ProfileController extends Controller
         }
 
         try {
-            if (ApiToken::countForUser($user->id) >= self::MAX_TOKENS) {
+            if (ApiToken::countForUser($user->id, ApiToken::TUR_ANAHTAR) >= self::MAX_TOKENS) {
                 Flash::error('En fazla ' . self::MAX_TOKENS . ' anahtarınız olabilir. Kullanmadığınız bir anahtarı iptal edin.');
                 Response::redirect(url('panel/hesabim'));
             }
 
-            $sonuc = ApiToken::create($user->id, $ad, $gun);
+            $sonuc = ApiToken::create($user->id, $ad, $gun, $kapsam);
 
             /* Sayım ile ekleme arasında aynı anda gelen başka bir istek
              * de eklemiş olabilir; sınır aşıldıysa yeni anahtar geri alınır. */
-            if (ApiToken::countForUser($user->id) > self::MAX_TOKENS) {
+            if (ApiToken::countForUser($user->id, ApiToken::TUR_ANAHTAR) > self::MAX_TOKENS) {
                 ApiToken::revokeOwned($user->id, $sonuc['id']);
                 Flash::error('En fazla ' . self::MAX_TOKENS . ' anahtarınız olabilir. Kullanmadığınız bir anahtarı iptal edin.');
                 Response::redirect(url('panel/hesabim'));
@@ -310,6 +317,66 @@ final class ProfileController extends Controller
             : Flash::error('Anahtar bulunamadı.');
 
         Response::redirect(url('panel/hesabim'));
+    }
+
+    /** Hesabım → Bağlı cihazlar: tek bir mobil oturumu kapatır. */
+    public function revokeSession(Request $request): void
+    {
+        $user = Auth::user();
+        $id   = $request->int('oturum_id', 1);
+
+        if ($user === null || $id === null) {
+            Response::redirect(url('panel/hesabim'));
+        }
+
+        ApiToken::revokeOwned($user->id, $id)
+            ? Flash::success('Cihazdaki oturum kapatıldı; uygulama yeniden giriş isteyecek.')
+            : Flash::error('Oturum bulunamadı.');
+
+        Response::redirect(url('panel/hesabim'));
+    }
+
+    /**
+     * Hesabımı sil: parola ile onaylanır, 7 gün sonra silinir; bu sürede
+     * giriş yapmak silmeyi iptal eder (bkz. App\Core\AccountDeletion).
+     */
+    public function deleteAccount(Request $request): void
+    {
+        $user = Auth::user();
+
+        if ($user === null) {
+            Response::redirect(url('giris'));
+        }
+
+        if (!AccountDeletion::enabled()) {
+            Flash::error('Hesap silme bu sitede kapalı. Site yöneticisiyle iletişime geçin.');
+            Response::redirect(url('panel/hesabim'));
+        }
+
+        if (!AccountDeletion::allowedFor($user)) {
+            Flash::error('Sistemdeki son yönetici hesabı silinemez. Önce başka bir yönetici atayın.');
+            Response::redirect(url('panel/hesabim'));
+        }
+
+        $hata = $this->checkPassword($user->id, $request->string('silme_sifre'));
+
+        if ($hata !== null) {
+            Flash::withInput(['silme_sifre' => $hata === self::WRONG_PASSWORD ? 'Parolanız hatalı.' : $hata], []);
+            Response::redirect(url('panel/hesabim'));
+        }
+
+        $tarih = AccountDeletion::schedule($user);
+
+        if ($tarih === null) {
+            Flash::error('Hesap silme şu anda planlanamadı. Lütfen daha sonra tekrar deneyin.');
+            Response::redirect(url('panel/hesabim'));
+        }
+
+        Auth::logout();
+        Session::start();
+
+        Flash::info('Hesabınız ' . $tarih . ' tarihinde silinecek. Vazgeçerseniz o tarihe kadar giriş yapmanız yeterli.');
+        Response::redirect(url('giris'));
     }
 
     /**

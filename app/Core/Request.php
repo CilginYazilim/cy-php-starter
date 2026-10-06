@@ -25,6 +25,19 @@ final class Request
         $this->query = $_GET;
         $this->body  = $_POST;
         $this->files = $_FILES;
+
+        /* JSON GÖVDE: mobil uygulamalar ve fetch() çoğunlukla
+         * "Content-Type: application/json" gönderir; PHP bunu $_POST'a
+         * doldurmaz. Form verisi yoksa gövde JSON olarak okunur (en fazla
+         * 1 MB, 32 düzey derinlik). */
+        if ($this->body === [] && str_contains(strtolower((string) ($_SERVER['CONTENT_TYPE'] ?? '')), 'application/json')) {
+            $ham  = (string) file_get_contents('php://input', false, null, 0, 1_048_576);
+            $json = $ham !== '' ? json_decode($ham, true, 32) : null;
+
+            if (is_array($json)) {
+                $this->body = $json;
+            }
+        }
     }
 
     public function method(): string

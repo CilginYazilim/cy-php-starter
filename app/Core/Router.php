@@ -144,13 +144,15 @@ final class Router
 
         /* "{id}" → yakalama grubu. Değerler ROTADAN gelir, yani
          * kullanıcı girdisidir: yalnızca güvenli karakterlere izin
-         * veriyoruz (Url::current zaten süzüyor, bu ikinci kilit). */
+         * veriyoruz (Url::current zaten süzüyor, bu ikinci kilit).
+         * Nokta serbesttir ("dosyalar/{ad}" → rapor.pdf); ".." içeren
+         * yol Url::current'ta baştan reddedilir. */
         $regex = preg_replace_callback(
             '/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/',
             static function (array $m) use (&$params): string {
                 $params[] = $m[1];
 
-                return '([a-zA-Z0-9_-]+)';
+                return '([a-zA-Z0-9_.-]+)';
             },
             $quoted
         ) ?? '';

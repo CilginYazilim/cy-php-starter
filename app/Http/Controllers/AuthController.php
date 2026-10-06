@@ -18,6 +18,7 @@ use App\Core\Ip;
 use App\Core\Log\Logger;
 use App\Core\Mail\Notifier;
 use App\Core\Middleware;
+use App\Core\Privacy;
 use App\Core\Registration;
 use App\Core\Request;
 use App\Core\Response;
@@ -187,6 +188,11 @@ final class AuthController extends Controller
         /* Kullanıcı adı herkese görünen bir addır; "alınmış" demek
          * kaçınılmazdır (aksi hâlde kişi hangi adı seçeceğini bilemez).
          * E-POSTA İÇİN BÖYLE BİR ŞEY SÖYLENMEZ (aşağıya bakın). */
+        // KVKK: aydınlatma metni onayı (ayardan kapatılabilir, bkz. Privacy).
+        if (Privacy::consentRequired() && !$request->bool('kvkk_onay')) {
+            $validator->addError('kvkk_onay', Privacy::consentError());
+        }
+
         if ($validator->passes() && $this->users()->fieldTaken('kullanici_adi', (string) $validator->validated()['kullanici_adi'])) {
             $validator->addError('kullanici_adi', 'Bu kullanıcı adı alınmış; başka bir ad seçin.');
         }

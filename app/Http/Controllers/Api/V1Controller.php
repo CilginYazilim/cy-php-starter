@@ -46,12 +46,12 @@ final class V1Controller extends Controller
             ApiResponse::unauthorized();
         }
 
-        ApiResponse::success([
-            'id'            => $user->id,
-            'ad_soyad'      => $user->fullName(),
-            'kullanici_adi' => $user->kullaniciAdi,
-            'eposta'        => $user->eposta,
-            'rol'           => $user->rol,
+        $token = \App\Core\Api\ApiGuard::token();
+
+        ApiResponse::success(MobileController::userData($user) + [
+            // Bearer ile gelindiyse anahtarın kapsamı ve türü; panel oturumuyla gelindiyse null.
+            'kapsam'     => $token['kapsam'] ?? null,
+            'token_turu' => $token['tur'] ?? null,
         ]);
     }
 

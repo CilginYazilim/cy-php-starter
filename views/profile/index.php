@@ -205,6 +205,51 @@ $epostaDegisti = isset($errors['eposta_sifre'])
                     <button type="submit" class="btn cy-btn cy-btn--ghost"><?= icon('logout', 'cy-icon cy-icon--sm') ?> Diğer Cihazlardan Çıkış Yap</button>
                 </form>
             </div>
+
+            <?php /* MOBİL OTURUMLAR: uygulama POST /api/v1/oturum ile giriş yapınca
+                     buraya bir satır düşer (ApiToken, tür "oturum"). Kaybolan bir
+                     telefonun erişimi parola değiştirmeden tek tıkla kapatılır. */ ?>
+            <div class="cy-card__body border-top">
+                <h4 class="cy-eyebrow mb-2"><?= icon('mobil', 'cy-icon cy-icon--sm') ?> Bağlı cihazlar (mobil uygulama)</h4>
+                <?php if (($mobilOturumlar ?? []) === []): ?>
+                    <p class="cy-muted small mb-0">
+                        Mobil uygulamadan giriş yapılmamış. Uygulama <code>POST /api/v1/oturum</code> ile giriş yaptığında
+                        cihaz burada listelenir ve buradan kapatılabilir.
+                    </p>
+                <?php else: ?>
+                    <div class="cy-table-wrap">
+                        <table class="table cy-table cy-table--tight cy-table--cards w-100">
+                            <thead>
+                                <tr><th data-kart="ana">Cihaz</th><th>Açıldı</th><th>Son kullanım</th><th>Bitiş</th><th data-kart="islem"><span class="cy-sr-only">İşlem</span></th></tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($mobilOturumlar as $oturum): ?>
+                                    <tr>
+                                        <td><strong><?= e((string) (($oturum['cihaz'] ?? '') !== '' ? $oturum['cihaz'] : $oturum['ad'])) ?></strong></td>
+                                        <td><?= e(User::formatDate($oturum['created_at'] ?? null)) ?></td>
+                                        <td><?= e(User::formatDate($oturum['son_kullanim'] ?? null)) ?></td>
+                                        <td>
+                                            <?php if ((int) ($oturum['suresi_doldu'] ?? 0) === 1): ?>
+                                                <span class="text-danger">süresi doldu</span>
+                                            <?php else: ?>
+                                                <?= e(User::formatDate($oturum['son_gecerlilik'] ?? null)) ?>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-end">
+                                            <form method="post" action="<?= e(url('panel/hesabim/cihaz/sil')) ?>"
+                                                  data-confirm="Bu cihazdaki oturum kapatılacak. Emin misiniz?">
+                                                <?= csrf_field() ?>
+                                                <input type="hidden" name="oturum_id" value="<?= (int) $oturum['id'] ?>">
+                                                <button type="submit" class="btn cy-btn cy-btn--ghost cy-btn--sm"><?= icon('logout', 'cy-icon cy-icon--sm') ?> Oturumu Kapat</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
 
         <?php if (($apiTokens ?? null) !== null): ?>
@@ -238,13 +283,20 @@ $epostaDegisti = isset($errors['eposta_sifre'])
                         <div class="cy-table-wrap mb-3">
                             <table class="table cy-table cy-table--tight w-100">
                                 <thead>
-                                    <tr><th>Ad</th><th>Ön ek</th><th>Son kullanım</th><th>Geçerlilik</th><th></th></tr>
+                                    <tr><th>Ad</th><th>Ön ek</th><th>Kapsam</th><th>Son kullanım</th><th>Geçerlilik</th><th></th></tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($apiTokens as $anahtar): ?>
                                         <tr>
                                             <td><?= e((string) $anahtar['ad']) ?></td>
                                             <td><code><?= e((string) $anahtar['onek']) ?>…</code></td>
+                                            <td>
+                                                <?php if (($anahtar['kapsam'] ?? 'yazma') === 'okuma'): ?>
+                                                    <span class="cy-pill">Yalnız okuma</span>
+                                                <?php else: ?>
+                                                    <span class="cy-pill is-warn">Okuma + yazma</span>
+                                                <?php endif; ?>
+                                            </td>
                                             <td><?= e(User::formatDate($anahtar['son_kullanim'] ?? null)) ?></td>
                                             <td>
                                                 <?php if ((int) ($anahtar['suresi_doldu'] ?? 0) === 1): ?>
@@ -279,10 +331,17 @@ $epostaDegisti = isset($errors['eposta_sifre'])
                     <form method="post" action="<?= e(url('panel/hesabim/api-anahtari')) ?>" class="row g-2 align-items-end">
                         <?= csrf_field() ?>
                         <input type="text" autocomplete="username" value="<?= e($profile->kullaniciAdi) ?>" class="d-none" tabindex="-1" aria-hidden="true">
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-md-3">
                             <label class="form-label" for="anahtar_adi">Anahtar adı</label>
                             <input type="text" name="anahtar_adi" id="anahtar_adi" maxlength="100" class="form-control"
-                                   autocomplete="off" placeholder="örn. Mobil uygulama" required>
+                                   autocomplete="off" placeholder="örn. Raporlama betiği" required>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label" for="anahtar_kapsam">Kapsam</label>
+                            <select name="anahtar_kapsam" id="anahtar_kapsam" class="form-select">
+                                <option value="okuma" selected>Yalnız okuma</option>
+                                <option value="yazma">Okuma + yazma</option>
+                            </select>
                         </div>
                         <div class="col-6 col-md-2">
                             <label class="form-label" for="anahtar_gun">Geçerlilik</label>
@@ -298,13 +357,45 @@ $epostaDegisti = isset($errors['eposta_sifre'])
                             <input type="password" name="anahtar_sifre" id="anahtar_sifre" class="form-control"
                                    autocomplete="current-password" required>
                         </div>
-                        <div class="col-12 col-md-3">
+                        <div class="col-6 col-md-2">
                             <button type="submit" class="btn cy-btn cy-btn--primary cy-btn--block"><?= icon('plus', 'cy-icon cy-icon--sm') ?> Üret</button>
                         </div>
                     </form>
                     <p class="cy-muted small mt-2 mb-0">Anahtar sizin yetkilerinizle çalışır; sizden fazlasına asla erişemez.
+                        "Yalnız okuma" anahtarı veri değiştiremez (GET dışındaki istekler 403 alır).
                         Parolanızı değiştirdiğinizde bütün anahtarlarınız iptal edilir.</p>
                 </div>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($hesapSilme)): ?>
+            <?php /* HESABI SİL (KVKK). Silme 7 gün bekler; bu sürede giriş yapmak
+                     silmeyi iptal eder. Bkz. App\Core\AccountDeletion. */ ?>
+            <div class="cy-card cy-card--danger">
+                <div class="cy-card__header"><h3 class="cy-section-title"><?= icon('trash', 'cy-icon cy-icon--sm') ?> Hesabımı Sil</h3></div>
+                <form method="post" action="<?= e(url('panel/hesabim/sil')) ?>" class="cy-card__body"
+                      data-confirm="Hesabınız <?= App\Core\AccountDeletion::GUN ?> gün sonra kalıcı olarak silinecek ve şimdi çıkış yapacaksınız. Devam edilsin mi?">
+                    <?= csrf_field() ?>
+                    <input type="text" autocomplete="username" value="<?= e($profile->kullaniciAdi) ?>" class="d-none" tabindex="-1" aria-hidden="true">
+                    <p class="cy-muted small">
+                        Hesabınız <strong><?= App\Core\AccountDeletion::GUN ?> gün sonra</strong> kalıcı olarak silinir; bu süre içinde
+                        giriş yaparsanız silme iptal edilir. Bütün oturumlarınız ve API anahtarlarınız hemen kapatılır.
+                        Gönderdiğiniz mesajlar ve yazdığınız içerikler sitede kalır, hesabınızla bağı kopar.
+                    </p>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="silme_sifre">Onay için parolanız <span class="text-danger">*</span></label>
+                            <input type="password" name="silme_sifre" id="silme_sifre" class="form-control<?= isset($errors['silme_sifre']) ? ' is-invalid' : '' ?>"
+                                   autocomplete="current-password" required>
+                            <?php if (isset($errors['silme_sifre'])): ?>
+                                <div class="invalid-feedback d-block" data-error-for="silme_sifre"><?= e($errors['silme_sifre']) ?></div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <button type="submit" class="btn cy-btn cy-btn--danger cy-btn--block"><?= icon('trash', 'cy-icon cy-icon--sm') ?> Hesabımı Sil</button>
+                        </div>
+                    </div>
+                </form>
             </div>
         <?php endif; ?>
     </div>

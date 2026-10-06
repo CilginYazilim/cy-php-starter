@@ -40,6 +40,9 @@ final class ApiGuard
     /** Doğrulanmış istekte anahtarın sahibi. */
     private static ?int $userId = null;
 
+    /** Bearer ile gelindiyse anahtarın kaydı (numara, kapsam, tür); oturum çereziyle gelindiyse null. */
+    private static ?array $token = null;
+
     /**
      * Ara katman girişi.
      *
@@ -94,9 +97,10 @@ final class ApiGuard
             ApiResponse::unauthorized('Authorization: Bearer <anahtar> başlığı gerekli.');
         }
 
-        $user = ApiToken::resolve($token);
+        $kayit = ApiToken::resolveToken($token);
+        $user  = $kayit['user'] ?? null;
 
-        if ($user === null) {
+        if ($kayit === null || $user === null) {
             Logger::security('Geçersiz API anahtarı ile istek', [
                 'ip'  => $request->ip(),
                 'yol' => \App\Core\Url::current(),
@@ -116,6 +120,16 @@ final class ApiGuard
          * edebiliyordu. */
         Auth::actingAs($user);
         self::$userId = $user->id;
+        self::$token  = ['id' => $kayit['id'], 'kapsam' => $kayit['kapsam'], 'tur' => $kayit['tur']];
+
+        /* KAPSAM: "okuma" anahtarı veri değiştiremez. Tek istisna çıkış
+         * (DELETE api/v1/oturum): kişi kendi anahtarını her zaman
+         * kapatabilmeli. */
+        if ($kayit['kapsam'] === ApiToken::OKUMA
+            && !in_array($request->method(), ['GET', 'HEAD', 'OPTIONS'], true)
+            && \App\Core\Url::current() !== 'api/v1/oturum') {
+            ApiResponse::error('Bu anahtar yalnızca okuma yetkisine sahip.', 403, 'kapsam_yetersiz');
+        }
 
         self::throttle('anahtar:' . substr(hash('sha256', $token), 0, 16));
     }
@@ -197,5 +211,11 @@ final class ApiGuard
     public static function userId(): ?int
     {
         return self::$userId;
+    }
+
+    /** @return array{id:int,kapsam:string,tur:string}|null */
+    public static function token(): ?array
+    {
+        return self::$token;
     }
 }

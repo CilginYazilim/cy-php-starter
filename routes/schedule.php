@@ -64,6 +64,24 @@ Schedule::call('gunluk-temizle', static function (): void {
     Logger::purge();
 })->daily('04:10')->describe('Saklama süresi dolmuş günlükleri siler');
 
+Schedule::call('parola-sifirlama-temizle', static function (): void {
+    App\Core\PasswordReset::purge();
+})->daily('04:20')->describe('Bir günden eski parola sıfırlama kayıtlarını siler');
+
+// KVKK: saklama süresi (Ayarlar → Sistem, varsayılan 180 gün) dolan mesajlarda IP/tarayıcı boşaltılır.
+Schedule::call('mesaj-anonimlestir', static function (): void {
+    $adet = App\Core\Privacy::anonymizeMessages();
+
+    if ($adet > 0) {
+        Logger::info('Eski mesajlarda IP/tarayıcı bilgisi silindi (KVKK)', ['adet' => $adet], 'app');
+    }
+})->daily('04:30')->describe('Saklama süresi dolan mesajlarda IP ve tarayıcı bilgisini siler');
+
+// Üyenin "Hesabımı sil" isteği: 7 günlük bekleme dolunca hesap silinir (bkz. AccountDeletion).
+Schedule::call('hesap-sil', static function (): void {
+    App\Core\AccountDeletion::purgeDue();
+})->hourly()->describe('Bekleme süresi dolan hesap silme isteklerini uygular');
+
 /* ---------------------------------------------------------------------
  *  CANLI DEMO SIFIRLAMA (yalnızca APP_DEMO=true)
  * ---------------------------------------------------------------------

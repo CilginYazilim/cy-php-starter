@@ -187,6 +187,19 @@ $baslik   = $sayfa?->baslik ?? 'İletişim';
                                                   placeholder="Size nasıl yardımcı olabiliriz?"></textarea>
                                         <div class="invalid-feedback" data-error-for="mesaj"></div>
                                     </div>
+
+                                    <?php if (App\Core\Privacy::consentRequired()): ?>
+                                        <div class="col-12">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="kvkk_onay" id="kvkk_onay" value="1" required>
+                                                <label class="form-check-label small" for="kvkk_onay">
+                                                    <a class="cy-link" href="<?= e(App\Core\Privacy::pageUrl()) ?>" target="_blank" rel="noopener">Aydınlatma metnini</a>
+                                                    okudum; bilgilerimin bu mesaja yanıt vermek için işlenmesini kabul ediyorum.
+                                                </label>
+                                                <div class="invalid-feedback" data-error-for="kvkk_onay"></div>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
 
                                 <div class="cy-contact-actions d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">

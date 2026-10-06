@@ -84,6 +84,20 @@ $old    = $old ?? [];
                                        id="sifre_tekrar" name="sifre_tekrar" autocomplete="new-password" required>
                                 <?php if (isset($errors['sifre_tekrar'])): ?><div class="invalid-feedback"><?= e($errors['sifre_tekrar']) ?></div><?php endif; ?>
                             </div>
+
+                            <?php if (App\Core\Privacy::consentRequired()): ?>
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input<?= isset($errors['kvkk_onay']) ? ' is-invalid' : '' ?>" type="checkbox"
+                                               name="kvkk_onay" id="kvkk_onay" value="1" <?= old($old, 'kvkk_onay') !== '' ? 'checked' : '' ?> required>
+                                        <label class="form-check-label small" for="kvkk_onay">
+                                            <a class="cy-link" href="<?= e(App\Core\Privacy::pageUrl()) ?>" target="_blank" rel="noopener">Aydınlatma metnini</a>
+                                            okudum; üyelik için bilgilerimin işlenmesini kabul ediyorum.
+                                        </label>
+                                        <?php if (isset($errors['kvkk_onay'])): ?><div class="invalid-feedback d-block" data-error-for="kvkk_onay"><?= e($errors['kvkk_onay']) ?></div><?php endif; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                         </div>
 
                         <button type="submit" class="btn cy-btn cy-btn--primary cy-btn--block mt-3">
