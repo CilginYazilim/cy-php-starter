@@ -29,6 +29,7 @@ use App\Core\Session;
 use App\Core\Setting;
 use App\Core\Storage\Storage;
 use App\Http\Controller;
+use App\Repositories\MailRepository;
 use App\Repositories\PageRepository;
 use Throwable;
 
@@ -36,10 +37,12 @@ final class SystemController extends Controller
 {
     public function index(Request $request): void
     {
+        $kuyruklar = $this->queues();
+
         $this->view('system/index', [
             'title'      => 'Sistem Bilgisi',
             'subtitle'   => 'Kurulum durumu, sağlık kontrolleri ve canlıya çıkış listesi.',
-            'ozet'       => $this->summary(),
+            'ozet'       => $this->summary($kuyruklar),
             'uygulama'   => $this->appInfo(),
             'sunucu'     => $this->serverInfo(),
             'altyapi'    => $this->infrastructure(),
@@ -48,9 +51,39 @@ final class SystemController extends Controller
             'checks'     => $this->securityChecks(),
             'ayarChecks' => $this->settingChecks(),
             'moduller'   => Modules::all(),
-            'basarisizIsler' => $this->safe(static fn (): array => Queue::failed(20), []),
+            'kuyruklar'  => $kuyruklar,
             'bekleyenMigrationlar' => $this->safe(fn (): array => $this->migrator()->pending(), []),
         ]);
+    }
+
+    /**
+     * İş kuyruğu (isler) ve e-posta kuyruğu (mail_kayitlari) birlikte.
+     *
+     * İkisi AYRI tablolardır: panelden gönderilen bir mektup iş
+     * kuyruğuna değil e-posta kuyruğuna düşer. Eskiden bu sayfa yalnızca
+     * iş kuyruğunu gösteriyordu; başarısız bir test mektubu burada hiç
+     * görünmüyor, "kuyruk temiz" yazısı yanıltıyordu.
+     *
+     * @return array{isler:array<string,int>,basarisizIsler:array<int,array<string,mixed>>,eposta:array<string,int>,basarisizEpostalar:array<int,array<string,mixed>>,surucu:string,surucuAdi:string,gonderen:string}
+     */
+    private function queues(): array
+    {
+        $mails  = new MailRepository($this->db);
+        $surucu = Setting::get('mail_surucu', 'kayit');
+
+        return [
+            'isler'              => $this->safe(static fn (): array => Queue::stats(), ['bekleyen' => 0, 'calisan' => 0, 'basarisiz' => 0]),
+            'basarisizIsler'     => $this->safe(static fn (): array => Queue::failed(20), []),
+            'eposta'             => $this->safe(static fn (): array => $mails->stats(), ['toplam' => 0, 'gonderildi' => 0, 'kuyrukta' => 0, 'basarisiz' => 0, 'bugun' => 0]),
+            'basarisizEpostalar' => $this->safe(static fn (): array => $mails->recentFailed(5), []),
+            'surucu'             => $surucu,
+            'surucuAdi'          => match ($surucu) {
+                'smtp'  => 'SMTP (' . Setting::get('mail_host', '—') . ')',
+                'php'   => 'PHP mail()',
+                default => 'Kayıt — mektuplar storage/mail klasörüne yazılır, gönderilmez',
+            },
+            'gonderen'           => Mailer::senderAddress(),
+        ];
     }
 
     /* =================================================================
@@ -112,15 +145,22 @@ final class SystemController extends Controller
      *  ÜST ÖZET KARTLARI
      * ============================================================== */
 
-    /** @return array<int,array{etiket:string,deger:string,ipucu:string,ikon:string,renk:string}> */
-    private function summary(): array
+    /**
+     * @param array<string,mixed> $kuyruklar bkz. queues()
+     * @return array<int,array{etiket:string,deger:string,ipucu:string,ikon:string,renk:string}>
+     */
+    private function summary(array $kuyruklar): array
     {
         $checks   = $this->securityChecks();
         $failing  = count(array_filter($checks, static fn (array $c): bool => !$c['ok']));
         $modules  = Modules::all();
         $enabled  = count(array_filter($modules, static fn ($m): bool => $m->aktif));
 
-        $queue = $this->safe(static fn (): array => Queue::stats(), ['bekleyen' => 0, 'basarisiz' => 0]);
+        // Kutu iki kuyruğun toplamını gösterir (iş + e-posta).
+        $queue = [
+            'bekleyen'  => $kuyruklar['isler']['bekleyen'] + $kuyruklar['eposta']['kuyrukta'],
+            'basarisiz' => $kuyruklar['isler']['basarisiz'] + $kuyruklar['eposta']['basarisiz'],
+        ];
         $logs  = $this->logSize();
 
         return [
@@ -134,7 +174,7 @@ final class SystemController extends Controller
             [
                 'etiket' => 'Kuyruk',
                 'deger'  => (string) $queue['bekleyen'],
-                'ipucu'  => $queue['basarisiz'] > 0 ? $queue['basarisiz'] . ' başarısız iş' : 'bekleyen iş',
+                'ipucu'  => $queue['basarisiz'] > 0 ? $queue['basarisiz'] . ' başarısız (iş + e-posta)' : 'bekleyen iş + e-posta',
                 'ikon'   => 'clock',
                 'renk'   => $queue['basarisiz'] > 0 ? 'danger' : 'brand',
             ],
@@ -201,22 +241,9 @@ final class SystemController extends Controller
     /** @return array<string,string> */
     private function infrastructure(): array
     {
-        $queue = $this->safe(static fn (): array => Queue::stats(), ['bekleyen' => 0, 'calisan' => 0, 'basarisiz' => 0]);
-
+        // Kuyruk ve e-posta satırları "Kuyruklar" kartına taşındı (bkz. queues()).
         return [
             'Önbellek sürücüsü' => Cache::store()->name(),
-            'E-posta yöntemi'   => match (Setting::get('mail_surucu', 'kayit')) {
-                'smtp'  => 'SMTP (' . Setting::get('mail_host', '—') . ')',
-                'php'   => 'PHP mail()',
-                default => 'Kayıt — mektuplar diske yazılır, GÖNDERİLMEZ',
-            },
-            'Gönderen adresi'   => Mailer::senderAddress(),
-            'Kuyruk'            => sprintf(
-                '%d bekliyor · %d çalışıyor · %d başarısız',
-                $queue['bekleyen'],
-                $queue['calisan'] ?? 0,
-                $queue['basarisiz']
-            ),
             'Migration'         => $this->migrationSummary(),
             'Günlük seviyesi'   => (string) Config::get('log.level', 'debug')
                                   . ' · ' . Config::get('log.days', 30) . ' gün saklanır',

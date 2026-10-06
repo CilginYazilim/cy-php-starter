@@ -230,6 +230,44 @@ window.CY = (function ($) {
      * Oturum düştüyse (401/419) sayfayı yeniler; kullanıcı giriş
      * ekranına düşsün, "hiçbir şey çalışmıyor" hissi oluşmasın.
      */
+    /**
+     * Metni panoya kopyalar ve kullanıcıya bildirir.
+     *
+     * navigator.clipboard yalnızca güvenli bağlamda (https ya da
+     * localhost) tanımlıdır; olmadığı yerde eski execCommand yoluna
+     * düşülür. "etiket" bildirimde metnin yerine yazılır (örn. gizli
+     * bir anahtarı bildirimde tekrar göstermemek için).
+     */
+    CY.copy = function (metin, etiket) {
+        var ad = etiket || metin;
+
+        function bildir() { CY.notify(ad + ' panoya kopyalandı.', 'success'); }
+
+        function yedek() {
+            var $gecici = $('<textarea>').val(metin).css({ position: 'fixed', opacity: 0 }).appendTo('body');
+
+            $gecici[0].select();
+
+            try {
+                document.execCommand('copy');
+                bildir();
+            } catch (e) {
+                CY.notify('Kopyalanamadı; metni seçip elle kopyalayın.', 'warning');
+            }
+
+            $gecici.remove();
+        }
+
+        if (!metin) { return; }
+
+        if (window.navigator.clipboard && window.isSecureContext) {
+            window.navigator.clipboard.writeText(metin).then(bildir, yedek);
+            return;
+        }
+
+        yedek();
+    };
+
     CY.ajaxError = function (xhr, fallback) {
         var res = (xhr && xhr.responseJSON) || {};
 
@@ -426,6 +464,15 @@ window.CY = (function ($) {
             if (!window.confirm($(this).data('confirm'))) {
                 event.preventDefault();
             }
+        });
+
+        /* --- Kopyala düğmesi ---
+         * <button data-copy-target="#alan" data-copy-label="API anahtarı">
+         * hedef alanın değerini panoya alır. */
+        $(document).on('click', '[data-copy-target]', function () {
+            var $hedef = $($(this).data('copy-target'));
+
+            CY.copy(String($hedef.val() || $hedef.text() || ''), $(this).data('copy-label'));
         });
 
         /* --- Parolayı göster / gizle ---

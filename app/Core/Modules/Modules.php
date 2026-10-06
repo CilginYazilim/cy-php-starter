@@ -46,6 +46,9 @@ final class Modules
     /** @var array<int,string> */
     private static array $loaded = [];
 
+    /** @var array<string,array<int,string>> rol => modüllerden gelen yetkiler (istek boyunca) */
+    private static array $abilities = [];
+
     public static function path(): string
     {
         return CY_BASE . DIRECTORY_SEPARATOR . 'modules';
@@ -161,7 +164,8 @@ final class Modules
             editable: false,
         );
 
-        self::$all = null; // önbelleği tazele
+        self::$all       = null; // önbelleği tazele
+        self::$abilities = [];
     }
 
     /* =================================================================
@@ -246,6 +250,59 @@ final class Modules
         return new \App\Core\Database\Migrator($db, $path, self::migrationPaths(), self::migrationPaths(true));
     }
 
+    /* =================================================================
+     *  YETKİLER VE ÖRNEK VERİ
+     * ============================================================== */
+
+    /**
+     * Açık modüllerin bu role verdiği yetkiler (module.json → "yetkiler").
+     * Role::can() buna bakar; kapalı modülün yetkisi kimseye geçmez.
+     *
+     * @return array<int,string>
+     */
+    public static function abilitiesFor(string $role): array
+    {
+        return self::$abilities[$role] ??= self::collectAbilities(self::enabled(), $role);
+    }
+
+    /**
+     * @param array<string,Module> $modules
+     * @return array<int,string>
+     */
+    public static function collectAbilities(array $modules, string $role): array
+    {
+        $liste = [];
+
+        foreach ($modules as $module) {
+            foreach ($module->yetkiler[$role] ?? [] as $yetki) {
+                $liste[$yetki] = true;
+            }
+        }
+
+        return array_keys($liste);
+    }
+
+    /**
+     * Açık modüllerin örnek veri dosyaları (modules/Ad/seeders/*.php).
+     * Her dosya "return new class extends App\Core\Database\Seeder {…};"
+     * döndürür — database/seeders ile aynı kural.
+     *
+     * @return array<int,string>
+     */
+    public static function seederFiles(): array
+    {
+        $dosyalar = [];
+
+        foreach (self::enabled() as $module) {
+            $bulunan = glob($module->seedersPath() . DIRECTORY_SEPARATOR . '*.php') ?: [];
+            sort($bulunan, SORT_STRING);
+
+            array_push($dosyalar, ...$bulunan);
+        }
+
+        return $dosyalar;
+    }
+
     /** @return array<int,string> Bu istekte yüklenen modüller */
     public static function loadedNames(): array
     {
@@ -255,7 +312,8 @@ final class Modules
     /** Testlerde keşif önbelleğini sıfırlamak için. */
     public static function forget(): void
     {
-        self::$all    = null;
-        self::$loaded = [];
+        self::$all       = null;
+        self::$loaded    = [];
+        self::$abilities = [];
     }
 }

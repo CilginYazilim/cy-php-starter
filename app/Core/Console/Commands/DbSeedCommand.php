@@ -23,7 +23,7 @@ final class DbSeedCommand extends Command
 
     public function description(): string
     {
-        return 'database/seeders içindeki tohumlayıcıları çalıştırır.';
+        return 'database/seeders ve açık modüllerin seeders/ klasörlerindeki tohumlayıcıları çalıştırır.';
     }
 
     public function help(): string
@@ -41,12 +41,6 @@ final class DbSeedCommand extends Command
     {
         $path = (string) Config::get('db.seeders');
 
-        if (!is_dir($path)) {
-            $this->out->info('database/seeders klasörü yok.');
-
-            return self::BASARILI;
-        }
-
         /* Örnek veri yayına yazılmamalı: canlı veritabanına "Demo
          * Kullanıcı" eklemek en iyi ihtimalle utanç vericidir. */
         if (!$this->confirmDestructive('Seeder\'lar veritabanına veri yazacak. Devam edilsin mi?')) {
@@ -56,9 +50,12 @@ final class DbSeedCommand extends Command
         }
 
         $only  = $this->input->option('class');
-        $files = glob(rtrim($path, '/\\') . DIRECTORY_SEPARATOR . '*.php') ?: [];
+        $files = is_dir($path) ? (glob(rtrim($path, '/\\') . DIRECTORY_SEPARATOR . '*.php') ?: []) : [];
 
         sort($files, SORT_STRING);
+
+        // Açık modüllerin örnek verisi (modules/Ad/seeders) çekirdekten sonra.
+        $files = array_merge($files, \App\Core\Modules\Modules::seederFiles());
 
         if ($only !== '') {
             $files = array_values(array_filter(

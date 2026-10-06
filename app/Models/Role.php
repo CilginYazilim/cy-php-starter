@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Core\Modules\Modules;
+
 final class Role
 {
     public const ADMIN  = 'admin';
@@ -114,8 +116,10 @@ final class Role
      * kendi kurduğu modüle giremiyor" gibi kafa karıştırıcı bir
      * durum çıkardı.
      *
-     * Diğer roller için liste bağlayıcıdır: bir modülün editöre de
-     * açılmasını istiyorsanız yetkisini aşağıdaki listeye ekleyin.
+     * Diğer roller için liste bağlayıcıdır. Bir modül kendi yetkisini
+     * editöre ya da üyeye module.json'daki "yetkiler" bloğuyla verir
+     * (bkz. Modules::abilitiesFor); bu dosyaya dokunmaz. Kapalı modülün
+     * yetkisi kimseye geçmez.
      */
     public static function can(string $role, string $ability): bool
     {
@@ -123,7 +127,11 @@ final class Role
             return true;
         }
 
-        return in_array($ability, self::ABILITIES[$role] ?? [], true);
+        if (in_array($ability, self::ABILITIES[$role] ?? [], true)) {
+            return true;
+        }
+
+        return self::exists($role) && in_array($ability, Modules::abilitiesFor($role), true);
     }
 
     /** @return array<int,string> */

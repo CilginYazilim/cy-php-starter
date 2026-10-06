@@ -24,6 +24,9 @@ namespace App\Core\Modules;
 
 final class Module
 {
+    /**
+     * @param array<string,array<int,string>> $yetkiler rol => yetki adları (module.json → "yetkiler")
+     */
     public function __construct(
         public readonly string $ad,
         public readonly string $yol,
@@ -31,6 +34,7 @@ final class Module
         public readonly string $aciklama,
         public readonly string $surum,
         public readonly bool   $aktif,
+        public readonly array  $yetkiler = [],
     ) {
     }
 
@@ -59,6 +63,7 @@ final class Module
             aciklama: (string) ($data['aciklama'] ?? ''),
             surum:    (string) ($data['surum'] ?? '1.0.0'),
             aktif:    $aktif,
+            yetkiler: self::parseAbilities($data['yetkiler'] ?? []),
         );
     }
 
@@ -91,5 +96,50 @@ final class Module
     {
         return is_dir($this->migrationsPath())
             && (glob($this->migrationsPath() . DIRECTORY_SEPARATOR . '*.php') ?: []) !== [];
+    }
+
+    /** Örnek veri tohumlayıcıları (php cy db:seed ve sihirbazın "örnek veri"si çalıştırır). */
+    public function seedersPath(): string
+    {
+        return $this->yol . DIRECTORY_SEPARATOR . 'seeders';
+    }
+
+    /**
+     * module.json → "yetkiler": { "editor": ["stok.view"], "uye": [...] }
+     *
+     * MODÜL KENDİ YETKİLERİNİ DAĞITIR. Eskiden editöre bir modülü açmak
+     * için çekirdeğin Role.php'sini düzenlemek gerekiyordu; modül
+     * silindiğinde o satırlar orada unutuluyordu. Yönetici zaten her
+     * yetkiye sahiptir (Role::can), listede yazmasına gerek yoktur.
+     *
+     * Bozuk girdi sessizce atlanır: künyedeki bir yazım hatası paneli
+     * çökertmemeli. Yetki adı "modul.islem" biçiminde olmalıdır.
+     *
+     * @return array<string,array<int,string>>
+     */
+    public static function parseAbilities(mixed $raw): array
+    {
+        if (!is_array($raw)) {
+            return [];
+        }
+
+        $sonuc = [];
+
+        foreach ($raw as $rol => $liste) {
+            if (!is_string($rol) || !is_array($liste)) {
+                continue;
+            }
+
+            $gecerli = array_values(array_filter(
+                $liste,
+                static fn (mixed $y): bool => is_string($y) && preg_match('/^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+\z/', $y) === 1
+            ));
+
+            if ($gecerli !== []) {
+                $sonuc[$rol] = $gecerli;
+            }
+        }
+
+        return $sonuc;
     }
 }

@@ -554,6 +554,40 @@ function enable_modules(array $adlar): array
 }
 
 /**
+ * Açık modüllerin örnek verisini yükler (modules/Ad/seeders/*.php).
+ *
+ * Yalnızca "Örnek verileri de yükle" seçildiyse ve enable_modules()'tan
+ * SONRA çağrılır: modül sınıfları ancak modül açılıp boot edilince
+ * yüklenebilir. Hata kurulumu çökertmez; son ekranda gösterilir.
+ *
+ * @return ?string hata mesajı (yoksa null)
+ */
+function run_module_seeders(): ?string
+{
+    if (!class_exists(App\Core\Modules\Modules::class)) {
+        return null;
+    }
+
+    try {
+        $db = App\Core\Database::connection();
+        App\Core\Modules\Modules::boot();
+
+        foreach (App\Core\Modules\Modules::seederFiles() as $dosya) {
+            $seeder = require $dosya;
+
+            if ($seeder instanceof App\Core\Database\Seeder) {
+                $seeder->setConnection($db);
+                $seeder->run();
+            }
+        }
+
+        return null;
+    } catch (Throwable $e) {
+        return $e->getMessage();
+    }
+}
+
+/**
  * Bir değeri .env satırına güvenle yazılabilir hale getirir.
  *
  * Okuyucu (App\Core\Env) ile YAZICI aynı dosyada durur; ikisi ayrı
@@ -1078,6 +1112,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && !$alreadyInstalled && 
                     [$migrationSayisi, $migrationHatasi] = run_migrations();
                     [$acilanModuller, $modulHatasi]      = enable_modules($site['moduller'] ?? []);
 
+                    if ($demo_yukle && $acilanModuller !== [] && $modulHatasi === null) {
+                        $modulHatasi = run_module_seeders();
+                    }
+
                     $_SESSION['kurulum_sonuc'] = [
                         'db_name'     => $db['db_name'],
                         'statements'  => $statements,
@@ -1499,9 +1537,9 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
 
                 <?php if (!empty($sonuc['modul_hata'])): ?>
                     <div class="cy-alert cy-alert--warning mb-3">
-                        <strong>Modül tabloları kurulamadı.</strong> Site çalışır durumda; tabloları kurmak için
+                        <strong>Modül kurulumu tamamlanamadı.</strong> Site çalışır durumda; tabloları kurmak için
                         <code>php cy migrate</code> çalıştırın ya da <strong>Panel → Sistem Bilgisi</strong>
-                        sayfasındaki düğmeyi kullanın.<br>
+                        sayfasındaki düğmeyi kullanın, örnek veri için <code>php cy db:seed</code>.<br>
                         <small><?= e($sonuc['modul_hata']) ?></small>
                     </div>
                 <?php endif; ?>

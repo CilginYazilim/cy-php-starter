@@ -6,8 +6,10 @@
  *  Bu dosya, modül AÇIKKEN çekirdek rotalarından SONRA yüklenir.
  *  $router değişkeni hazır gelir.
  *
- *  Yetki adlarını (kendi modülünüze özel) app/Models/Role.php içindeki
- *  ilgili rollere eklemeyi unutmayın; yoksa kimse erişemez.
+ *  Yönetici her yetkiye sahiptir. Modülü editöre ya da üyeye açmak
+ *  için yetki adını module.json → "yetkiler" bloğuna yazın, ör.
+ *  "editor": ["{{TABLO}}.view"]. Çekirdeğin Role.php'sine dokunmayın.
+ *  Kayıt düzeyi kurallar için bkz. modules/Ornek/src/OrnekPolicy.php.
  * =====================================================================
  */
 

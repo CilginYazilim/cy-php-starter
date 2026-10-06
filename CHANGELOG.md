@@ -12,7 +12,7 @@ sayfasındadır.
 
 | Sürüm | Tarih | Özet |
 |---|---|---|
-| [1.5.0](#150--2026-10-06) | 2026-10-06 | Demo modu (tek tıkla giriş), Örnek modül kurulumda açık |
+| [1.5.0](#150--2026-10-06) | 2026-10-06 | Demo modu (tek tıkla giriş), modül yetkileri ve RBAC örnek modülü, sade Sistem sayfası |
 | [1.4.0](#140--2026-10-06) | 2026-10-06 | İkinci güvenlik incelemesi |
 | [1.3.0](#130--2026-10-06) | 2026-10-06 | Güvenlik ve kararlılık |
 | [1.2.1](#121--2026-09-05) | 2026-09-05 | Takma ad (vitrin) adresi düzeltmesi |
@@ -52,7 +52,29 @@ gelen örnek modül.
 - Panel uyarıları: demo hesabına kilitli işlemler; asıl yöneticiye "demo
   modu açık"; demo modu kapalı bir sitede örnek hesaplar duruyorsa
   kırmızı uyarı.
-- Birim testleri 112 → 144.
+- **Modüller rollere yetki dağıtır:** `module.json` → `"yetkiler"`
+  (ör. `"editor": ["stok.view"]`). Eskiden editöre bir modülü açmak için
+  çekirdeğin `Role.php`'sini düzenlemek gerekiyordu. Kapalı modülün
+  yetkisi kimseye geçmez. `make:module` şablonu bloğu boş listelerle
+  üretir.
+- **Modül örnek verisi:** `modules/Ad/seeders/*.php`; `php cy db:seed` ve
+  sihirbazın "Örnek verileri de yükle"si açık modüllerinkini de çalıştırır.
+- **Örnek Modül artık bir RBAC örneği:** kayıtların sahibi ve durumu
+  (taslak / yayında) var. Yönetici her kaydı yönetir, editör yalnızca
+  kendisininkini (başkasının taslağını görmez), üye yalnızca yayındakileri
+  görür. Kural `OrnekPolicy`'de; görünüm ve denetleyici aynı sınıfa sorar,
+  elle gönderilen yetkisiz istek 403/404 alır. Ekranda "Sizin
+  yetkileriniz", `Role::can()`'in gerçek cevabından üretilen yetki
+  matrisi ve "Rastgele 5 örnek ekle" (yönetici). Kurulum 12 rastgele
+  kayıt üretir.
+- **Sistem Bilgisi → Kuyruklar kartı:** iş kuyruğu ve e-posta kuyruğu
+  birlikte; son başarısız e-postalar; gönderim yöntemi "Kayıt" ise
+  mektupların gönderilmeyip `storage/mail`'e yazıldığı açıkça yazar.
+  Eskiden yalnızca iş kuyruğu görünüyor, başarısız bir e-posta burada
+  hiç çıkmıyordu.
+- Hesabım → API anahtarı: yeni anahtar için **Kopyala** düğmesi ve
+  listede "anahtarın tamamı yalnızca bir kez gösterilir" açıklaması.
+- Birim testleri 112 → 154.
 
 ### Değiştirildi
 
@@ -63,16 +85,22 @@ gelen örnek modül.
   Eskisi (`'%@ornek.com'`) `@ornek.com` adresiyle açılmış gerçek bir
   yöneticiyi de siliyordu.
 - Örnek modülün ekran başlığı "Ornek" → "Örnek Modül".
+- **Sistem Bilgisi sayfası sadeleşti:** hafif kartlar (`cy-panel`),
+  denetimlerde uyarılar önce ve açıklamalı, geçenler tek satır; bilgi
+  kartları sütunlara akar (yanındakinin boyuna gerilip boş kutu
+  bırakmaz). Masaüstünde sayfa ~%35 kısaldı.
+- Panoya kopyalama ortak yardımcıya taşındı (`CY.copy`, `data-copy-target`).
 - Duman testi demo modunda demo parolası denetimini atlar (bilinçli
   gösterim).
 
 ### Güncelleme (1.4.0 → 1.5.0)
 
-Migration yok. Kodu çekmeniz yeterli; demo modu varsayılan olarak
-kapalıdır. Var olan bir kurulumda:
+Çekirdekte migration yok. Kodu çekmeniz yeterli; demo modu varsayılan
+olarak kapalıdır. Var olan bir kurulumda:
 
-- Örnek modülü açmak için: `php cy module --enable=Ornek` ve
-  `php cy migrate`.
+- Örnek modülü açıp doldurmak için: `php cy module --enable=Ornek`,
+  `php cy migrate` ve `php cy db:seed --class=OrnekIcerik`. Modül zaten
+  açıksa `php cy migrate` yeni sütunları (sahip, durum, açıklama) ekler.
 - Demo modunu açmak için `.env`'ye `APP_DEMO=true` ekleyin. Giriş
   ekranı yalnızca veritabanında duran örnek hesapları listeler;
   `ali.yonetici` hesabı eski kurulumlarda yoktur (yeniden kurulumla

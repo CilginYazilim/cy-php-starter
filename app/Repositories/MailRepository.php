@@ -447,6 +447,26 @@ final class MailRepository
         return (int) $this->db->query("SELECT COUNT(*) FROM mail_kayitlari WHERE durum = 'basarisiz'")->fetchColumn();
     }
 
+    /**
+     * Son başarısız mektuplar (Sistem Bilgisi'ndeki kuyruk kartı için).
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function recentFailed(int $limit = 5): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT id, alici_eposta, konu, hata, deneme, created_at
+               FROM mail_kayitlari
+              WHERE durum = 'basarisiz'
+              ORDER BY id DESC
+              LIMIT :limit"
+        );
+        $stmt->bindValue(':limit', max(1, min($limit, 50)), PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll();
+    }
+
     public function countSentToday(): int
     {
         return (int) $this->db->query(

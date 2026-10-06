@@ -217,8 +217,14 @@ $epostaDegisti = isset($errors['eposta_sifre'])
                     <?php if (!empty($yeniAnahtar) && is_string($yeniAnahtar)): ?>
                         <div class="cy-alert cy-alert--success mb-3">
                             <strong>Yeni anahtarınız:</strong> şimdi kopyalayın, bu sayfadan ayrılınca bir daha gösterilmez.
-                            <input type="text" class="form-control mt-2 font-monospace" readonly value="<?= e($yeniAnahtar) ?>"
-                                   aria-label="Yeni API anahtarı" id="yeni_api_anahtari">
+                            <div class="input-group mt-2">
+                                <input type="text" class="form-control font-monospace" readonly value="<?= e($yeniAnahtar) ?>"
+                                       aria-label="Yeni API anahtarı" id="yeni_api_anahtari">
+                                <button type="button" class="btn cy-btn cy-btn--primary"
+                                        data-copy-target="#yeni_api_anahtari" data-copy-label="API anahtarı">
+                                    <?= icon('copy', 'cy-icon cy-icon--sm') ?> Kopyala
+                                </button>
+                            </div>
                             <div class="small mt-2">
                                 Kullanım: <code>curl -H "Authorization: Bearer <?= e(substr($yeniAnahtar, 0, 8)) ?>…" <?= e(App\Core\Url::absolute('api/v1/ben')) ?></code>
                             </div>
@@ -262,6 +268,12 @@ $epostaDegisti = isset($errors['eposta_sifre'])
                                 </tbody>
                             </table>
                         </div>
+                        <p class="cy-muted small mb-3">
+                            <?= icon('lock', 'cy-icon cy-icon--sm') ?>
+                            Güvenlik gereği anahtarın tamamı saklanmaz (yalnızca SHA-256 özeti); üretildiği anda
+                            <strong>bir kez</strong> gösterilir, burada yalnızca ön eki görünür. Kaybettiyseniz iptal edip
+                            yenisini üretin.
+                        </p>
                     <?php endif; ?>
 
                     <form method="post" action="<?= e(url('panel/hesabim/api-anahtari')) ?>" class="row g-2 align-items-end">

@@ -36,6 +36,8 @@ use App\Core\Exceptions\HttpException;
 use App\Core\Ip;
 use App\Core\Mail\NativeTransport;
 use App\Core\Middleware;
+use App\Core\Modules\Module;
+use App\Core\Modules\Modules;
 use App\Core\Request;
 use App\Core\Signer;
 use App\Core\Throttle;
@@ -367,6 +369,27 @@ if (is_array($ornekKunye)) {
 } else {
     echo "  (modules/Ornek yok; atlandı)\n";
 }
+
+/* ---------------------------------------------------------------- */
+echo "\nModül yetkileri (module.json → yetkiler)\n";
+
+dogrula('Geçerli yetki listesi okunur', Module::parseAbilities(['editor' => ['stok.view', 'stok.update.own']]) === ['editor' => ['stok.view', 'stok.update.own']]);
+dogrula('Bozuk girdiler atlanır', Module::parseAbilities(['editor' => ['stok.view', 'GECERSIZ', 'nokta_yok', 7, 'a.b'], 'uye' => 'stok.view', 3 => ['x.y']]) === ['editor' => ['stok.view', 'a.b']]);
+dogrula('Boş liste ve dizi olmayan girdi yok sayılır', Module::parseAbilities(['editor' => []]) === [] && Module::parseAbilities('metin') === []);
+
+$modulA = new Module('A', '/yok', 'A', '', '1.0.0', true, ['editor' => ['a.view', 'ortak.view']]);
+$modulB = new Module('B', '/yok', 'B', '', '1.0.0', true, ['editor' => ['ortak.view'], 'uye' => ['b.view']]);
+dogrula('Açık modüllerin yetkileri birleşir (tekrarsız)', Modules::collectAbilities([$modulA, $modulB], 'editor') === ['a.view', 'ortak.view']);
+dogrula('Rol başka modülün yetkisini almaz', Modules::collectAbilities([$modulA, $modulB], 'uye') === ['b.view']);
+
+$ornekModul = Module::fromDirectory(CY_BASE . '/modules/Ornek', true);
+if (is_dir($ornekModul->yol)) {
+    dogrula('Ornek: editör görür, ekler, kendi kaydını yönetir', Modules::collectAbilities([$ornekModul], 'editor') === ['ornek.view', 'ornek.create', 'ornek.update.own']);
+    dogrula('Ornek: üye yalnızca görür', Modules::collectAbilities([$ornekModul], 'uye') === ['ornek.view']);
+    dogrula('Ornek: herkesi yönetme yetkisi hiçbir role dağıtılmaz (yalnız yönetici)', !in_array('ornek.manage', array_merge(...array_values($ornekModul->yetkiler)), true));
+    dogrula('Ornek modülünün örnek verisi var', is_file(CY_BASE . '/modules/Ornek/seeders/OrnekIcerik.php'));
+}
+dogrula('Yönetici her yetkiye sahip, bilinmeyen rol hiçbirine', Role::can(Role::ADMIN, 'herhangi.bir') && !Role::can('hayalet', 'ornek.view'));
 
 /* ---------------------------------------------------------------- */
 printf("\n%d geçti · %d kaldı\n\n", $gecti, $kaldi);

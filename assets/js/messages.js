@@ -150,39 +150,9 @@ jQuery(function ($) {
      * kayıtlı bir posta istemcisi yoksa HİÇBİR ŞEY YAPMAZ — kullanıcı
      * da düğmenin bozuk olduğunu sanır. Bu düğme her koşulda çalışan
      * alternatiftir: adresi panoya alır, kişi kendi webmail'ine
-     * yapıştırır.
-     *
-     * navigator.clipboard yalnızca güvenli bağlamda (https ya da
-     * localhost) tanımlıdır; olmadığı yerde eski execCommand yoluna
-     * düşüyoruz. */
+     * yapıştırır (bkz. CY.copy, app.js). */
     $('#msg_copy').on('click', function () {
-        var adres = $(this).data('eposta');
-
-        if (!adres) { return; }
-
-        function bildir() { CY.notify(adres + ' panoya kopyalandı.', 'success'); }
-
-        if (window.navigator.clipboard && window.isSecureContext) {
-            window.navigator.clipboard.writeText(adres).then(bildir, yedek);
-            return;
-        }
-
-        yedek();
-
-        function yedek() {
-            var $gecici = $('<textarea>').val(adres).css({ position: 'fixed', opacity: 0 }).appendTo('body');
-
-            $gecici[0].select();
-
-            try {
-                document.execCommand('copy');
-                bildir();
-            } catch (e) {
-                CY.notify('Kopyalanamadı: ' + adres, 'warning');
-            }
-
-            $gecici.remove();
-        }
+        CY.copy($(this).data('eposta'));
     });
 
     $('#message_table').on('click', '.js-toggle-read', function () {

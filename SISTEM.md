@@ -497,7 +497,9 @@ Roller ve yetkileri `app/Models/Role.php` içindedir.
 > modüllerdir: `modules/Stok` kendi `stok.view` yetkisini tanımlar ama
 > çekirdeğin listesini değiştiremez. Yönetici için beyaz liste şart
 > koşsaydık, kurulan her modül için `Role.php`'yi elle düzenlemek
-> gerekirdi. Diğer roller için liste bağlayıcıdır.
+> gerekirdi. Diğer roller için liste bağlayıcıdır; bir modül kendi
+> yetkisini editöre ya da üyeye `module.json` → `"yetkiler"` ile verir
+> (bkz. 16. Modül sistemi).
 
 ### Demo modu
 
@@ -1101,10 +1103,11 @@ saldırısı bedava olurdu.
 
 ```
 modules/Stok/
-├── module.json          künye + menü tanımı
+├── module.json          künye + menü + rollere dağıtılan yetkiler
 ├── routes.php           kendi rotaları
 ├── events.php           kendi dinleyicileri (opsiyonel)
 ├── migrations/          kendi tabloları
+├── seeders/             örnek veri (opsiyonel; php cy db:seed)
 ├── src/                 Modules\Stok\… sınıfları
 └── views/               kendi ekranları
 ```
@@ -1142,13 +1145,48 @@ böyledir: kurulumdan sonra **Panel → Örnek Modül** (`/panel/ornek`)
 hazırdır. Modül migration'ları temel partiye değil 1. partiye yazılır;
 çekirdekten farklı olarak geri alınabilirler.
 
-**Örnek modül:** `modules/Ornek` modül sisteminin en küçük çalışan
-örneğidir — bir migration (`ornek` tablosu), üç rota (listele, ekle,
-sil), Repository ve kendi görünümü. Yetkileri (`ornek.view`,
-`ornek.manage`) `Role.php`'de tanımlı değildir; bu yüzden yalnızca
-yönetici görür. Editöre açmak için iki yetkiyi `Role.php`'de editörün
-listesine ekleyin. Kendi projenizde istemiyorsanız:
-`php cy module --disable=Ornek` ve klasörü silin.
+**Modül yetkileri (RBAC):** modül kendi yetkilerini rollere
+`module.json` içinde dağıtır; çekirdeğin `Role.php`'sine dokunmaz:
+
+```json
+"yetkiler": {
+    "editor": ["stok.view", "stok.create", "stok.update.own"],
+    "uye":    ["stok.view"]
+}
+```
+
+Yönetici her yetkiye zaten sahiptir (listede yazmaz). `Role::can()`
+önce çekirdeğin listesine, sonra **açık** modüllerin dağıttıklarına
+bakar; kapalı modülün yetkisi kimseye geçmez, modül silinince yetkisi
+de gider. Yetki adı `modul.islem` biçiminde olmalıdır; bozuk girdi
+sessizce atlanır.
+
+Rol yetkisi kabadır ("editör kayıt silebilir mi?"). Kaydın SAHİBİNE
+bağlı kurallar ("editör BU kaydı silebilir mi?") bir Policy sınıfında
+durur ve hem görünüm hem denetleyici ona sorar — bkz. `OrnekPolicy`.
+
+**Örnek veri:** `seeders/` klasöründeki dosyalar (`return new class
+extends App\Core\Database\Seeder {…};`) `php cy db:seed` ile ve
+sihirbazda "Örnek verileri de yükle" seçildiğinde çalışır — yalnızca
+açık modüllerinkiler.
+
+**Örnek modül — RBAC örneği:** `modules/Ornek` bu yapının hepsini
+çalışır hâlde gösterir. Kayıtların sahibi ve durumu (taslak / yayında)
+vardır; kurulum 12 rastgele kayıt üretir (yönetici ve editörler
+arasında dağıtılmış).
+
+| Rol | Görür | Yapabilir |
+|---|---|---|
+| Yönetici (`ornek.manage`) | her kaydı | her kaydı yayınlar/siler, "Rastgele 5 örnek ekle" |
+| Editör (`ornek.create`, `ornek.update.own`) | yayındakiler + kendi taslakları | kayıt ekler, **yalnızca kendi** kaydını yayınlar/siler |
+| Üye (`ornek.view`) | yalnızca yayındakiler | yalnızca görür |
+
+Her işlem iki kapıdan geçer: rotadaki `can:…` (rol) ve denetleyicideki
+`OrnekPolicy` (kayıt). Kilitli bir kayda elle gönderilen istek `403`,
+göremediği bir kayda (başkasının taslağı) gönderilen istek `404` alır —
+kaydın varlığı da ele verilmez. Ekrandaki yetki matrisi elle yazılmış
+bir tablo değil, `Role::can()`'in o anki cevabıdır. Kendi projenizde
+istemiyorsanız: `php cy module --disable=Ornek` ve klasörü silin.
 
 **Migration adlandırma:** modül migration'ları `Stok/2026_…` biçiminde
 kaydedilir; iki modül aynı dosya adını kullansa bile çakışmaz.

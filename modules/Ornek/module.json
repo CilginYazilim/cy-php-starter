@@ -1,8 +1,13 @@
 {
     "baslik": "Örnek Modül",
-    "aciklama": "Modül sisteminin çalışan örneği — inceleyip silebilirsiniz",
-    "surum": "1.0.0",
+    "aciklama": "Modül sisteminin ve rol tabanlı yetkinin (RBAC) çalışan örneği — inceleyip silebilirsiniz",
+    "surum": "1.1.0",
     "kurulumda_acik": true,
+
+    "yetkiler": {
+        "editor": ["ornek.view", "ornek.create", "ornek.update.own"],
+        "uye":    ["ornek.view"]
+    },
 
     "menu": {
         "route": "panel/ornek",
