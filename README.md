@@ -6,11 +6,11 @@
 
 **Kurulum sihirbazı · rol tabanlı yönetim paneli · konsol · migration · kuyruk · olay · modül sistemi · REST API · PWA — hepsi hazır.**
 
-[![Sürüm](https://img.shields.io/badge/Sürüm-1.5.0-0b5cb5?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/releases/latest)
+[![Sürüm](https://img.shields.io/badge/Sürüm-1.5.1-0b5cb5?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/releases/latest)
 [![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?style=flat-square&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 ![Bağımlılık: sıfır](https://img.shields.io/badge/Bağımlılık-Sıfır-16a34a?style=flat-square)
-[![Testler](https://img.shields.io/badge/Birim_testi-173-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/actions)
+[![Testler](https://img.shields.io/badge/Birim_testi-180-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/actions)
 [![Lisans](https://img.shields.io/badge/Lisans-MIT-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/blob/main/LICENSE)
 
 [**▶ Canlı Demo**](https://cilginyazilim.com/kutuphane/uygulama/cy-php-starter/) · [PHP Başlangıç Şablonu sayfası](https://cilginyazilim.com/kutuphane/php-baslangic-sablonu) · [Çılgın Yazılım](https://cilginyazilim.com)
@@ -184,7 +184,7 @@ seçimdir. Bu şablon, şu durumlar için yazıldı:
 | **Tema** | Tek renk seçin, panelin ve sitenin tamamı yeniden renklensin |
 | **Mobil** | Ön yüz ve panelin tamamı mobil öncelikli · 44px dokunma hedefleri · yapışkan menü · iOS yakınlaştırma ve çentik payı çözülmüş |
 | **Konsol** | `php cy` — 21 komut, üreteçler dahil |
-| **Testler** | 173 birim testi (veritabanı gerektirmez) · kurulu siteye duman testi · GitHub Actions'ta PHP 8.1–8.4 |
+| **Testler** | 180 birim testi (veritabanı gerektirmez) · kurulu siteye duman testi · GitHub Actions'ta PHP 8.1–8.4 |
 
 ---
 
@@ -388,7 +388,7 @@ php tests/smoke.php http://localhost/proje           # kurulu siteye HTTP deneti
 php tests/smoke.php http://localhost/proje --kullanici=admin --parola=… --api=cy_…
 ```
 
-`unit.php` 173 testi veritabanı olmadan çalıştırır. `smoke.php` siteyi
+`unit.php` 180 testi veritabanı olmadan çalıştırır. `smoke.php` siteyi
 değiştirmez: kurulum kilidi, gizli dosyalar (`.env`, `.git/`), açık
 yönlendirme, kaba kuvvet kilidi, kullanıcı tespiti, oturum çerezi, servis
 çalışanı ve API'yi dışarıdan sınar. Kısa sürede arka arkaya
@@ -632,12 +632,12 @@ rengini kendinize göre ayarlayın; arayüz anında yeni renginizi alır.
 
 ## Sürüm
 
-Güncel sürüm **1.5.0** (7 Ekim 2026). Sürüm numarası **kodda, tek yerde**
+Güncel sürüm **1.5.1** (7 Ekim 2026). Sürüm numarası **kodda, tek yerde**
 durur:
 
 ```php
 // config/app.php
-'version' => '1.5.0',
+'version' => '1.5.1',
 ```
 
 `Panel → Sistem Bilgisi` sayfası bu değeri okur. Şablonu güncellediğinizde
@@ -647,6 +647,7 @@ numara kendiliğinden gelir; veritabanında ayrıca tutulmaz.
 
 | Sürüm | Tarih | Öne çıkanlar |
 |---|---|---|
+| [1.5.1](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.5.1) | 2026-10-07 | Veritabanı performansı: sık çalışan sorgular için eksik indeksler; giriş denemeleri temizliğinin kilitlenmesi giderildi |
 | [1.5.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.5.0) | 2026-10-07 | Demo modu (tek tıkla giriş, örnek hesaplara kilit); panelden modül aç/kapa; modüllerin rollere yetki dağıtması ve onay akışlı RBAC örnek modülü; sade panel tasarımı |
 | [1.4.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.4.0) | 2026-10-06 | İkinci güvenlik incelemesi: boşluklu/Türkçe klasörde ve Redis oturumunda giriş, kuyrukta kilitlenme, kayıtta e-posta doğrulaması, parola değişince düşen API anahtarları, hizmet engellemeye dayanıklı IP kilidi |
 | [1.3.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.3.0) | 2026-10-06 | Kapsamlı güvenlik incelemesi: kurulum sihirbazı ele geçirme, açık yönlendirme, kaba kuvvet kilidi, oturum sürümü; REST API anahtarları, birim ve duman testleri, GitHub Actions |
@@ -657,6 +658,12 @@ numara kendiliğinden gelir; veritabanında ayrıca tutulmaz.
 
 Her sürümün ayrıntısı:
 [CHANGELOG.md](https://github.com/CilginYazilim/cy-php-starter/blob/main/CHANGELOG.md).
+
+### Güncelleme (1.5.0 → 1.5.1)
+
+Kodu çektikten sonra `php cy migrate` çalıştırın (SSH yoksa panelde
+çıkan **"1 migration bekliyor → Şimdi çalıştır"**). Yalnızca indeks
+ekler, veriye dokunmaz.
 
 ### Güncelleme (1.4.0 → 1.5.0)
 

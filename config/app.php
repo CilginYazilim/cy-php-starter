@@ -32,7 +32,7 @@ return [
      *  (github.com/CilginYazilim/cy-php-starter/releases) ve anlamsal
      *  sürümleme kullanır: BÜYÜK.KÜÇÜK.YAMA
      * -------------------------------------------------------------- */
-    'version' => '1.5.0',
+    'version' => '1.5.1',
 
     'desc'  => Env::get('APP_DESCRIPTION', 'Çılgın Yazılım örnek uygulaması'),
     'url'   => Env::get('APP_URL', ''),

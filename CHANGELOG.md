@@ -12,6 +12,7 @@ sayfasındadır.
 
 | Sürüm | Tarih | Özet |
 |---|---|---|
+| [1.5.1](#151--2026-10-07) | 2026-10-07 | Veritabanı: sık çalışan sorgular için eksik indeksler, giriş temizliğinde kilit |
 | [1.5.0](#150--2026-10-07) | 2026-10-07 | Demo modu (tek tıkla giriş), panelden modül aç/kapa, onay akışlı RBAC örnek modülü, sade panel tasarımı |
 | [1.4.0](#140--2026-10-06) | 2026-10-06 | İkinci güvenlik incelemesi |
 | [1.3.0](#130--2026-10-06) | 2026-10-06 | Güvenlik ve kararlılık |
@@ -19,6 +20,53 @@ sayfasındadır.
 | [1.2.0](#120--2026-09-04) | 2026-09-04 | Ekran görüntüleri ve Canlı Demo |
 | [1.1.0](#110--2026-08-30) | 2026-08-30 | Mobil düzen, tek kaynaktan sürüm |
 | [1.0.0](#100--2026-08-18) | 2026-08-18 | İlk kararlı sürüm |
+
+---
+
+## [1.5.1] — 2026-10-07
+
+Veritabanı performansı. Sık çalışan sorgular yeniden ölçüldü (300 bin
+e-posta kaydı, 400 bin giriş denemesi, 100 bin mesaj, 50 bin kullanıcı);
+büyüyen tablolarda tam tarama yapan beşi kapatıldı.
+
+### Düzeltildi
+
+- **Giriş denemeleri temizliği kilitleniyordu.** Bir günden eski
+  denemeleri silen sorgu (her 20 denemede bir çalışır) `attempted_at`
+  indeksi olmadığı için bütün tabloyu tarıyor ve taradığı satırları
+  kilitliyordu: silme sürerken gelen giriş denemeleri kilit beklemesine
+  düşüyor, kaba kuvvet saldırısı anında gerçek kullanıcılar da giriş
+  yapamıyordu. 233 ms + kilit → 0,2 ms, kilit yok.
+- **"Bugün gönderilen e-posta" sayacı** tarih sütununu `DATE()`
+  fonksiyonuna sardığı için indeks kullanamıyor, gönderilmiş bütün
+  kayıtları tarıyordu. Kontrol paneli ve Sistem sayfası her açılışta
+  soruyordu: 968 ms → 1,7 ms. "Bugün gelen mesaj" sayacı da aynı
+  biçimde düzeltildi (78 ms → 0,3 ms).
+- E-posta durum sayaçları dört ayrı `COUNT` yerine tek `GROUP BY`
+  (310 ms → 126 ms).
+
+### Eklendi
+
+- İndeksler (`2026_10_07_010000_sorgu_indeksleri` migration'ı ve
+  `kurulum/database.sql`):
+  - `mail_kayitlari (durum, gonderildi_at)` — bugün gönderilen sayacı
+  - `mail_kayitlari (alici_eposta, created_at)` — iletişim formu ve kayıt
+    doğrulamasının "bu adrese son X saatte mektup gitti mi?" denetimi;
+    alıcı sütununda hiç indeks yoktu
+  - `login_attempts (attempted_at)` — eski denemelerin silinmesi
+  - `kullanicilar (created_at)` — kontrol panelindeki son eklenenler ve
+    14 günlük grafik (43 ms → 0,2 ms)
+- Birim testi: `app/` ve `modules/` içinde sütunu fonksiyona sarıp
+  karşılaştıran sorgu (ör. `DATE(sutun) = …`) kalmadığını denetler.
+  Birim testleri 173 → 180.
+
+### Güncelleme (1.5.0 → 1.5.1)
+
+Bir çekirdek migration var. Kodu çektikten sonra `php cy migrate`
+çalıştırın; SSH yoksa panelde çıkan **"1 migration bekliyor → Şimdi
+çalıştır"** bağlantısını kullanın. Yalnızca indeks ekler, veri
+değiştirmez; InnoDB indeksleri tabloyu kilitlemeden kurar (750 bin
+satırda ~5 sn).
 
 ---
 
@@ -605,6 +653,7 @@ kaynağa indirildiği sürüm.
 - **Altyapı:** PDO/MySQL, migration ve seeder, önbellek, olaylar, kuyruk,
   zamanlayıcı, e-posta, REST API temeli, modül sistemi ve `php cy` konsolu.
 
+[1.5.1]: https://github.com/CilginYazilim/cy-php-starter/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/CilginYazilim/cy-php-starter/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/CilginYazilim/cy-php-starter/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/CilginYazilim/cy-php-starter/compare/v1.2.1...v1.3.0

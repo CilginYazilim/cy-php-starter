@@ -202,9 +202,12 @@ final class MessageRepository
         return (int) $this->db->query('SELECT COUNT(*) FROM mesajlar WHERE okundu = 0')->fetchColumn();
     }
 
+    /** Bugün gelenler. Aralık karşılaştırması: idx_mesajlar_tarih kullanılır (bkz. MailRepository::countSentToday). */
     public function countToday(): int
     {
-        return (int) $this->db->query('SELECT COUNT(*) FROM mesajlar WHERE DATE(created_at) = CURDATE()')->fetchColumn();
+        return (int) $this->db->query(
+            'SELECT COUNT(*) FROM mesajlar WHERE created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY'
+        )->fetchColumn();
     }
 
     /** @return array<int,Message> */

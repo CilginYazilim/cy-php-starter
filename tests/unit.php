@@ -456,6 +456,42 @@ dogrula('Satır içi etiketler kelimeyi bölmez', App\Core\Html::toText('<p>ka<s
 dogrula('Boş HTML boş metin', App\Core\Html::toText('<p> </p><br>') === '');
 
 /* ---------------------------------------------------------------- */
+echo "\nVeritabanı: indeksler ve sorgu biçimi\n";
+
+$sema = (string) @file_get_contents(CY_BASE . '/kurulum/database.sql');
+if ($sema !== '') {
+    foreach (['idx_mail_gonderim', 'idx_mail_alici', 'idx_attempts_tarih', 'idx_kullanicilar_kayit'] as $indeks) {
+        dogrula('Taze kurulum ' . $indeks . ' indeksiyle gelir', str_contains($sema, '`' . $indeks . '`'));
+    }
+    dogrula('database.sql indeks migration\'ını kurulmuş sayar', str_contains($sema, "'2026_10_07_010000_sorgu_indeksleri'"));
+} else {
+    echo "  (kurulum/ klasörü silinmiş; database.sql denetimi atlandı)\n";
+}
+dogrula('Var olan kurulumlar için indeks migration\'ı var', is_file(CY_BASE . '/database/migrations/2026_10_07_010000_sorgu_indeksleri.php'));
+
+/* "DATE(created_at) = CURDATE()" gibi, sütunu fonksiyona saran bir
+ * karşılaştırma indeksi devre dışı bırakır ve tabloyu baştan sona
+ * tarar. Bugün gönderilen e-posta sayacı böyle yazıldığı için 300 bin
+ * kayıtta sorgu başına ~1 sn sürüyordu. Aralık yazılmalı:
+ * "created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY". */
+$fonksiyonluKarsilastirma = [];
+foreach ([CY_BASE . '/app', CY_BASE . '/modules'] as $kok) {
+    if (!is_dir($kok)) {
+        continue;
+    }
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($kok, FilesystemIterator::SKIP_DOTS)) as $dosya) {
+        if ($dosya->getExtension() === 'php'
+            && preg_match('/\b(DATE|YEAR|MONTH|DAY|LOWER|UPPER)\s*\(\s*`?\w+`?(\.`?\w+`?)?\s*\)\s*(=|<|>|BETWEEN\b|IN\s*\()/i', (string) file_get_contents($dosya->getPathname())) === 1) {
+            $fonksiyonluKarsilastirma[] = substr($dosya->getPathname(), strlen(CY_BASE) + 1);
+        }
+    }
+}
+dogrula('Hiçbir sorgu sütunu fonksiyona sarıp karşılaştırmıyor (indeks kullanılabilir)', $fonksiyonluKarsilastirma === []);
+if ($fonksiyonluKarsilastirma !== []) {
+    echo '    → ' . implode(', ', $fonksiyonluKarsilastirma) . "\n";
+}
+
+/* ---------------------------------------------------------------- */
 printf("\n%d geçti · %d kaldı\n\n", $gecti, $kaldi);
 
 exit($kaldi > 0 ? 1 : 0);

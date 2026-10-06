@@ -234,7 +234,9 @@ CREATE TABLE `kullanicilar` (
   UNIQUE KEY `uq_kullanicilar_kadi`   (`kullanici_adi`),
   KEY `idx_kullanicilar_rol`     (`rol`),
   KEY `idx_kullanicilar_durum`   (`durum`),
-  KEY `idx_kullanicilar_hatirla` (`hatirla_token`)
+  KEY `idx_kullanicilar_hatirla` (`hatirla_token`),
+  -- Kontrol panelindeki "son eklenenler" ve 14 günlük kayıt grafiği.
+  KEY `idx_kullanicilar_kayit`   (`created_at`)
 ) ENGINE=InnoDB
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_turkish_ci;
@@ -270,7 +272,10 @@ CREATE TABLE `login_attempts` (
   PRIMARY KEY (`id`),
   KEY `idx_attempts_lookup` (`identifier`, `attempted_at`),
   -- IP geneli yavaşlatma "bu IP'den kaç farklı kimlik denendi" diye sorar.
-  KEY `idx_attempts_ip`     (`ip`, `attempted_at`)
+  KEY `idx_attempts_ip`     (`ip`, `attempted_at`),
+  -- Eski denemelerin silinmesi. İndekssiz DELETE bütün tabloyu tarayıp
+  -- kilitliyor, o sırada gelen girişler beklemede kalıyordu.
+  KEY `idx_attempts_tarih`  (`attempted_at`)
 ) ENGINE=InnoDB
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_unicode_ci;
@@ -409,6 +414,10 @@ CREATE TABLE `mail_kayitlari` (
 
   PRIMARY KEY (`id`),
   KEY `idx_mail_durum`     (`durum`, `id`),
+  -- "Bugün gönderilen" sayacı (kontrol paneli, Sistem sayfası).
+  KEY `idx_mail_gonderim`  (`durum`, `gonderildi_at`),
+  -- "Bu adrese son X saatte mektup gitti mi?" (iletişim, kayıt).
+  KEY `idx_mail_alici`     (`alici_eposta`, `created_at`),
   KEY `idx_mail_tarih`     (`created_at`),
   KEY `idx_mail_tur`       (`tur`),
   KEY `idx_mail_toplu`     (`toplu_id`),
@@ -475,4 +484,5 @@ INSERT INTO `migrasyonlar` (`dosya`, `parti`) VALUES
 ('2026_10_06_010000_oturum_surumu',         0),
 ('2026_10_06_020000_mail_kuyrugu_kilidi',   0),
 ('2026_10_06_030000_giris_denemeleri_ip_indeksi', 0),
-('2026_10_06_040000_eposta_dogrulama',      0);
+('2026_10_06_040000_eposta_dogrulama',      0),
+('2026_10_07_010000_sorgu_indeksleri',      0);

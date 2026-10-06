@@ -467,21 +467,42 @@ final class MailRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Bugün gönderilenler.
+     *
+     * Tarih sütunu bir ARALIKLA karşılaştırılır. Eskiden sütun DATE()
+     * fonksiyonuna sarılıp CURDATE() ile eşitleniyordu: sütun bir fonksiyona
+     * sarılınca indeks kullanılamaz, gönderilmiş BÜTÜN kayıtlar taranır
+     * (300 bin kayıtta sorgu başına ~1 sn; panel her açılışta soruyordu).
+     */
     public function countSentToday(): int
     {
         return (int) $this->db->query(
-            "SELECT COUNT(*) FROM mail_kayitlari WHERE durum = 'gonderildi' AND DATE(gonderildi_at) = CURDATE()"
+            "SELECT COUNT(*) FROM mail_kayitlari
+              WHERE durum = 'gonderildi'
+                AND gonderildi_at >= CURDATE() AND gonderildi_at < CURDATE() + INTERVAL 1 DAY"
         )->fetchColumn();
     }
 
-    /** @return array{toplam:int,gonderildi:int,kuyrukta:int,basarisiz:int,bugun:int} */
+    /**
+     * Durum sayaçları. Dört ayrı COUNT yerine tek GROUP BY: tablo bir
+     * kez okunur.
+     *
+     * @return array{toplam:int,gonderildi:int,kuyrukta:int,basarisiz:int,bugun:int}
+     */
     public function stats(): array
     {
+        $sayilar = ['kuyrukta' => 0, 'gonderiliyor' => 0, 'gonderildi' => 0, 'basarisiz' => 0];
+
+        foreach ($this->db->query('SELECT durum, COUNT(*) AS adet FROM mail_kayitlari GROUP BY durum') as $satir) {
+            $sayilar[(string) $satir['durum']] = (int) $satir['adet'];
+        }
+
         return [
-            'toplam'     => $this->countAll(),
-            'gonderildi' => (int) $this->db->query("SELECT COUNT(*) FROM mail_kayitlari WHERE durum = 'gonderildi'")->fetchColumn(),
-            'kuyrukta'   => $this->countPending(),
-            'basarisiz'  => $this->countFailed(),
+            'toplam'     => array_sum($sayilar),
+            'gonderildi' => $sayilar['gonderildi'],
+            'kuyrukta'   => $sayilar['kuyrukta'],
+            'basarisiz'  => $sayilar['basarisiz'],
             'bugun'      => $this->countSentToday(),
         ];
     }

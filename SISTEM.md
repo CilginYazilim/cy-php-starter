@@ -1,6 +1,6 @@
 # CY PHP Starter — Sistem Kılavuzu
 
-**PHP Başlangıç Şablonunun mimarisi, tasarım kararları ve genişletme rehberi** · Sürüm 1.5.0
+**PHP Başlangıç Şablonunun mimarisi, tasarım kararları ve genişletme rehberi** · Sürüm 1.5.1
 
 > Bu dosya sistemin **tamamını** anlatır: mimari kararlar, her katmanın
 > ne işe yaradığı, neden öyle yazıldığı ve nasıl genişletileceği.
@@ -732,6 +732,27 @@ private const SORTABLE = [0 => 'alici_eposta', 1 => 'konu', …];
 ```
 
 Modeller ORM değildir: veritabanına gitmeyen, `readonly` entity'lerdir.
+
+### Sorgu ve indeks kuralları
+
+- **Sütunu fonksiyona sarmayın.** `WHERE DATE(created_at) = CURDATE()`
+  indeksi devre dışı bırakır ve tabloyu baştan sona tarar. Aralık yazın:
+  `created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY`.
+  `tests/unit.php` bu kalıbı `app/` ve `modules/` içinde arar.
+- **Sık çalışan her WHERE'in bir indeksi olsun**; bileşik indekste eşitlik
+  sütunu önce, aralık sütunu sonra: `(durum, gonderildi_at)`,
+  `(alici_eposta, created_at)`.
+- **Toplu DELETE'in koşulu indeksli olsun.** İndekssiz DELETE taradığı
+  bütün satırları kilitler; giriş denemeleri temizliği bu yüzden
+  çalışırken yeni girişleri bekletiyordu (1.5.1'de düzeltildi).
+- Aynı tablodan birden fazla sayaç gerekiyorsa tek `GROUP BY` (bkz.
+  `MailRepository::stats`).
+- Yeni indeksi hem `kurulum/database.sql`'e hem bir migration'a yazın;
+  migration `indexExists()` ile birden fazla kez çalışabilir olsun.
+
+`LIKE '%…%'` aramaları (kullanıcı, mesaj, e-posta listeleri) indeks
+kullanamaz; birkaç yüz bin satıra kadar sorun olmaz. Daha büyük
+tablolarda `FULLTEXT` indeks düşünün.
 
 ---
 
