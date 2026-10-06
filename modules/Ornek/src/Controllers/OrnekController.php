@@ -34,8 +34,8 @@ final class OrnekController extends Controller
     public function index(Request $request): void
     {
         $this->view('Ornek::index', [
-            'title'    => 'Ornek',
-            'subtitle' => 'Ornek modülünün örnek listeleme ekranı.',
+            'title'    => 'Örnek Modül',
+            'subtitle' => 'Modül sisteminin çalışan örneği: listeleme, ekleme, silme.',
             'kayitlar' => $this->kayitlar->all(),
             'errors'   => Flash::errors(),
             'old'      => Flash::old(),

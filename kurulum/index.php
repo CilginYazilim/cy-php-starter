@@ -477,6 +477,83 @@ function run_migrations(): array
 }
 
 /**
+ * modules/ klasöründeki modüller: ad => künye.
+ *
+ * Sihirbaz bu noktada uygulamayı yüklemediği için künye doğrudan
+ * module.json'dan okunur; klasör adı kuralı App\Core\Modules\Modules::all()
+ * ile aynıdır. module.json'da "kurulumda_acik": true olan modül
+ * Site Ayarları adımında İŞARETLİ gelir (Ornek böyledir).
+ *
+ * @return array<string,array{baslik:string,aciklama:string,varsayilan:bool}>
+ */
+function discover_modules(): array
+{
+    $bulunan = [];
+
+    foreach (glob(ROOT_PATH . '/modules/*', GLOB_ONLYDIR) ?: [] as $klasor) {
+        $ad = basename($klasor);
+
+        if (preg_match('/^[A-Za-z][A-Za-z0-9_]*\z/', $ad) !== 1) {
+            continue;
+        }
+
+        $kunye = json_decode((string) @file_get_contents($klasor . '/module.json'), true);
+        $kunye = is_array($kunye) ? $kunye : [];
+
+        $bulunan[$ad] = [
+            'baslik'     => (string) ($kunye['baslik'] ?? $ad),
+            'aciklama'   => (string) ($kunye['aciklama'] ?? ''),
+            'varsayilan' => ($kunye['kurulumda_acik'] ?? false) === true,
+        ];
+    }
+
+    ksort($bulunan);
+
+    return $bulunan;
+}
+
+/**
+ * Seçilen modülleri açar ve tablolarını kurar — "php cy module
+ * --enable=Ad" + "php cy migrate"in sihirbazdaki karşılığı. Panelde
+ * modül aç/kapa ekranı olmadığı için SSH'siz bir hostingde modülü
+ * açmanın tek yolu budur.
+ *
+ * run_migrations()'tan SONRA çağrılır (uygulama orada yüklendi).
+ * Modül migration'ları TEMEL PARTİYE yazılmaz: çekirdekten farklı
+ * olarak "php cy migrate:rollback" ile geri alınabilmeleri gerekir.
+ * Hata kurulumu çökertmez; son ekranda gösterilir.
+ *
+ * @param array<int,string> $adlar
+ * @return array{0:array<int,string>,1:?string} [açılan modüller, hata mesajı]
+ */
+function enable_modules(array $adlar): array
+{
+    if ($adlar === [] || !class_exists(App\Core\Modules\Modules::class)) {
+        return [[], null];
+    }
+
+    $acilan = [];
+
+    try {
+        $db = App\Core\Database::connection();
+        App\Core\Setting::load($db);
+
+        foreach ($adlar as $ad) {
+            if (App\Core\Modules\Modules::enable($ad)) {
+                $acilan[] = $ad;
+            }
+        }
+
+        App\Core\Modules\Modules::forget();
+        App\Core\Modules\Modules::migrator($db, (string) App\Core\Config::get('db.migrations'))->run();
+
+        return [$acilan, null];
+    } catch (Throwable $e) {
+        return [$acilan, $e->getMessage()];
+    }
+}
+
+/**
  * Bir değeri .env satırına güvenle yazılabilir hale getirir.
  *
  * Okuyucu (App\Core\Env) ile YAZICI aynı dosyada durur; ikisi ayrı
@@ -825,6 +902,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && !$alreadyInstalled && 
              * kutuyu bilerek işaretler. */
             $gelistirme = isset($_POST['gelistirme']);
 
+            /* Yalnızca diskte GERÇEKTEN bulunan modül adları kabul
+             * edilir; formdan gelen ad doğrudan kullanılmaz. */
+            $gonderilen = is_array($_POST['moduller'] ?? null) ? array_filter($_POST['moduller'], 'is_string') : [];
+            $moduller   = array_values(array_intersect(array_keys(discover_modules()), $gonderilen));
+
             if ($siteHata !== null) {
                 $errors[] = $siteHata;
             }
@@ -837,7 +919,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && !$alreadyInstalled && 
 
             if ($errors === []) {
                 $site_url = rtrim($site_url, '/');
-                $kurulum['site'] = compact('site_adi', 'site_aciklama', 'site_url', 'pwa_aktif', 'gelistirme');
+                $kurulum['site'] = compact('site_adi', 'site_aciklama', 'site_url', 'pwa_aktif', 'gelistirme', 'moduller');
                 header('Location: index.php?adim=yonetici');
                 exit;
             }
@@ -851,6 +933,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && !$alreadyInstalled && 
             [$admin_eposta, $epostaHata] = validate_email(post_str('admin_eposta'));
             $admin_sifre = post_str('admin_sifre');
             $demo_yukle  = isset($_POST['demo_yukle']);
+
+            /* DEMO MODU örnek hesaplar olmadan anlamsızdır: giriş
+             * ekranı listelenecek hesap bulamazdı. Seçildiyse örnek
+             * veri de yüklenir. */
+            $demo_modu = isset($_POST['demo_modu']);
+            if ($demo_modu) {
+                $demo_yukle = true;
+            }
 
             foreach ([$adHata, $soyadHata, $kadiHata, $epostaHata] as $fieldError) {
                 if ($fieldError !== null) {
@@ -945,6 +1035,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && !$alreadyInstalled && 
                         '# --- Ortam (yayında: production + false) ---' => null,
                         'APP_ENV'          => $gelistirme ? 'local' : 'production',
                         'APP_DEBUG'        => $gelistirme ? 'true' : 'false',
+                        '# --- Demo modu: giriş ekranı örnek hesapları listeler (gerçek sitede false) ---' => null,
+                        'APP_DEMO'         => $demo_modu ? 'true' : 'false',
                         '# --- Kuruluma özel gizli anahtar: DEĞİŞTİRMEYİN, başka kuruluma kopyalamayın ---' => null,
                         'APP_KEY'          => bin2hex(random_bytes(32)),
                         'APP_PRETTY_URLS'  => 'true',
@@ -984,13 +1076,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && !$alreadyInstalled && 
                     /* Artık .env var: ek tabloları uygulamanın kendi
                      * Migrator'ı kurabilir. Komut satırı gerekmez. */
                     [$migrationSayisi, $migrationHatasi] = run_migrations();
+                    [$acilanModuller, $modulHatasi]      = enable_modules($site['moduller'] ?? []);
 
                     $_SESSION['kurulum_sonuc'] = [
                         'db_name'     => $db['db_name'],
                         'statements'  => $statements,
                         'migrations'  => $migrationSayisi,
                         'migr_hata'   => $migrationHatasi,
+                        'moduller'    => $acilanModuller,
+                        'modul_hata'  => $modulHatasi,
                         'demo'        => $demo_yukle,
+                        'demo_modu'   => $demo_modu,
                         'kadi'        => $admin_kadi,
                         'eposta'      => $admin_eposta,
                         'site_adi'    => $site['site_adi'],
@@ -1260,6 +1356,40 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                         </div>
 
                         <?php
+                        /* MODÜLLER: module.json'da "kurulumda_acik": true olan modül
+                         * işaretli gelir. Açılan modülün tabloları kurulumla birlikte
+                         * kurulur. Panelde modül aç/kapa ekranı yoktur; sonradan
+                         * değiştirmek için "php cy module --enable=Ad / --disable=Ad". */
+                        $modulSecenekleri = discover_modules();
+                        $seciliModuller   = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'
+                            ? (is_array($_POST['moduller'] ?? null) ? $_POST['moduller'] : [])
+                            : ($kurulum['site']['moduller'] ?? array_keys(array_filter($modulSecenekleri, static fn (array $m): bool => $m['varsayilan'])));
+                        ?>
+                        <?php if ($modulSecenekleri !== []): ?>
+                            <div class="col-12">
+                                <span class="form-label d-block">Modüller</span>
+                                <?php foreach ($modulSecenekleri as $modulAdi => $modul): ?>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch"
+                                               id="modul_<?= e($modulAdi) ?>" name="moduller[]" value="<?= e($modulAdi) ?>"
+                                               <?= in_array($modulAdi, $seciliModuller, true) ? 'checked' : '' ?>>
+                                        <label class="form-check-label" for="modul_<?= e($modulAdi) ?>">
+                                            <?= e($modul['baslik']) ?> açık kurulsun
+                                        </label>
+                                        <?php if ($modul['aciklama'] !== ''): ?>
+                                            <div class="form-text mt-0"><?= e($modul['aciklama']) ?> (<code>modules/<?= e($modulAdi) ?></code>)</div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                                <div class="form-text">
+                                    Açılan modülün tabloları kurulumla birlikte kurulur ve panel menüsünde görünür.
+                                    Sonradan değiştirmek için: <code>php cy module --enable=Ad</code> /
+                                    <code>--disable=Ad</code>.
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php
                         $gelistirmeSecili = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'
                             ? isset($_POST['gelistirme'])
                             : (bool) ($kurulum['site']['gelistirme'] ?? false);
@@ -1323,9 +1453,27 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                                     <strong>Örnek verileri de yükle</strong>
                                 </label>
                                 <div class="form-text">
-                                    Şablonu ilk kez deniyorsanız işaretleyin: 4 demo kullanıcı ve 2 iletişim
-                                    mesajı eklenir, böylece listeleri ve filtreleri dolu görürsünüz.
+                                    Şablonu ilk kez deniyorsanız işaretleyin: 5 örnek kullanıcı (yönetici, editör,
+                                    üye, pasif, askıda; parolaları <code>Demo1234!</code>) ve 2 iletişim mesajı
+                                    eklenir, böylece listeleri ve filtreleri dolu görürsünüz.
                                     Gerçek bir projeye başlıyorsanız <strong>boş bırakın</strong>.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="demo_modu" name="demo_modu" value="1"
+                                       <?= isset($_POST['demo_modu']) ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="demo_modu">
+                                    <strong>Demo modu</strong> (herkese açık deneme sitesi)
+                                </label>
+                                <div class="form-text">
+                                    Giriş ekranı Yönetici, Editör ve Üye örnek hesaplarını parolasıyla listeler;
+                                    ziyaretçi tek tıkla giriş yapar. Örnek hesaplarla hesap bilgileri, kullanıcılar,
+                                    site ayarları ve e-posta gönderimi kilitlidir; yukarıda açtığınız yönetici hesabı
+                                    kısıtlanmaz. Örnek verileri de yükler. <strong>Gerçek bir sitede işaretlemeyin</strong>
+                                    — sonradan <code>.env</code> içindeki <code>APP_DEMO</code> satırından kapatılır.
                                 </div>
                             </div>
                         </div>
@@ -1344,8 +1492,28 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                     Site&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <?= e($sonuc['site_adi']) ?><br>
                     Uygulama&nbsp;&nbsp;: <?= !empty($sonuc['pwa']) ? 'PWA açık (telefona kurulabilir)' : 'PWA kapalı' ?><br>
                     Ortam&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <?= !empty($sonuc['gelistirme']) ? 'geliştirme (APP_DEBUG=true)' : 'yayın (APP_DEBUG=false)' ?><br>
+                    Modüller&nbsp;&nbsp;: <?= !empty($sonuc['moduller']) ? e(implode(', ', $sonuc['moduller'])) . ' açık' : 'hiçbiri açılmadı' ?><br>
+                    Demo modu&nbsp;: <?= !empty($sonuc['demo_modu']) ? 'açık (APP_DEMO=true)' : 'kapalı' ?><br>
                     Yönetici&nbsp;&nbsp;: <?= e($sonuc['kadi']) ?> · <?= e($sonuc['eposta']) ?>
                 </div>
+
+                <?php if (!empty($sonuc['modul_hata'])): ?>
+                    <div class="cy-alert cy-alert--warning mb-3">
+                        <strong>Modül tabloları kurulamadı.</strong> Site çalışır durumda; tabloları kurmak için
+                        <code>php cy migrate</code> çalıştırın ya da <strong>Panel → Sistem Bilgisi</strong>
+                        sayfasındaki düğmeyi kullanın.<br>
+                        <small><?= e($sonuc['modul_hata']) ?></small>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (!empty($sonuc['demo_modu'])): ?>
+                    <div class="cy-alert cy-alert--info mb-3">
+                        <strong>Demo modu açık.</strong> Giriş ekranı Yönetici, Editör ve Üye örnek hesaplarını
+                        tek tıkla giriş için listeler. Demoyu kendi hesabınızla
+                        (<strong><?= e($sonuc['kadi']) ?></strong>) yönetin; örnek hesaplar için hesap, kullanıcı,
+                        ayar ve e-posta işlemleri kilitlidir.
+                    </div>
+                <?php endif; ?>
 
                 <?php if (!empty($sonuc['gelistirme'])): ?>
                     <div class="cy-alert cy-alert--warning mb-3">
@@ -1364,11 +1532,11 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                     </div>
                 <?php endif; ?>
 
-                <?php if (!empty($sonuc['demo'])): ?>
+                <?php if (!empty($sonuc['demo']) && empty($sonuc['demo_modu'])): ?>
                     <div class="cy-alert cy-alert--info mb-3">
                         Örnek kullanıcıların tümünün parolası <code>Demo1234!</code>.
                         Canlıya çıkmadan önce silin:
-                        <code>DELETE FROM kullanicilar WHERE eposta LIKE '%@ornek.com';</code>
+                        <code>DELETE FROM kullanicilar WHERE eposta LIKE '%.demo@ornek.com';</code>
                     </div>
                 <?php endif; ?>
 

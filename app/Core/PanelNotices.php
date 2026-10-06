@@ -8,7 +8,8 @@
  *  kurulumda .env hâlâ APP_DEBUG=true yazıyordu; yayındaki sitede bir
  *  hata, dosya yollarını ve SQL'i ziyaretçiye gösteriyordu.
  *
- *  Yalnızca "system.view" yetkisi olana gösterilir; her istekte en
+ *  "system.view" yetkisi olana gösterilir (demo hesabı bildirimi
+ *  hariç: o, demo hesabıyla giren her role görünür); her istekte en
  *  fazla bir kez hesaplanır.
  * =====================================================================
  */
@@ -32,11 +33,45 @@ final class PanelNotices
             return self::$cache;
         }
 
-        if (!Auth::can('system.view')) {
-            return self::$cache = [];
+        $notices = [];
+
+        /* Demo hesabıyla giren HER ROL neyin kilitli olduğunu görür;
+         * aksi hâlde "Kaydet" düğmesi hata verince sebebi anlaşılmaz. */
+        $demoHesabi = Demo::enabled() && Demo::isDemoUser(Auth::user());
+
+        if ($demoHesabi) {
+            $notices[] = [
+                'tur'      => 'info',
+                'metin'    => 'Demo hesabıyla giriş yaptınız. Her şeyi gezip deneyebilirsiniz; hesap bilgileri, kullanıcılar, site ayarları, sistem işlemleri ve e-posta gönderimi bu hesapta kilitlidir.',
+                'yol'      => '',
+                'baglanti' => '',
+            ];
         }
 
-        $notices = [];
+        if (!Auth::can('system.view')) {
+            return self::$cache = $notices;
+        }
+
+        if (Demo::enabled() && !$demoHesabi) {
+            $notices[] = [
+                'tur'      => 'warning',
+                'metin'    => 'Demo modu AÇIK: giriş ekranı örnek hesapları parolasıyla listeliyor. Bu bir demo sitesi değilse .env dosyasında APP_DEMO=false yapın.',
+                'yol'      => '',
+                'baglanti' => '',
+            ];
+        }
+
+        /* Demo modu kapalı ama parolası herkesçe bilinen (Demo1234!)
+         * örnek hesaplar duruyor: yerel makine dışında bu bir açıktır —
+         * örnek veride bir YÖNETİCİ hesabı da var. */
+        if (!Demo::enabled() && !self::isLocalRequest() && Demo::existing(Database::connection()) !== []) {
+            $notices[] = [
+                'tur'      => 'danger',
+                'metin'    => 'Örnek hesaplar (parolaları herkesçe bilinen "' . Demo::PAROLA . '") hâlâ duruyor. Silin: DELETE FROM kullanicilar WHERE eposta LIKE \'%.demo@ornek.com\';',
+                'yol'      => 'panel/kullanicilar',
+                'baglanti' => 'Kullanıcılar',
+            ];
+        }
 
         if (Config::isDebug() && !self::isLocalRequest()) {
             $notices[] = [

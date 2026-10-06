@@ -30,6 +30,7 @@ require CY_BASE . '/app/bootstrap.php';
 use App\Core\Config;
 use App\Core\Console\Commands\MakeControllerCommand;
 use App\Core\Console\Input;
+use App\Core\Demo;
 use App\Core\Env;
 use App\Core\Exceptions\HttpException;
 use App\Core\Ip;
@@ -312,6 +313,59 @@ if (function_exists('imagecreatetruecolor')) {
     }
 } else {
     echo "  (GD yok; atlandı)\n";
+}
+
+/* ---------------------------------------------------------------- */
+echo "\nDemo modu (örnek hesaplar ve kilit)\n";
+
+dogrula('Okuma hiçbir zaman kilitlenmez', Demo::blockReason('GET', 'panel/ayarlar/genel') === null);
+foreach (['panel/hesabim/parola', 'panel/hesabim/guncelle', 'panel/hesabim/api-anahtari', 'panel/ayarlar/genel',
+          'panel/ayarlar/logo', 'panel/sistem/migrate', 'api/kullanicilar/save', 'api/kullanicilar/delete',
+          'api/kullanicilar/status', 'api/eposta/gonder', 'api/eposta/sinama'] as $yol) {
+    dogrula('Kilitli: POST ' . $yol, Demo::blockReason('POST', $yol) !== null);
+}
+foreach (['giris', 'cikis', 'api/tema', 'panel/sayfalar/yeni', 'panel/ornek/kaydet', 'api/mesajlar/okundu',
+          'api/eposta/list', 'api/eposta/onizle', 'api/kullanicilar/list', 'panel/hesabimx'] as $yol) {
+    dogrula('Açık: POST ' . $yol, Demo::blockReason('POST', $yol) === null);
+}
+dogrula('PUT/DELETE de kilitlenir', Demo::blockReason('PUT', '/panel/ayarlar/genel/') !== null
+    && Demo::blockReason('DELETE', 'api/kullanicilar/delete') !== null);
+dogrula('Kilitten sonra bölüm sayfasına dönülür', Demo::backPath('panel/ayarlar/genel') === 'panel/ayarlar'
+    && Demo::backPath('panel/hesabim/parola') === 'panel/hesabim' && Demo::backPath('api/eposta/gonder') === 'panel');
+
+$tumu = [];
+foreach (Demo::HESAPLAR as $kadi => $hesap) {
+    $tumu[$kadi] = $hesap['eposta'];
+}
+$demoListesi = array_column(Demo::visibleAccounts(true, $tumu), 'kullanici_adi');
+dogrula('Demo modunda Yönetici, Editör, Üye listelenir', $demoListesi === ['ali.yonetici', 'elif.editor', 'mehmet.uye'],
+    implode(', ', $demoListesi));
+dogrula('Geliştirmede pasif/askıdakiler de listelenir', count(Demo::visibleAccounts(false, $tumu)) === 5);
+dogrula('Veritabanında olmayan ya da e-postası farklı hesap listelenmez',
+    array_column(Demo::visibleAccounts(true, ['ali.yonetici' => 'baska@ornek.com', 'elif.editor' => 'elif.demo@ornek.com']), 'kullanici_adi') === ['elif.editor']);
+dogrula('Listelenen hesap parolasını taşır', (Demo::visibleAccounts(true, $tumu)[0]['parola'] ?? '') === Demo::PAROLA);
+
+$ornekKullanici = new App\Models\User(id: 7, ad: 'Ali', soyad: 'Yılmaz', kullaniciAdi: 'ali.yonetici', eposta: 'ali.demo@ornek.com', rol: Role::ADMIN);
+$gercekKullanici = new App\Models\User(id: 1, ad: 'Evren', soyad: 'Ç', kullaniciAdi: 'admin', eposta: 'x@y.z', rol: Role::ADMIN);
+dogrula('Örnek hesap tanınır, kurulumdaki yönetici tanınmaz', Demo::isDemoUser($ornekKullanici) && !Demo::isDemoUser($gercekKullanici) && !Demo::isDemoUser(null));
+
+$demoSql = (string) @file_get_contents(CY_BASE . '/kurulum/demo.sql');
+if ($demoSql !== '') {
+    $eslesen = true;
+    foreach (Demo::HESAPLAR as $kadi => $hesap) {
+        $eslesen = $eslesen && preg_match("/'" . preg_quote($kadi, '/') . "',\\s*'" . preg_quote($hesap['eposta'], '/') . "'/", $demoSql) === 1;
+    }
+    dogrula('Demo.php hesapları kurulum/demo.sql ile aynı', $eslesen);
+    dogrula('demo.sql bir yönetici örnek hesabı içerir', preg_match("/'ali\\.yonetici',[^\\n]*'admin',\\s*'aktif'/", $demoSql) === 1);
+} else {
+    echo "  (kurulum/ klasörü silinmiş; demo.sql eşleşmesi atlandı)\n";
+}
+
+$ornekKunye = json_decode((string) @file_get_contents(CY_BASE . '/modules/Ornek/module.json'), true);
+if (is_array($ornekKunye)) {
+    dogrula('Ornek modülü kurulumda açık gelir (module.json)', ($ornekKunye['kurulumda_acik'] ?? null) === true);
+} else {
+    echo "  (modules/Ornek yok; atlandı)\n";
 }
 
 /* ---------------------------------------------------------------- */

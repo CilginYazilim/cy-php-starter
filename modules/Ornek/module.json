@@ -2,6 +2,7 @@
     "baslik": "Örnek Modül",
     "aciklama": "Modül sisteminin çalışan örneği — inceleyip silebilirsiniz",
     "surum": "1.0.0",
+    "kurulumda_acik": true,
 
     "menu": {
         "route": "panel/ornek",

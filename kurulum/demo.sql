@@ -14,17 +14,25 @@
 --
 --  TÜM DEMO KULLANICILARIN PAROLASI:  Demo1234!
 --  Canlıya çıkmadan önce bunları SİLİN:
---      DELETE FROM kullanicilar WHERE eposta LIKE '%@ornek.com';
+--      DELETE FROM kullanicilar WHERE eposta LIKE '%.demo@ornek.com';
+--
+--  DEMO MODU (.env → APP_DEMO=true): giriş ekranı Yönetici, Editör ve
+--  Üye hesaplarını tek tıkla giriş için listeler; bu hesaplara hesap,
+--  kullanıcı, ayar ve e-posta işlemleri kapanır. Hesap listesi ve
+--  kilitler: app/Core/Demo.php — buradaki kullanıcı adı ve e-postalar
+--  oradakiyle aynı kalmalıdır.
 -- ===============================================================
 
 SET NAMES utf8mb4;
 
 -- ---------------------------------------------------------------
 --  Kullanıcılar — listeyi rol ve durum filtreleriyle denemek için
---  her rolden ve her durumdan birer örnek.
+--  her rolden ve her durumdan birer örnek. Kurulumda açtığınız
+--  yönetici hesabı bunlardan ayrıdır ve demo kilidine takılmaz.
 -- ---------------------------------------------------------------
 INSERT INTO `kullanicilar`
     (`ad`, `soyad`, `kullanici_adi`, `eposta`, `sifre`, `rol`, `durum`) VALUES
+('Ali',   'Yılmaz', 'ali.yonetici', 'ali.demo@ornek.com',   '$2y$10$cm2Mn/e2yxT/xSGmiefaEuCZy/Vg8SOoVNMtR8i6NKVxLmAAbP79q', 'admin',  'aktif'),
 ('Elif',  'Demir',  'elif.editor', 'elif.demo@ornek.com',   '$2y$10$cm2Mn/e2yxT/xSGmiefaEuCZy/Vg8SOoVNMtR8i6NKVxLmAAbP79q', 'editor', 'aktif'),
 ('Mehmet','Kaya',   'mehmet.uye',  'mehmet.demo@ornek.com', '$2y$10$cm2Mn/e2yxT/xSGmiefaEuCZy/Vg8SOoVNMtR8i6NKVxLmAAbP79q', 'uye',    'aktif'),
 ('Ayşe',  'Şahin',  'ayse.pasif',  'ayse.demo@ornek.com',   '$2y$10$cm2Mn/e2yxT/xSGmiefaEuCZy/Vg8SOoVNMtR8i6NKVxLmAAbP79q', 'uye',    'pasif'),

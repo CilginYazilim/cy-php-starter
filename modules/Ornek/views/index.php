@@ -17,7 +17,7 @@ $old      = $old ?? [];
 
 <div class="cy-page-head">
     <div>
-        <h2 class="cy-title">Ornek</h2>
+        <h2 class="cy-title">Örnek Modül</h2>
         <p class="cy-subtitle"><strong><?= count($kayitlar) ?></strong> kayıt listeleniyor.</p>
     </div>
 </div>

@@ -6,11 +6,11 @@
 
 **Kurulum sihirbazı · rol tabanlı yönetim paneli · konsol · migration · kuyruk · olay · modül sistemi · REST API · PWA — hepsi hazır.**
 
-[![Sürüm](https://img.shields.io/badge/Sürüm-1.4.0-0b5cb5?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/releases/latest)
+[![Sürüm](https://img.shields.io/badge/Sürüm-1.5.0-0b5cb5?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/releases/latest)
 [![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?style=flat-square&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 ![Bağımlılık: sıfır](https://img.shields.io/badge/Bağımlılık-Sıfır-16a34a?style=flat-square)
-[![Testler](https://img.shields.io/badge/Birim_testi-112-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/actions)
+[![Testler](https://img.shields.io/badge/Birim_testi-144-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/actions)
 [![Lisans](https://img.shields.io/badge/Lisans-MIT-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/blob/main/LICENSE)
 
 [**▶ Canlı Demo**](https://cilginyazilim.com/kutuphane/uygulama/cy-php-starter/) · [PHP Başlangıç Şablonu sayfası](https://cilginyazilim.com/kutuphane/php-baslangic-sablonu) · [Çılgın Yazılım](https://cilginyazilim.com)
@@ -174,7 +174,8 @@ seçimdir. Bu şablon, şu durumlar için yazıldı:
 | **Zamanlayıcı** | Tek cron satırı · üst üste binme koruması |
 | **E-posta** | SMTP / mail() / diske yazma · toplu gönderim · kuyruk · panel arayüzü |
 | **REST API** | Standart yanıt zarfı · süreli Bearer anahtarı (yalnızca SHA-256 özeti saklanır) · hız sınırı · sayfalama |
-| **Modüller** | Aç/kapa · kendi rotaları, tabloları, görünümleri, menüsü |
+| **Modüller** | Aç/kapa · kendi rotaları, tabloları, görünümleri, menüsü · çalışan **Örnek Modül** kurulumda açık gelir |
+| **Demo modu** | Herkese açık deneme sitesi için: giriş ekranında Yönetici / Editör / Üye ile **tek tıkla giriş** · örnek hesaplara parola, kullanıcı, ayar ve e-posta kilidi |
 | **PWA** | Panelden yönetilen künye (ad, simge, açılış adresi, görüntüleme modu, renk) · servis çalışanı · çevrimdışı sayfa |
 | **İçerik** | **Sayfa yönetimi** — zengin metin editörü · adres (slug) üretimi · taslak/yayın · menü · sayfa bazlı SEO |
 | **SEO** | Temiz adresler · canonical · Open Graph · başlık şablonu · dinamik sitemap.xml & robots.txt (panelden ek kural) |
@@ -183,7 +184,7 @@ seçimdir. Bu şablon, şu durumlar için yazıldı:
 | **Tema** | Tek renk seçin, panelin ve sitenin tamamı yeniden renklensin |
 | **Mobil** | Ön yüz ve panelin tamamı mobil öncelikli · 44px dokunma hedefleri · yapışkan menü · iOS yakınlaştırma ve çentik payı çözülmüş |
 | **Konsol** | `php cy` — 21 komut, üreteçler dahil |
-| **Testler** | 112 birim testi (veritabanı gerektirmez) · kurulu siteye duman testi · GitHub Actions'ta PHP 8.1–8.4 |
+| **Testler** | 144 birim testi (veritabanı gerektirmez) · kurulu siteye duman testi · GitHub Actions'ta PHP 8.1–8.4 |
 
 ---
 
@@ -222,9 +223,23 @@ eksiksiz kurulur.
 > "Site Ayarları" adımında **Geliştirme ortamı** kutusunu işaretleyin.
 
 > **Örnek veri:** Son adımda "Örnek verileri de yükle" kutusu vardır.
-> Şablonu ilk kez deniyorsanız işaretleyin — listeleri ve filtreleri
-> dolu görürsünüz (demo parolası `Demo1234!`). Gerçek bir projeye
-> başlıyorsanız **boş bırakın**, veritabanınız tertemiz kalır.
+> Şablonu ilk kez deniyorsanız işaretleyin — 5 örnek hesap (yönetici,
+> editör, üye, pasif, askıda; parola `Demo1234!`) ve mesajlarla listeleri
+> dolu görürsünüz. Gerçek bir projeye başlıyorsanız **boş bırakın**,
+> veritabanınız tertemiz kalır.
+
+> **Demo modu (herkese açık deneme sitesi):** Son adımdaki **Demo modu**
+> kutusu (ya da `.env` → `APP_DEMO=true`) giriş ekranına bir "Demo
+> hesaplar · tek tıkla giriş" listesi koyar: Yönetici, Editör ve Üye —
+> ziyaretçi parola yazmadan, satıra tıklayarak girer. Örnek hesaplarla hesap bilgileri, kullanıcılar, site
+> ayarları ve e-posta gönderimi kilitlidir; kurulumda açtığınız yönetici
+> hesabı kısıtlanmaz. **Gerçek bir sitede işaretlemeyin.**
+
+> **Örnek Modül kurulumda açık gelir.** Sihirbazın Site Ayarları
+> adımındaki **Modüller** bölümünde işaretlidir; kurulum modülü açar ve
+> tablosunu kurar. Panelde **Örnek Modül** menüsü hazırdır
+> (`modules/Ornek` — listeleme, ekleme, silme). İstemiyorsanız kutuyu
+> boşaltın.
 
 > **Kayıt formu e-posta doğrulamasıyla gelir.** Yeni hesap, e-postadaki
 > bağlantıya tıklanana kadar giriş yapamaz; form, adresin zaten kayıtlı
@@ -371,7 +386,7 @@ php tests/smoke.php http://localhost/proje           # kurulu siteye HTTP deneti
 php tests/smoke.php http://localhost/proje --kullanici=admin --parola=… --api=cy_…
 ```
 
-`unit.php` 112 testi veritabanı olmadan çalıştırır. `smoke.php` siteyi
+`unit.php` 144 testi veritabanı olmadan çalıştırır. `smoke.php` siteyi
 değiştirmez: kurulum kilidi, gizli dosyalar (`.env`, `.git/`), açık
 yönlendirme, kaba kuvvet kilidi, kullanıcı tespiti, oturum çerezi, servis
 çalışanı ve API'yi dışarıdan sınar. Kısa sürede arka arkaya
@@ -396,6 +411,11 @@ rotalarını, tablolarını, görünümlerini ve menü girdisini taşır.
 
 **Kapalı modül hiç yüklenmez** — rotaları tanımlanmaz, sınıfları
 yüklenmez, olayları dinlenmez.
+
+Nereden başlayacağınızı görmek için `modules/Ornek` klasörüne bakın:
+bir migration, üç rota, bir Repository ve bir görünümden oluşan en küçük
+çalışan modüldür ve kurulumda açık gelir. `module.json` içinde
+`"kurulumda_acik": true` yazan her modül sihirbazda işaretli gelir.
 
 ---
 
@@ -503,6 +523,7 @@ yerel bir kurulumda yeniden üretildi, düzeltildi ve testle sınandı.
 | Dosya ifşası | `app/` `config/` `storage/` `views/` `.env` `.git/` `cy` web'e kapalı |
 | Bilgi sızması | Yayında yığın izi ve dosya yolu gösterilmez; varsayılan `APP_DEBUG=false` |
 | Yanlış rota tanımı | Bilinmeyen ara katman adı hata fırlatır (rota sessizce herkese açılmaz) |
+| Herkese açık demo | Demo modunda örnek hesaplar parolayı, kullanıcıları, ayarları değiştiremez, e-posta gönderemez; anahtar `.env`'de (panelden kapatılamaz); demo kapalıyken unutulan örnek hesaplar için panel uyarır |
 
 **Panel → Sistem Bilgisi** sayfası bunların canlı denetimini yapar ve
 her sorunun nasıl çözüleceğini yazar.
@@ -524,7 +545,9 @@ php cy config:cache && php cy migrate
 ```
 
 - [ ] `kurulum/` klasörü silindi
-- [ ] Panelin üstünde kırmızı/turuncu uyarı yok (debug, bekleyen migration, APP_KEY)
+- [ ] Demo sitesi değilse `APP_DEMO=false` ve örnek hesaplar silindi
+      (`DELETE FROM kullanicilar WHERE eposta LIKE '%.demo@ornek.com';`)
+- [ ] Panelin üstünde kırmızı/turuncu uyarı yok (debug, bekleyen migration, APP_KEY, örnek hesaplar)
 - [ ] HTTPS aktif
 - [ ] `storage/` ve `upload/` yazılabilir
 - [ ] `php cy mail:test` başarılı
@@ -566,7 +589,8 @@ git clone https://github.com/CilginYazilim/cy-php-starter yeni-proje
 cd yeni-proje && rm -rf .git
 
 # kurulum/ adresini aç, sihirbazı tamamla
-# ("Örnek verileri de yükle" kutusunu işaretlemeyin)
+# ("Örnek verileri de yükle" ve "Demo modu" kutularını işaretlemeyin,
+#  "Örnek Modül açık kurulsun" kutusunu boşaltın)
 
 rm -rf modules/Ornek app/Jobs/OrnekIs.php
 
@@ -580,12 +604,12 @@ rengini kendinize göre ayarlayın; arayüz anında yeni renginizi alır.
 
 ## Sürüm
 
-Güncel sürüm **1.4.0** (6 Ekim 2026). Sürüm numarası **kodda, tek yerde**
+Güncel sürüm **1.5.0** (6 Ekim 2026). Sürüm numarası **kodda, tek yerde**
 durur:
 
 ```php
 // config/app.php
-'version' => '1.4.0',
+'version' => '1.5.0',
 ```
 
 `Panel → Sistem Bilgisi` sayfası bu değeri okur. Şablonu güncellediğinizde
@@ -595,6 +619,7 @@ numara kendiliğinden gelir; veritabanında ayrıca tutulmaz.
 
 | Sürüm | Tarih | Öne çıkanlar |
 |---|---|---|
+| [1.5.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.5.0) | 2026-10-06 | Demo modu: giriş ekranında Yönetici / Editör / Üye ile tek tıkla giriş ve örnek hesaplara kilit; Örnek Modül kurulumda açık gelir |
 | [1.4.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.4.0) | 2026-10-06 | İkinci güvenlik incelemesi: boşluklu/Türkçe klasörde ve Redis oturumunda giriş, kuyrukta kilitlenme, kayıtta e-posta doğrulaması, parola değişince düşen API anahtarları, hizmet engellemeye dayanıklı IP kilidi |
 | [1.3.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.3.0) | 2026-10-06 | Kapsamlı güvenlik incelemesi: kurulum sihirbazı ele geçirme, açık yönlendirme, kaba kuvvet kilidi, oturum sürümü; REST API anahtarları, birim ve duman testleri, GitHub Actions |
 | [1.2.1](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.2.1) | 2026-09-05 | Takma ad (vitrin) adresinden servis edilen kurulumda 404 ve yönlendirme döngüsü düzeltildi |
@@ -604,6 +629,12 @@ numara kendiliğinden gelir; veritabanında ayrıca tutulmaz.
 
 Her sürümün ayrıntısı:
 [CHANGELOG.md](https://github.com/CilginYazilim/cy-php-starter/blob/main/CHANGELOG.md).
+
+### Güncelleme (1.4.0 → 1.5.0)
+
+Migration yok; kodu çekmeniz yeterli. Demo modu varsayılan olarak
+kapalıdır. Var olan bir kurulumda Örnek Modül'ü açmak için
+`php cy module --enable=Ornek` ve `php cy migrate` çalıştırın.
 
 ### Güncelleme (1.2.x ya da 1.3.x → 1.4.0)
 

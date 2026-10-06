@@ -12,12 +12,71 @@ sayfasındadır.
 
 | Sürüm | Tarih | Özet |
 |---|---|---|
+| [1.5.0](#150--2026-10-06) | 2026-10-06 | Demo modu (tek tıkla giriş), Örnek modül kurulumda açık |
 | [1.4.0](#140--2026-10-06) | 2026-10-06 | İkinci güvenlik incelemesi |
 | [1.3.0](#130--2026-10-06) | 2026-10-06 | Güvenlik ve kararlılık |
 | [1.2.1](#121--2026-09-05) | 2026-09-05 | Takma ad (vitrin) adresi düzeltmesi |
 | [1.2.0](#120--2026-09-04) | 2026-09-04 | Ekran görüntüleri ve Canlı Demo |
 | [1.1.0](#110--2026-08-30) | 2026-08-30 | Mobil düzen, tek kaynaktan sürüm |
 | [1.0.0](#100--2026-08-18) | 2026-08-18 | İlk kararlı sürüm |
+
+---
+
+## [1.5.0] — 2026-10-06
+
+Herkese açık deneme siteleri için demo modu ve kurulumla birlikte açık
+gelen örnek modül.
+
+### Eklendi
+
+- **Demo modu** (`.env` → `APP_DEMO=true`, ya da sihirbazın Yönetici
+  adımındaki **Demo modu** kutusu). Giriş ekranı Yönetici, Editör ve Üye
+  örnek hesaplarını kullanıcı adı ve parolasıyla listeler; bir satıra
+  tıklamak doğrudan giriş yapar. Giriş normal yoldan, CSRF ve kaba
+  kuvvet korumasıyla yapılır.
+- **Demo kilidi.** Parolası herkesçe bilinen tam yetkili bir yönetici,
+  ilk ziyaretçinin demoyu herkes için bozmasına izin verirdi (parolayı
+  değiştirip herkesi dışarıda bırakmak, bakım modunu açmak, asıl
+  yöneticiyi silmek, sitenin SMTP'siyle toplu e-posta göndermek). Demo
+  modunda örnek hesaplar için hesap bilgileri, kullanıcı yönetimi, site
+  ayarları, sistem işlemleri ve e-posta gönderimi kapalıdır; okuma ve
+  içerik işleri açıktır. Kurulumda açılan yönetici hesabı kısıtlanmaz.
+  Kilit `auth` ara katmanında durur (`App\Core\Demo`).
+- **Örnek veride yönetici hesabı** (`ali.yonetici`). Örnek veri artık 5
+  hesap içerir: yönetici, editör, üye, pasif, askıda.
+- **Örnek modül kurulumda açık gelir.** Sihirbazın Site Ayarları
+  adımında **Modüller** bölümü var; `module.json`'da
+  `"kurulumda_acik": true` olan modül işaretli gelir. Kurulum modülü açar
+  ve tablolarını kurar — panelde modül aç/kapa ekranı olmadığı için
+  SSH'siz hostingte modül açmanın tek yolu buydu.
+- Panel uyarıları: demo hesabına kilitli işlemler; asıl yöneticiye "demo
+  modu açık"; demo modu kapalı bir sitede örnek hesaplar duruyorsa
+  kırmızı uyarı.
+- Birim testleri 112 → 144.
+
+### Değiştirildi
+
+- Giriş ekranındaki demo hesap bölümü yeniden tasarlandı: rol rozeti,
+  ad, kullanıcı adı ve parola tek satırda; 56 px dokunma hedefi.
+- Örnek hesap temizleme komutu daraltıldı:
+  `DELETE FROM kullanicilar WHERE eposta LIKE '%.demo@ornek.com';`
+  Eskisi (`'%@ornek.com'`) `@ornek.com` adresiyle açılmış gerçek bir
+  yöneticiyi de siliyordu.
+- Örnek modülün ekran başlığı "Ornek" → "Örnek Modül".
+- Duman testi demo modunda demo parolası denetimini atlar (bilinçli
+  gösterim).
+
+### Güncelleme (1.4.0 → 1.5.0)
+
+Migration yok. Kodu çekmeniz yeterli; demo modu varsayılan olarak
+kapalıdır. Var olan bir kurulumda:
+
+- Örnek modülü açmak için: `php cy module --enable=Ornek` ve
+  `php cy migrate`.
+- Demo modunu açmak için `.env`'ye `APP_DEMO=true` ekleyin. Giriş
+  ekranı yalnızca veritabanında duran örnek hesapları listeler;
+  `ali.yonetici` hesabı eski kurulumlarda yoktur (yeniden kurulumla
+  gelir).
 
 ---
 
@@ -481,6 +540,7 @@ kaynağa indirildiği sürüm.
 - **Altyapı:** PDO/MySQL, migration ve seeder, önbellek, olaylar, kuyruk,
   zamanlayıcı, e-posta, REST API temeli, modül sistemi ve `php cy` konsolu.
 
+[1.5.0]: https://github.com/CilginYazilim/cy-php-starter/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/CilginYazilim/cy-php-starter/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/CilginYazilim/cy-php-starter/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/CilginYazilim/cy-php-starter/compare/v1.2.0...v1.2.1

@@ -11,6 +11,7 @@ use App\Core\Setting;
 $errors       = $errors ?? [];
 $old          = $old ?? [];
 $demoAccounts = $demoAccounts ?? [];
+$demoMode     = $demoMode ?? false;
 ?>
 
 <section class="cy-auth-page">
@@ -80,28 +81,49 @@ $demoAccounts = $demoAccounts ?? [];
                             </p>
                         <?php endif; ?>
 
+                        <?php /* DEMO HESAPLAR — tek tıkla giriş
+                                 Satıra tıklamak alanları doldurur ve formu gönderir
+                                 (login.js); giriş normal yoldan, CSRF ve kaba kuvvet
+                                 korumasıyla yapılır. Liste yalnızca demo modunda
+                                 (APP_DEMO=true) ya da geliştirme ortamında dolar,
+                                 bkz. App\Core\Demo::loginAccounts. */ ?>
                         <?php if ($demoAccounts !== []): ?>
-                            <div class="cy-quick-login">
-                                <div class="cy-quick-login__divider"><span>veya demo hesapla dene</span></div>
+                            <div class="cy-quick-login" data-demo-modu="<?= $demoMode ? '1' : '0' ?>">
+                                <div class="cy-quick-login__divider"><span>Demo hesaplar · tek tıkla giriş</span></div>
 
-                                <div class="cy-quick-login__grid">
+                                <div class="cy-quick-login__list">
                                     <?php foreach ($demoAccounts as $account): ?>
                                         <button type="button"
-                                                class="cy-quick-login__item is-<?= e($account['variant']) ?> js-quick-login"
-                                                data-identifier="<?= e($account['identifier']) ?>"
-                                                data-password="<?= e($account['password']) ?>">
-                                            <?= icon($account['icon'], 'cy-icon cy-icon--sm') ?>
-                                            <span class="cy-quick-login__text">
-                                                <strong><?= e($account['label']) ?></strong>
-                                                <small><?= e($account['name']) ?></small>
+                                                class="cy-quick-login__item js-quick-login"
+                                                data-identifier="<?= e($account['kullanici_adi']) ?>"
+                                                data-password="<?= e($account['parola']) ?>"
+                                                aria-label="<?= e($account['etiket']) ?> hesabıyla giriş yap">
+                                            <span class="cy-quick-login__badge is-<?= e($account['variant']) ?>">
+                                                <?= icon($account['icon'], 'cy-icon cy-icon--sm') ?>
+                                                <?= e($account['etiket']) ?>
                                             </span>
+                                            <span class="cy-quick-login__text">
+                                                <strong><?= e($account['ad']) ?></strong>
+                                                <small>
+                                                    <code><?= e($account['kullanici_adi']) ?></code>
+                                                    · <code><?= e($account['parola']) ?></code>
+                                                </small>
+                                            </span>
+                                            <?= icon('chevron', 'cy-icon cy-icon--sm cy-quick-login__arrow') ?>
                                         </button>
                                     <?php endforeach; ?>
                                 </div>
 
                                 <p class="cy-quick-login__hint">
-                                    Bu butonlar sadece <code>APP_DEBUG=true</code> iken görünür. "Pasif" ve "Askıda"
-                                    hesaplar bilerek giriş yapamaz — durum kontrolünün nasıl çalıştığını gösterir.
+                                    <?php if ($demoMode): ?>
+                                        Bu hesaplar yalnızca örnek veridir; bir satıra tıklamanız giriş için yeterli.
+                                        Demo hesaplarla hesap bilgileri, kullanıcılar, site ayarları ve e-posta
+                                        gönderimi kilitlidir.
+                                    <?php else: ?>
+                                        Bu liste yalnızca geliştirme ortamında (<code>APP_DEBUG=true</code>) görünür.
+                                        "Pasif" ve "Askıda" hesaplar bilerek giriş yapamaz — durum kontrolünün nasıl
+                                        çalıştığını gösterir.
+                                    <?php endif; ?>
                                 </p>
                             </div>
                         <?php endif; ?>

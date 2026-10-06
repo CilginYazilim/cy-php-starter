@@ -32,7 +32,7 @@ return [
      *  (github.com/CilginYazilim/cy-php-starter/releases) ve anlamsal
      *  sürümleme kullanır: BÜYÜK.KÜÇÜK.YAMA
      * -------------------------------------------------------------- */
-    'version' => '1.4.0',
+    'version' => '1.5.0',
 
     'desc'  => Env::get('APP_DESCRIPTION', 'Çılgın Yazılım örnek uygulaması'),
     'url'   => Env::get('APP_URL', ''),
@@ -64,6 +64,14 @@ return [
      * varsayılan "true" idi; eksik bir .env yayındaki sitede dosya
      * yollarını ve SQL hatalarını ziyaretçiye gösteriyordu. */
     'debug' => Env::bool('APP_DEBUG', false),
+
+    /* DEMO MODU — herkese açık deneme kurulumları için. Açıkken giriş
+     * ekranı örnek hesapları (Yönetici, Editör, Üye) tek tıkla giriş
+     * için listeler ve o hesaplara hesap/ayar/kullanıcı/e-posta
+     * işlemleri kapanır (bkz. App\Core\Demo). Gerçek bir sitede
+     * MUTLAKA false. Panelden değiştirilemez: demo yöneticisi demo
+     * modunu kendisi kapatamasın diye. */
+    'demo' => Env::bool('APP_DEMO', false),
 
     'timezone' => Env::get('APP_TIMEZONE', 'Europe/Istanbul'),
     'locale'   => 'tr_TR',

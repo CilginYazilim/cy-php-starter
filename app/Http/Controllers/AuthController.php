@@ -11,6 +11,7 @@ namespace App\Http\Controllers;
 
 use App\Core\Auth;
 use App\Core\Config;
+use App\Core\Demo;
 use App\Core\Flash;
 use App\Core\Events\Events;
 use App\Core\Ip;
@@ -29,21 +30,6 @@ use App\Events\UserRegistered;
 
 final class AuthController extends Controller
 {
-    /**
-     * kurulum/database.sql ile birlikte gelen örnek kullanıcılar.
-     * Yalnızca geliştirme ortamında (APP_DEBUG=true) giriş ekranında
-     * gösterilir — canlıda parolası bilinen hesapların önerilmesi
-     * güvenlik açığıdır.
-     *
-     * @var array<int,array<string,string>>
-     */
-    private const DEMO_ACCOUNTS = [
-        ['identifier' => 'elif.editor', 'password' => 'Demo1234!', 'name' => 'Elif Demir',  'label' => 'Editör',     'variant' => 'editor',  'icon' => 'edit'],
-        ['identifier' => 'mehmet.uye',  'password' => 'Demo1234!', 'name' => 'Mehmet Kaya',  'label' => 'Üye',        'variant' => 'member',  'icon' => 'user'],
-        ['identifier' => 'ayse.pasif',  'password' => 'Demo1234!', 'name' => 'Ayşe Şahin',   'label' => 'Pasif Üye',  'variant' => 'passive', 'icon' => 'user'],
-        ['identifier' => 'can.askida',  'password' => 'Demo1234!', 'name' => 'Can Yıldız',   'label' => 'Askıda Üye', 'variant' => 'hold',    'icon' => 'user'],
-    ];
-
     public function showLogin(Request $request): void
     {
         if (Session::pull('_expired') === true) {
@@ -55,42 +41,14 @@ final class AuthController extends Controller
             'errors'       => Flash::errors(),
             'old'          => Flash::old(),
             'scripts'      => ['login.js'],
-            'demoAccounts' => $this->demoAccounts(),
+            /* Örnek hesaplar yalnızca demo modunda (APP_DEMO=true) ya
+             * da geliştirme ortamında listelenir; kurallar App\Core\Demo
+             * içinde. Eskiden yalnızca APP_DEBUG'a bakılıyordu; kurulum
+             * her siteyi debug açık kurduğu için canlı sitelerin giriş
+             * ekranı "Demo1234!" parolasını öneriyordu. */
+            'demoAccounts' => Demo::loginAccounts($this->db),
+            'demoMode'     => Demo::enabled(),
         ], 'layouts/site');
-    }
-
-    /**
-     * Giriş ekranında önerilecek demo hesaplar.
-     *
-     * ÜÇ KOŞUL BİRDEN aranır: hata ayıklama açık, ortam "production"
-     * DEĞİL ve hesap veritabanında GERÇEKTEN var. Eskiden yalnızca
-     * APP_DEBUG'a bakılıyordu; kurulum her siteyi debug açık kurduğu
-     * için canlı sitelerin giriş ekranı "Demo1234!" parolasını
-     * öneriyordu — demo verisi hiç yüklenmemiş olsa bile.
-     *
-     * @return array<int,array<string,string>>
-     */
-    private function demoAccounts(): array
-    {
-        if (!Config::isDebug() || Config::isProduction()) {
-            return [];
-        }
-
-        try {
-            $stmt = $this->db->prepare(
-                'SELECT kullanici_adi FROM kullanicilar WHERE kullanici_adi IN (?, ?, ?, ?)'
-            );
-            $stmt->execute(array_column(self::DEMO_ACCOUNTS, 'identifier'));
-
-            $mevcut = $stmt->fetchAll(\PDO::FETCH_COLUMN);
-        } catch (\Throwable) {
-            return [];
-        }
-
-        return array_values(array_filter(
-            self::DEMO_ACCOUNTS,
-            static fn (array $hesap): bool => in_array($hesap['identifier'], $mevcut, true)
-        ));
     }
 
     public function login(Request $request): void

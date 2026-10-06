@@ -55,6 +55,12 @@ final class Middleware
                 self::maintenance();
             }
 
+            /* DEMO KİLİDİ: APP_DEMO=true iken örnek hesaplar parolayı,
+             * ayarları, kullanıcıları değiştiremez; e-posta gönderemez.
+             * Burada durur, çünkü girişli her yazma isteği "auth"tan
+             * geçer — rotalara tek tek eklemek unutulmaya açıktı. */
+            Demo::guard($request);
+
             return;
         }
 

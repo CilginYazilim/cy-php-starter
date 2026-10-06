@@ -1,6 +1,6 @@
 # CY PHP Starter — Sistem Kılavuzu
 
-**PHP Başlangıç Şablonunun mimarisi, tasarım kararları ve genişletme rehberi** · Sürüm 1.4.0
+**PHP Başlangıç Şablonunun mimarisi, tasarım kararları ve genişletme rehberi** · Sürüm 1.5.0
 
 > Bu dosya sistemin **tamamını** anlatır: mimari kararlar, her katmanın
 > ne işe yaradığı, neden öyle yazıldığı ve nasıl genişletileceği.
@@ -498,6 +498,41 @@ Roller ve yetkileri `app/Models/Role.php` içindedir.
 > çekirdeğin listesini değiştiremez. Yönetici için beyaz liste şart
 > koşsaydık, kurulan her modül için `Role.php`'yi elle düzenlemek
 > gerekirdi. Diğer roller için liste bağlayıcıdır.
+
+### Demo modu
+
+Herkese açık bir deneme sitesi kuruyorsanız (ör. canlı demo) `.env`
+içinde `APP_DEMO=true` yapın ya da sihirbazın Yönetici adımında
+**Demo modu** kutusunu işaretleyin. Örnek veri (`kurulum/demo.sql`)
+şart: kutu onu da yükler.
+
+| Davranış | Ayrıntı |
+|---|---|
+| Giriş ekranı | Yönetici (`ali.yonetici`), Editör (`elif.editor`), Üye (`mehmet.uye`) parolalarıyla (`Demo1234!`) listelenir; satıra tıklamak formu doldurup gönderir (`login.js`) — giriş normal yoldan, CSRF ve kaba kuvvet korumasıyla yapılır |
+| Demo kilidi | Örnek hesaplar için kapalı yazma uçları: `panel/hesabim/*` (bilgi, parola, görsel, API anahtarı, diğer cihazlardan çıkış), `panel/ayarlar/*`, `panel/sistem/*`, kullanıcı ekleme/düzenleme/silme/durum, e-posta gönderme/sınama/silme |
+| Açık kalanlar | Okuma her yerde; sayfa yazma, mesajlar, modül kayıtları — demonun amacı bunları denetmektir |
+| Kurulumdaki yönetici | Kilide takılmaz; demoyu o hesapla yönetirsiniz |
+| Panel uyarıları | Demo hesabına "kilitli işlemler" bilgisi; asıl yöneticiye "demo modu açık" uyarısı |
+
+Kilit `auth` ara katmanında durur (`App\Core\Demo::guard`): girişli her
+yazma isteği oradan geçer, rotalara tek tek eklemek unutulmaya açıktı.
+Form isteği bölüm sayfasına mesajla döner, AJAX isteği açıklamalı 403
+alır. Hesap listesi ve kilitli uçlar `app/Core/Demo.php` içindedir;
+hesap adları `demo.sql` ile aynı kalmalıdır (birim testi denetler).
+
+**Anahtar neden panelde değil?** Demo yöneticisi her yetkiye sahiptir;
+anahtar panelde olsaydı ilk ziyaretçi demo modunu kapatıp kilitleri
+kaldırabilirdi.
+
+**Ne korumaz?** Ziyaretçilerin eklediği içerik (sayfa, modül kaydı)
+birikir ve sayfalar ön yüzde yayınlanabilir. Herkese açık bir demoyu
+belirli aralıklarla sıfırdan kurun. Demo kapalıyken yerel olmayan bir
+sitede örnek hesaplar duruyorsa panel kırmızı uyarı verir — örnek
+veride bir **yönetici** hesabı da vardır.
+
+Geliştirme ortamında (`APP_DEBUG=true`, `APP_ENV` yayın değil) giriş
+ekranı aynı listeyi pasif ve askıdaki hesaplarla birlikte gösterir;
+kilit yalnızca demo modunda çalışır.
 
 ---
 
@@ -1099,6 +1134,22 @@ Modül, çekirdeğin `views/` klasörünü kirletmez.
 **Menü:** `module.json` içindeki `menu` bloğu sol menüde otomatik
 görünür; `"menu": false` derseniz görünmez.
 
+**Kurulumda açık gelen modül:** `module.json` içinde
+`"kurulumda_acik": true` olan modül, sihirbazın Site Ayarları adımında
+işaretli gelir; kurulum onu açar ve tablolarını kurar (SSH gerekmez —
+panelde modül aç/kapa ekranı yoktur). Şablondaki `Ornek` modülü
+böyledir: kurulumdan sonra **Panel → Örnek Modül** (`/panel/ornek`)
+hazırdır. Modül migration'ları temel partiye değil 1. partiye yazılır;
+çekirdekten farklı olarak geri alınabilirler.
+
+**Örnek modül:** `modules/Ornek` modül sisteminin en küçük çalışan
+örneğidir — bir migration (`ornek` tablosu), üç rota (listele, ekle,
+sil), Repository ve kendi görünümü. Yetkileri (`ornek.view`,
+`ornek.manage`) `Role.php`'de tanımlı değildir; bu yüzden yalnızca
+yönetici görür. Editöre açmak için iki yetkiyi `Role.php`'de editörün
+listesine ekleyin. Kendi projenizde istemiyorsanız:
+`php cy module --disable=Ornek` ve klasörü silin.
+
 **Migration adlandırma:** modül migration'ları `Stok/2026_…` biçiminde
 kaydedilir; iki modül aynı dosya adını kullansa bile çakışmaz.
 Sıralama modül önekine değil **zaman damgasına** göre yapılır.
@@ -1513,7 +1564,8 @@ php cy migrate
 - [ ] `kurulum/` klasörünü **silin** (sihirbazın son adımındaki düğme
       bunu tek tıkla yapar)
 - [ ] Örnek veri yüklediyseniz temizleyin:
-      `DELETE FROM kullanicilar WHERE eposta LIKE '%@ornek.com';`
+      `DELETE FROM kullanicilar WHERE eposta LIKE '%.demo@ornek.com';`
+      ve `.env`'de `APP_DEMO=false` olduğundan emin olun
 - [ ] SSL sertifikası (HTTPS) aktif
 - [ ] `storage/` ve `upload/` yazılabilir, web'e kapalı
 - [ ] SMTP bilgileri girildi, `php cy mail:test` başarılı
