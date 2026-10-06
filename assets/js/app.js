@@ -468,17 +468,22 @@ window.CY = (function ($) {
         });
 
         /* --- Panel bildirimini kapat ---
-         * Yalnızca bilgi bildirimlerinde düğme vardır. Tarayıcı oturumu
-         * boyunca gizlenir: sunucu çerezi görür ve bildirimi hiç basmaz
-         * (bkz. PanelNotices::dismissed), sayfa yüklenirken yanıp sönmez. */
+         * Yalnızca bilgi bildirimlerinde düğme vardır. Kimlik SUNUCUDA
+         * oturuma yazılır (bkz. PanelNotices::dismiss); sonraki sayfalarda
+         * bildirim hiç basılmaz, yanıp sönmez. */
         $(document).on('click', '.js-notice-close', function () {
             var $bildirim = $(this).closest('[data-notice]');
             var $kutu     = $bildirim.parent();
 
-            CY.setCookie('cy_uyari_' + $bildirim.data('notice'), '1', 0);
+            $.post(CY.url('api/bildirim/kapat'), { id: $bildirim.data('notice'), csrf_token: CY.token() });
             $bildirim.remove();
 
             if (!$kutu.children().length) { $kutu.remove(); }
+        });
+
+        /* Mobilde bildirim metni tek satıra kısalır; dokununca açılır. */
+        $(document).on('click', '.cy-notice__text', function () {
+            $(this).closest('.cy-notice').toggleClass('is-open');
         });
 
         /* --- Kopyala düğmesi ---

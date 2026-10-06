@@ -119,6 +119,10 @@ $router->post('panel/sistem/migrate', SystemController::class, 'migrate', ['inst
 // Modül aç/kapat ("php cy module --enable=Ad" komutunun panel karşılığı).
 $router->post('panel/sistem/modul/{ad}', SystemController::class, 'toggleModule', ['installed', 'auth', 'csrf', 'can:system.manage']);
 
+// Kurulum klasörünü sil / örnek veriyi kaldır (yalnızca yönetici; demo hesabında kilitli).
+$router->post('panel/sistem/kurulum-sil',  SystemController::class, 'removeInstaller', ['installed', 'auth', 'csrf', 'can:system.manage']);
+$router->post('panel/sistem/demo-kaldir', SystemController::class, 'removeDemo',      ['installed', 'auth', 'csrf', 'can:system.manage']);
+
 $router->get('panel/hesabim',              ProfileController::class, 'index',        ['installed', 'auth', 'can:profile.view']);
 $router->post('panel/hesabim/guncelle',    ProfileController::class, 'update',       ['installed', 'auth', 'csrf', 'can:profile.update']);
 $router->post('panel/hesabim/parola',      ProfileController::class, 'password',     ['installed', 'auth', 'csrf', 'can:profile.update']);
@@ -132,6 +136,7 @@ $router->post('panel/hesabim/avatar-sil',  ProfileController::class, 'removeAvat
 // Tema tercihi: özel bir yetki gerektirmez, her giriş yapmış kullanıcı
 // kendi görünümünü değiştirebilmelidir.
 $router->post('api/tema', ProfileController::class, 'updateTheme', ['installed', 'auth', 'csrf']);
+$router->post('api/bildirim/kapat', DashboardController::class, 'dismissNotice', ['installed', 'auth', 'csrf']);
 
 $router->post('api/kullanicilar/list',   UserApiController::class, 'list',   ['installed', 'auth', 'csrf', 'can:users.view']);
 $router->post('api/kullanicilar/fetch',  UserApiController::class, 'fetch',  ['installed', 'auth', 'csrf', 'can:users.view']);

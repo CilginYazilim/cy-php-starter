@@ -186,6 +186,70 @@ final class OrnekRepository
     }
 
     /**
+     * Demo verisi: her rolden bir sahip × üç durum × iki kayıt = 18.
+     * Sahipler önce demo hesaplarından (ali.yonetici, elif.editor,
+     * mehmet.uye) seçilir; yoksa o roldeki ilk aktif hesap.
+     */
+    public function seedDemo(): int
+    {
+        $sahipler = [];
+
+        foreach ($this->db->query(
+            "SELECT id, rol FROM `kullanicilar`
+              WHERE durum = 'aktif' AND rol IN ('admin', 'editor', 'uye')
+              ORDER BY (kullanici_adi IN ('ali.yonetici', 'elif.editor', 'mehmet.uye')) DESC, id"
+        )->fetchAll() as $satir) {
+            $sahipler[(string) $satir['rol']] ??= (int) $satir['id'];
+        }
+
+        if ($sahipler === []) {
+            return 0;
+        }
+
+        $kayitlar = [
+            ['Haftalık stok sayımı', 'Cuma gününe kadar gözden geçirilecek.'],
+            ['Müşteri geri bildirim raporu', 'Geçen ayın verileriyle karşılaştırıldı.'],
+            ['Kampanya görseli taslağı', 'İlk sürüm hazır; ekipten yorum bekleniyor.'],
+            ['Sunucu bakım notları', 'Pazar gecesi 02:00–03:00 arası planlandı.'],
+            ['Yeni ürün açıklaması', 'Müşteri temsilcisiyle birlikte hazırlandı.'],
+            ['Teklif şablonu güncellemesi', 'Fiyat tablosu yeni KDV oranına göre düzenlendi.'],
+            ['SSS sayfası için sorular', 'Destek taleplerinden en sık gelen on soru.'],
+            ['Mobil uygulama test listesi', 'Giriş, çıkış ve oturum listesi senaryoları.'],
+            ['Fatura hatırlatma metni', 'Eksik maddeler işaretlendi, tamamlanacak.'],
+            ['Bülten konu başlıkları', 'Ekim bülteni için beş öneri.'],
+            ['Destek talebi özeti', 'Haftalık en çok sorulan konular.'],
+            ['Toplantı karar notları', 'Bir sonraki toplantıda görüşülecek.'],
+            ['Fiyat listesi revizyonu', 'Yönetim onayından sonra yayına alınacak.'],
+            ['Blog yazısı fikirleri', 'Modül geliştirme üzerine üç yazı.'],
+            ['Sosyal medya takvimi', 'Kasım ayının paylaşım planı.'],
+            ['Kargo süreç akışı', 'Depo ve müşteri hizmetleriyle paylaşılacak.'],
+            ['Personel eğitim planı', 'Yeni panel ekranları için kısa eğitim.'],
+            ['Yedekleme kontrol listesi', 'Veritabanı ve upload klasörü haftalık.'],
+        ];
+
+        $statement = $this->db->prepare(
+            'INSERT INTO `ornek` (baslik, aciklama, durum, kullanici_id, created_at)
+             VALUES (:baslik, :aciklama, :durum, :kullanici, NOW() - INTERVAL :saat HOUR)'
+        );
+
+        $roller    = array_keys($sahipler);
+        $durumlar  = ['yayinda', 'onay', 'taslak'];
+        $adet      = min(count($kayitlar), self::UST_SINIR - $this->count());
+
+        for ($i = 0; $i < $adet; $i++) {
+            $statement->execute([
+                ':baslik'    => $kayitlar[$i][0],
+                ':aciklama'  => $kayitlar[$i][1],
+                ':durum'     => $durumlar[intdiv($i, count($roller)) % 3],
+                ':kullanici' => $sahipler[$roller[$i % count($roller)]],
+                ':saat'      => 2 + $i * 17,
+            ]);
+        }
+
+        return max(0, $adet);
+    }
+
+    /**
      * Rastgele örnek kayıtlar üretir; üretilen sayıyı döndürür.
      * Üst sınır aşılmaz (bkz. UST_SINIR).
      *

@@ -342,7 +342,7 @@ foreach (Demo::HESAPLAR as $kadi => $hesap) {
 $demoListesi = array_column(Demo::visibleAccounts(true, $tumu), 'kullanici_adi');
 dogrula('Demo modunda Yönetici, Editör, Üye listelenir', $demoListesi === ['ali.yonetici', 'elif.editor', 'mehmet.uye'],
     implode(', ', $demoListesi));
-dogrula('Geliştirmede pasif/askıdakiler de listelenir', count(Demo::visibleAccounts(false, $tumu)) === 5);
+dogrula('Geliştirmede pasif/askıda/onay bekleyenler de listelenir', count(Demo::visibleAccounts(false, $tumu)) === 6);
 dogrula('Veritabanında olmayan ya da e-postası farklı hesap listelenmez',
     array_column(Demo::visibleAccounts(true, ['ali.yonetici' => 'baska@ornek.com', 'elif.editor' => 'elif.demo@ornek.com']), 'kullanici_adi') === ['elif.editor']);
 dogrula('Listelenen hesap parolasını taşır', (Demo::visibleAccounts(true, $tumu)[0]['parola'] ?? '') === Demo::PAROLA);
@@ -351,18 +351,29 @@ $ornekKullanici = new App\Models\User(id: 7, ad: 'Ali', soyad: 'Yılmaz', kullan
 $gercekKullanici = new App\Models\User(id: 1, ad: 'Evren', soyad: 'Ç', kullaniciAdi: 'admin', eposta: 'x@y.z', rol: Role::ADMIN);
 dogrula('Örnek hesap tanınır, kurulumdaki yönetici tanınmaz', Demo::isDemoUser($ornekKullanici) && !Demo::isDemoUser($gercekKullanici) && !Demo::isDemoUser(null));
 
-$demoSql = (string) @file_get_contents(CY_BASE . '/kurulum/demo.sql');
-if ($demoSql !== '') {
-    $eslesen = true;
-    foreach (Demo::HESAPLAR as $kadi => $hesap) {
-        $eslesen = $eslesen && preg_match("/'" . preg_quote($kadi, '/') . "',\\s*'" . preg_quote($hesap['eposta'], '/') . "'/", $demoSql) === 1;
-    }
-    dogrula('Demo.php hesapları kurulum/demo.sql ile aynı', $eslesen);
-    dogrula('demo.sql bir yönetici örnek hesabı içerir', preg_match("/'ali\\.yonetici',[^\\n]*'admin',\\s*'aktif'/", $demoSql) === 1);
-} else {
-    echo "  (kurulum/ klasörü silinmiş; demo.sql eşleşmesi atlandı)\n";
-}
+/* DEMO VERİSİ TEK KAYNAKTAN (App\Core\DemoData): yazdığı her ayarın
+ * şemada ya da 1.6 tanımlarında GERÇEKTEN bir satırı olmalı — yoksa
+ * UPDATE sessizce hiçbir şey yapmaz ve vitrin eksik kurulur. */
+dogrula('kurulum/demo.sql kaldırıldı (tek kaynak DemoData)', !is_file(CY_BASE . '/kurulum/demo.sql'));
+$hesapRolleri = array_count_values(array_column(Demo::HESAPLAR, 'rol'));
+dogrula('Demo hesaplarında her rol var', ($hesapRolleri['admin'] ?? 0) >= 1 && ($hesapRolleri['editor'] ?? 0) >= 1 && ($hesapRolleri['uye'] ?? 0) >= 1);
+dogrula('Demo hesaplarında her durum var (aktif, pasif, askıda, onay bekliyor)',
+    array_values(array_unique(array_column(Demo::HESAPLAR, 'durum'))) === ['aktif', 'pasif', 'askida', 'onay_bekliyor']);
+dogrula('Bütün demo e-postaları temizlik sonekiyle biter', array_filter(Demo::HESAPLAR, static fn (array $h): bool => !str_ends_with($h['eposta'], App\Core\DemoData::EPOSTA_SONEKI)) === []);
 
+$semaSql      = (string) @file_get_contents(CY_BASE . '/kurulum/database.sql');
+$surum16Ayar  = array_column(App\Support\Surum16::AYARLAR, 0);
+if ($semaSql !== '') {
+    $eksikAyar = array_filter(array_keys(App\Core\DemoData::settings()), static fn (string $k): bool => !in_array($k, $surum16Ayar, true) && !str_contains($semaSql, "('" . $k . "'"));
+    dogrula('Demo verisinin yazdığı her ayarın satırı var', $eksikAyar === [], implode(', ', $eksikAyar));
+    $ciftTanim = array_filter($surum16Ayar, static fn (string $k): bool => str_contains($semaSql, "('" . $k . "'"));
+    dogrula('1.6 ayarları database.sql\'de ikinci kez tanımlanmamış', $ciftTanim === [], implode(', ', $ciftTanim));
+    dogrula('Şema nötr: marka yok', !str_contains($semaSql, 'Çılgın Yazılım örnek uygulaması'));
+} else {
+    echo "  (kurulum/ klasörü silinmiş; şema denetimi atlandı)\n";
+}
+dogrula('1.6 ayar anahtarları benzersiz', count($surum16Ayar) === count(array_unique($surum16Ayar)));
+dogrula('Ana sayfa bölüm varsayılanları tanımlı bölümlerden', array_diff(json_decode(App\Support\Surum16::AYARLAR[10][1], true), array_keys(App\Support\Surum16::ANASAYFA_BOLUMLERI)) === []);
 $ornekKunye = json_decode((string) @file_get_contents(CY_BASE . '/modules/Ornek/module.json'), true);
 if (is_array($ornekKunye)) {
     dogrula('Ornek modülü kurulumda açık gelir (module.json)', ($ornekKunye['kurulumda_acik'] ?? null) === true);

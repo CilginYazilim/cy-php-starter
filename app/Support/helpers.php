@@ -188,18 +188,28 @@ if (!function_exists('human_date')) {
     }
 }
 
-if (!function_exists('icon')) {
+if (!function_exists('icon_library')) {
     /**
-     * Satır içi SVG ikon döndürür.
+     * İkon kütüphanesi: [çizgi ikonlar, marka ikonları] — ad => SVG yolları.
      *
-     * Bir ikon kütüphanesi (Font Awesome vb.) YÜKLEMİYORUZ: internet
-     * olmadan da, CDN engelli bir sunucuda da panel eksiksiz açılmalı.
-     * Tüm ikonlar 24x24 kutuda, "stroke" (çizgi) tarzındadır ve
-     * currentColor kullanır — bulunduğu yerin rengini otomatik alır.
+     * Ayrı fonksiyondadır: panelin ikon seçicisi (Ayarlar → Ana Sayfa →
+     * Özellikler) ve doğrulama, geçerli ikon adlarını buradan okur.
+     *
+     * MARKA İKONLARI ayrı tutulur: hepsi DOLU (fill) çizilir, çizgi
+     * tarzı değildir. Aynı listeye koysaydık ya markalar içi boş
+     * görünürdü ya da tüm arayüz ikonları kalınlaşırdı.
+     *
+     * @return array{0:array<string,string>,1:array<string,string>}
      */
-    function icon(string $name, string $class = 'cy-icon'): string
+    function icon_library(): array
     {
-        static $paths = [
+        static $kutuphane = null;
+
+        if ($kutuphane !== null) {
+            return $kutuphane;
+        }
+
+        $paths = [
             'dashboard' => '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
             'users'     => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
             'user'      => '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
@@ -252,13 +262,7 @@ if (!function_exists('icon')) {
             'info'      => '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
         ];
 
-        /* MARKA İKONLARI ayrı tutulur: hepsi DOLU (fill) çizilir,
-         * çizgi tarzı değildir. Aynı listeye koysaydık ya markalar
-         * içi boş görünürdü ya da tüm arayüz ikonları kalınlaşırdı —
-         * alt bilgideki "sadece GitHub düzgün, diğerleri hep aynı
-         * dünya ikonu" görüntüsünün sebebi tam olarak buydu:
-         * markaların kendi yolları hiç yoktu. */
-        static $brands = [
+        $brands = [
             'facebook'  => '<path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.77-3.89 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.45 2.89h-2.33v6.99A10 10 0 0 0 22 12z"/>',
             'x'         => '<path d="M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.65l-5.21-6.82-5.97 6.82H1.68l7.73-8.83L1.25 2.25h6.82l4.71 6.23 5.46-6.23zm-1.16 17.52h1.83L7.08 4.13H5.11l11.97 15.64z"/>',
             'instagram' => '<path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41-.56-.22-.96-.48-1.38-.9-.42-.42-.68-.82-.9-1.38-.16-.42-.36-1.06-.41-2.23-.06-1.27-.07-1.65-.07-4.85s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41 1.27-.06 1.65-.07 4.85-.07zM12 5.84A6.16 6.16 0 1 0 18.16 12 6.16 6.16 0 0 0 12 5.84zm0 10.16A4 4 0 1 1 16 12a4 4 0 0 1-4 4zm6.4-10.4a1.44 1.44 0 1 0 1.44 1.44A1.44 1.44 0 0 0 18.4 5.6z"/>',
@@ -266,6 +270,31 @@ if (!function_exists('icon')) {
             'youtube'   => '<path d="M23 12s0-3.55-.46-5.25a2.75 2.75 0 0 0-1.94-1.94C18.9 4.35 12 4.35 12 4.35s-6.9 0-8.6.46a2.75 2.75 0 0 0-1.94 1.94C1 8.45 1 12 1 12s0 3.55.46 5.25a2.75 2.75 0 0 0 1.94 1.94c1.7.46 8.6.46 8.6.46s6.9 0 8.6-.46a2.75 2.75 0 0 0 1.94-1.94C23 15.55 23 12 23 12zM9.75 15.27V8.73L15.5 12z"/>',
             'whatsapp'  => '<path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.65.08-.3-.15-1.26-.47-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.67-1.61-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.38-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.42-.07-.13-.27-.2-.57-.35zM12.04 21.5h-.01a9.4 9.4 0 0 1-4.79-1.31l-.34-.2-3.56.93.95-3.47-.22-.36a9.38 9.38 0 0 1-1.44-5.01 9.44 9.44 0 1 1 9.41 9.42zM20.52 3.49A11.78 11.78 0 0 0 12.04 0C5.5 0 .18 5.32.17 11.86c0 2.09.55 4.13 1.59 5.93L.07 24l6.35-1.66a11.85 11.85 0 0 0 5.62 1.43h.01c6.54 0 11.86-5.32 11.87-11.86a11.8 11.8 0 0 0-3.4-8.42z"/>',
         ];
+
+        return $kutuphane = [$paths, $brands];
+    }
+}
+
+if (!function_exists('icon_names')) {
+    /** @return array<int,string> Arayüz (çizgi) ikonlarının adları — seçici listeleri için. */
+    function icon_names(): array
+    {
+        return array_keys(icon_library()[0]);
+    }
+}
+
+if (!function_exists('icon')) {
+    /**
+     * Satır içi SVG ikon döndürür.
+     *
+     * Bir ikon kütüphanesi (Font Awesome vb.) YÜKLEMİYORUZ: internet
+     * olmadan da, CDN engelli bir sunucuda da panel eksiksiz açılmalı.
+     * Tüm ikonlar 24x24 kutuda, "stroke" (çizgi) tarzındadır ve
+     * currentColor kullanır — bulunduğu yerin rengini otomatik alır.
+     */
+    function icon(string $name, string $class = 'cy-icon'): string
+    {
+        [$paths, $brands] = icon_library();
 
         if (isset($brands[$name])) {
             return '<svg class="' . e($class) . '" viewBox="0 0 24 24" fill="currentColor" stroke="none"'

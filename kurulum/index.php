@@ -1,59 +1,45 @@
 <?php
 /**
  * =====================================================================
- *  KURULUM SİHİRBAZI (adım adım)
- *  cilginyazilim.com – Çılgın Yazılım PHP Başlangıç Şablonu
+ *  KURULUM SİHİRBAZI
+ *  cilginyazilim.com – CY PHP Starter (PHP Başlangıç Şablonu)
  * ---------------------------------------------------------------------
- *  ADIMLAR:
- *    1) Gereksinimler  → sistem kontrolleri
- *    2) Veritabanı     → bilgiler girilir ve BAĞLANTI HEMEN TEST EDİLİR
- *    3) Site Ayarları  → site adı, açıklama, adres
- *    4) Yönetici       → admin hesabı; bu adımda kurulum çalıştırılır
- *    5) Tamamlandı     → özet + KURULUM KLASÖRÜNÜ SİL butonu
+ *  İKİ EKRAN + BİTİŞ:
+ *    1) Veritabanı        → gereksinimler tek satırda; bilgiler girilir,
+ *                           "Bağlantıyı dene" anında sonuç verir
+ *    2) Site ve yönetici  → site adı/adresi, yönetici hesabı, seçenekler
+ *                           (örnek veri, demo modu, geliştirme, PWA,
+ *                           modüller). "Kur" kurulumu ÇALIŞTIRIR.
+ *    3) Hazır             → yapılan adımların listesi, siteye/panele
+ *                           git, kurulum klasörünü sil, demo hesaplar
  *
- *  KURULUM SONUNDA TEK BİR EKSİK KALMAZ. Son adım sırasıyla:
+ *  KURULUM SONUNDA TEK BİR EKSİK KALMAZ:
  *    · veritabanını oluşturur ve database.sql'i içeri aktarır
- *    · istenmişse kurulum/demo.sql örnek verisini yükler
- *    · site ayarlarını formdaki değerlerle günceller
- *    · yönetici hesabını açar
- *    · .env dosyasını yazar
- *    · database/migrations altındaki EK tabloları kurar
- *      (onbellek, isler, api_anahtarlari) — komut satırı GEREKMEZ
+ *    · yönetici hesabını açar, .env'i yazar, kurulumu kilitler
+ *    · database/migrations altındaki ek tabloları ve 1.6 ayarlarını kurar
+ *    · seçilen modülleri açar
+ *    · istenmişse örnek veriyi yükler (App\Core\DemoData — tek kaynak)
  *
- *  NEDEN AYRI BİR KLASÖR VE BAĞIMSIZ KOD?
- *  Bu dosya, .env yazılana KADAR app/ klasöründeki hiçbir sınıfı
- *  yüklemez. Sebebi: Autoloader ve Config, projenin geri kalanı gibi
- *  ".env" dosyasının ve dolayısıyla VERİTABANININ var olduğunu
- *  varsayar — ki kurulumun amacı tam olarak bunları oluşturmaktır.
- *  Bu yüzden gereken birkaç yardımcı fonksiyon (doğrulama, parola
- *  özetleme) bu dosyanın içinde ayrıca tanımlanmıştır.
+ *  GÜVENLİK:
+ *    · KİLİT KOŞULSUZDUR: .env ya da storage/installed.lock varken
+ *      hiçbir form işlenmez (veritabanına sorulmaz; bkz. is_installed).
+ *    · KURULUM ANAHTARI: sihirbaz yerel bir bilgisayardan açılmıyorsa
+ *      storage/kurulum-anahtari.txt dosyasındaki kod istenir. Eskiden
+ *      sunucuya ilk ulaşan kişi kurulumu tamamlayıp yönetici olabiliyordu.
+ *    · KLASÖRÜ SİLMEK yalnızca kurulumu YAPAN oturumda mümkündür; sonra
+ *      Panel → Sistem Bilgisi'nden (yönetici). Eskiden giriş yapmamış
+ *      bir ziyaretçi de tetikleyebiliyordu.
+ *    · Veritabanı hataları sınıflandırılmış mesajla gösterilir; ham PDO
+ *      metni yalnızca yerel bilgisayarda (ayrıntı olarak) görünür.
  *
- *  .env YAZILDIKTAN SONRA bu varsayım artık geçerlidir; migration'ları
- *  çalıştırmak için uygulamanın kendi önyüklemesi güvenle kullanılır
- *  (bkz. run_migrations).
+ *  NEDEN BAĞIMSIZ KOD? Bu dosya .env yazılana KADAR app/ sınıflarını
+ *  yüklemez: uygulama .env'in ve veritabanının var olduğunu varsayar.
+ *  .env yazıldıktan sonra migration ve örnek veri için uygulamanın kendi
+ *  önyüklemesi güvenle kullanılır (bkz. run_migrations).
  *
- *  İş bittiğinde son adımdaki tek bir butonla "kurulum/" klasörünün
- *  tamamı silinir; proje kökünde kuruluma ait hiçbir dosya kalmaz.
- *
- *  ► Adımlar arasında veri $_SESSION içinde taşınır. Hiçbir şey
- *    veritabanına yazılmaz; yazma işlemi SADECE son adımda, tüm
- *    bilgiler toplandıktan sonra tek seferde yapılır.
- *
- *  ► POST-Redirect-GET deseni: kullanıcı sayfayı yenilediğinde "formu
- *    tekrar gönder" uyarısı almaz, aynı işlem iki kez çalışmaz.
- *
- *  ► CANLI ORTAMA ÇIKARKEN BU KLASÖRÜ SİLİN. Kurulum tamamlandıysa
- *    sihirbaz kendini otomatik kilitler, ama silmek en güvenlisidir.
- *
- *  ► KİLİT KOŞULSUZDUR VE "KAPALI" YÖNDE BOZULUR. Proje kökünde .env
- *    ya da storage/installed.lock varsa sihirbaz HİÇBİR form işlemez.
- *    Eskiden kilit veritabanına bağlanıp yönetici sayısına bakıyordu;
- *    veritabanı bir an düştüğünde kilit AÇILIYORDU. Ayrıca "?yeniden=1"
- *    parametresi kimlik sormadan kilidi kaldırıyor ve herhangi bir
- *    ziyaretçinin .env'i kendi sunucusuna yönlendirip kendine yönetici
- *    hesabı açmasına izin veriyordu. Yeniden kurmak isteyen kişi artık
- *    sunucuya erişip .env ve storage/installed.lock dosyalarını kendisi
- *    siler — yani bunu yalnızca sunucunun sahibi yapabilir.
+ *  ► Adımlar arasında veri $_SESSION'da taşınır; veritabanına yalnızca
+ *    son adımda, bütün bilgiler toplandıktan sonra yazılır.
+ *  ► POST-Redirect-GET: sayfa yenilenince işlem iki kez çalışmaz.
  * =====================================================================
  */
 
@@ -67,26 +53,24 @@ if (session_status() === PHP_SESSION_NONE) {
 const ROOT_PATH     = __DIR__ . '/..';
 const ENV_PATH      = __DIR__ . '/../.env';
 const LOCK_PATH     = __DIR__ . '/../storage/installed.lock';
+const KEY_PATH      = __DIR__ . '/../storage/kurulum-anahtari.txt';
 const SCHEMA_PATH   = __DIR__ . '/database.sql';
-const DEMO_PATH     = __DIR__ . '/demo.sql';
 const IDENTIFIER_RE = '/^[A-Za-z_][A-Za-z0-9_]*$/';
 
-/** Sihirbazın adımları: anahtar => ekranda görünen başlık. */
+/** Sihirbazın adımları: anahtar => ilerleme göstergesindeki başlık. */
 const ADIMLAR = [
-    'gereksinimler' => 'Gereksinimler',
-    'veritabani'    => 'Veritabanı',
-    'site'          => 'Site Ayarları',
-    'yonetici'      => 'Yönetici',
-    'tamam'         => 'Tamamlandı',
+    'veritabani' => 'Veritabanı',
+    'kur'        => 'Site ve yönetici',
+    'tamam'      => 'Hazır',
 ];
 
 
 /* =====================================================================
  *  BAĞIMSIZ YARDIMCI FONKSİYONLAR
  * ---------------------------------------------------------------------
- *  Bunlar app/Core/Validator.php ve app/Core/Auth.php içindeki
- *  mantığın küçük, bağımsız kopyalarıdır — kurulum bittikten sonra
- *  app/ klasörü buradan bağımsız çalışmaya devam eder.
+ *  app/Core/Validator.php ve app/Core/Auth.php mantığının küçük,
+ *  bağımsız kopyaları — kurulum bittikten sonra app/ klasörü buradan
+ *  bağımsız çalışmaya devam eder.
  * ================================================================== */
 
 /* app/Support/helpers.php içindeki karşılıklarıyla AYNI imzayla
@@ -189,6 +173,11 @@ function validate_password(string $plain): ?string
 {
     if (mb_strlen($plain, 'UTF-8') < 8) {
         return 'Parola en az 8 karakter olmalıdır.';
+    }
+    /* bcrypt ilk 72 BAYTTAN sonrasını yok sayar: daha uzun bir parola
+     * sessizce kısaltılmış olurdu (Türkçe harfler 2 bayttır). */
+    if (strlen($plain) > 72) {
+        return 'Parola en fazla 72 bayt olabilir (yaklaşık 36–72 karakter).';
     }
     if (!preg_match('/[A-Za-zÇĞİÖŞÜçğıöşü]/u', $plain)) {
         return 'Parola en az bir harf içermelidir.';
@@ -514,9 +503,8 @@ function discover_modules(): array
 
 /**
  * Seçilen modülleri açar ve tablolarını kurar — "php cy module
- * --enable=Ad" + "php cy migrate"in sihirbazdaki karşılığı. Panelde
- * modül aç/kapa ekranı olmadığı için SSH'siz bir hostingde modülü
- * açmanın tek yolu budur.
+ * --enable=Ad" + "php cy migrate"in sihirbazdaki karşılığı. Sonradan
+ * Panel → Sistem Bilgisi → Modüller'den açılıp kapatılabilir.
  *
  * run_migrations()'tan SONRA çağrılır (uygulama orada yüklendi).
  * Modül migration'ları TEMEL PARTİYE yazılmaz: çekirdekten farklı
@@ -757,13 +745,174 @@ function post_str(string $field, string $default = ''): string
     return is_string($value) ? $value : $default;
 }
 
-/** Formda önceki değeri göstermek için: POST > oturum > varsayılan. */
-function eski(string $field, array $store, string $default = ''): string
+
+/**
+ * Sihirbaz YEREL bir bilgisayardan mı açıldı?
+ *
+ * İKİ KOŞUL BİRDEN: istemci döngü adresinden (127.0.0.1, ::1) gelmeli
+ * VE alan adı yerel olmalı (localhost, *.test, *.local). Yalnızca IP'ye
+ * bakmak yetmezdi: aynı makinedeki bir ters vekilin (nginx → Apache)
+ * arkasındaki yayın sunucusunda her istek 127.0.0.1'den gelir. Yalnızca
+ * alan adına bakmak da yetmezdi: Host başlığı istemcinin elindedir.
+ */
+function is_local_request(): bool
 {
-    if (isset($_POST[$field])) {
-        return post_str($field);
+    $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+
+    if ($ip !== '::1' && !str_starts_with($ip, '127.')) {
+        return false;
     }
-    return (string) ($store[$field] ?? $default);
+
+    $host = strtolower((string) preg_replace('/:\d+\z/', '', (string) ($_SERVER['HTTP_HOST'] ?? '')));
+    $host = trim($host, '[]');
+
+    if (in_array($host, ['localhost', '127.0.0.1', '::1'], true)) {
+        return true;
+    }
+
+    foreach (['.localhost', '.test', '.local'] as $sonek) {
+        if (str_ends_with($host, $sonek)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * KURULUM ANAHTARI. Sihirbaz yerel değilse ilk ziyarette sunucuya
+ * storage/kurulum-anahtari.txt yazılır; formda bu kod istenir. Kodu
+ * yalnızca sunucunun dosyalarına erişebilen kişi (sitenin sahibi)
+ * okuyabilir. storage/ web'e kapalıdır (storage/.htaccess).
+ */
+function install_key(): string
+{
+    if (is_file(KEY_PATH)) {
+        return trim((string) file_get_contents(KEY_PATH));
+    }
+
+    $harfler = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // karışan 0/O, 1/I yok
+    $kod     = '';
+
+    for ($i = 0; $i < 12; $i++) {
+        $kod .= $harfler[random_int(0, strlen($harfler) - 1)];
+        $kod .= ($i % 4 === 3 && $i < 11) ? '-' : '';
+    }
+
+    @mkdir(dirname(KEY_PATH), 0755, true);
+    @file_put_contents(KEY_PATH, $kod . "\n");
+
+    return $kod;
+}
+
+function key_required(): bool
+{
+    return !is_local_request() && empty($_SESSION['kurulum_anahtar_ok']);
+}
+
+/**
+ * Girilen kurulum anahtarını denetler; doğruysa oturuma işaretler.
+ * Oturum başına 10 deneme.
+ *
+ * @return string|null hata mesajı
+ */
+function check_install_key(string $girilen): ?string
+{
+    $_SESSION['kurulum_anahtar_deneme'] = (int) ($_SESSION['kurulum_anahtar_deneme'] ?? 0) + 1;
+
+    if ($_SESSION['kurulum_anahtar_deneme'] > 10) {
+        return 'Çok fazla hatalı deneme. Tarayıcıyı kapatıp yeniden açın.';
+    }
+
+    $beklenen = strtoupper(str_replace([' ', '-'], '', install_key()));
+    $girilen  = strtoupper(str_replace([' ', '-'], '', $girilen));
+
+    if ($girilen === '' || !hash_equals($beklenen, $girilen)) {
+        return 'Kurulum anahtarı hatalı. Sunucudaki storage/kurulum-anahtari.txt dosyasındaki kodu girin.';
+    }
+
+    $_SESSION['kurulum_anahtar_ok'] = true;
+
+    return null;
+}
+
+/**
+ * Veritabanı hatasını SINIFLANDIRILMIŞ, anlaşılır bir cümleye çevirir.
+ * Ham PDO metni (sunucu adı, kullanıcı, iç yollar) bilgi sızdırır;
+ * yalnızca yerel bilgisayarda ayrıntı olarak gösterilir.
+ */
+function db_error_message(PDOException $e): string
+{
+    $kod = (int) ($e->errorInfo[1] ?? $e->getCode());
+
+    return match (true) {
+        $kod === 1045                         => 'Erişim reddedildi: veritabanı kullanıcı adı ya da parolası hatalı.',
+        $kod === 1044                         => 'Bu kullanıcının bu veritabanına erişim yetkisi yok.',
+        in_array($kod, [2002, 2003, 2005, 2006], true) => 'Veritabanı sunucusuna ulaşılamadı. Sunucu adresini ve kapıyı (port) kontrol edin; MySQL/MariaDB çalışıyor mu?',
+        $kod === 1049                         => 'Veritabanı bulunamadı.',
+        default                               => 'Veritabanına bağlanılamadı (hata ' . $kod . ').',
+    };
+}
+
+/** Yerel bilgisayarda ham hata ayrıntısı; yayında boş. */
+function db_error_detail(PDOException $e): string
+{
+    return is_local_request() ? $e->getMessage() : '';
+}
+
+/**
+ * "Ali Rıza Çelik" → ['Ali Rıza', 'Çelik']. Son kelime soyad sayılır.
+ *
+ * @return array{0:string,1:string,2:?string} [ad, soyad, hata]
+ */
+function split_full_name(string $tam): array
+{
+    $tam = trim((string) preg_replace('/\s+/u', ' ', $tam));
+
+    if ($tam === '') {
+        return ['', '', 'Ad soyad boş bırakılamaz.'];
+    }
+
+    $parcalar = explode(' ', $tam);
+
+    if (count($parcalar) < 2) {
+        return [$tam, '', 'Adınızı ve soyadınızı birlikte yazın (örn. Evren Çılgın).'];
+    }
+
+    $soyad = array_pop($parcalar);
+    $ad    = implode(' ', $parcalar);
+
+    foreach ([[$ad, 'Ad'], [$soyad, 'Soyad']] as [$deger, $etiket]) {
+        [, $hata] = validate_name($deger, $etiket);
+
+        if ($hata !== null) {
+            return [$ad, $soyad, $hata];
+        }
+    }
+
+    return [$ad, $soyad, null];
+}
+
+/**
+ * Örnek veriyi yükler (App\Core\DemoData — sihirbaz, "php cy db:seed"
+ * ve canlı demo sıfırlaması AYNI kaynağı kullanır). run_migrations()'tan
+ * SONRA çağrılır; uygulama orada yüklendi.
+ *
+ * @return ?string hata mesajı
+ */
+function run_demo_seed(): ?string
+{
+    if (!class_exists(App\Core\DemoData::class)) {
+        return 'Uygulama yüklenemedi; örnek veri atlandı.';
+    }
+
+    try {
+        (new App\Core\DemoData(App\Core\Database::connection()))->seed();
+
+        return null;
+    } catch (Throwable $e) {
+        return $e->getMessage();
+    }
 }
 
 
@@ -775,83 +924,143 @@ $csrfToken = csrf_token();
 $_SESSION['kurulum'] = $_SESSION['kurulum'] ?? [];
 $kurulum = &$_SESSION['kurulum'];
 
-$errors = [];
+$errors      = [];   // formun üstünde gösterilen genel hatalar
+$fieldErrors = [];   // alan => mesaj (alanın hemen altında)
+$hataAyrinti = '';   // yalnızca yerelde: ham veritabanı hatası
 
-/* Kurulum zaten tamamlandı mı? .env ya da kilit dosyası varsa evet.
- * Bu kontrol veritabanına HİÇ gitmez (bkz. is_installed). */
 $alreadyInstalled = is_installed();
+$yerel            = is_local_request();
 
-$adim = is_string($_GET['adim'] ?? null) ? $_GET['adim'] : 'gereksinimler';
+$adim = is_string($_GET['adim'] ?? null) ? $_GET['adim'] : 'veritabani';
 if (!array_key_exists($adim, ADIMLAR)) {
-    $adim = 'gereksinimler';
+    $adim = 'veritabani';
 }
 
-/* Kurulumu AZ ÖNCE bu oturumda bitiren kişi özet ekranını bir kez
- * görebilir. Özet yalnızca o oturumun $_SESSION'ında durur; başka bir
- * ziyaretçinin bu bayrağı üretmesinin yolu yoktur. */
+/* Kurulumu AZ ÖNCE bu oturumda bitiren kişi bitiş ekranını görebilir.
+ * Sonuç yalnızca o oturumun $_SESSION'ında durur. */
 $yeniBitti = ($adim === 'tamam' && !empty($_SESSION['kurulum_sonuc']));
 $kilitli   = $alreadyInstalled && !$yeniBitti;
 
+if (!$alreadyInstalled && !$yerel) {
+    install_key(); // anahtar dosyası ilk ziyarette oluşsun
+}
+
+$isPost = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST';
+$islem  = post_str('islem');
+
+/** CSRF jetonu geçerli mi? */
+$tokenGecerli = static function (): bool {
+    $token = $_POST['csrf_token'] ?? '';
+
+    return is_string($token) && !empty($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+};
+
 
 /* =====================================================================
- *  TEMİZLİK: KURULUM KLASÖRÜNÜ SİL
+ *  KURULUM KLASÖRÜNÜ SİL — yalnızca kurulumu YAPAN oturum
  * ================================================================== */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['islem'] ?? '') === 'temizle') {
-
-    $token = $_POST['csrf_token'] ?? '';
-    $tokenGecerli = is_string($token) && !empty($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
-
-    if (!$tokenGecerli) {
+if ($isPost && $islem === 'temizle') {
+    if (!$tokenGecerli()) {
         $errors[] = 'Oturum doğrulaması başarısız. Sayfayı yenileyip tekrar deneyin.';
-    } elseif (!$alreadyInstalled && !$yeniBitti) {
-        $errors[] = 'Kurulum tamamlanmadan kurulum klasörü silinemez.';
+    } elseif (empty($_SESSION['kurulum_sonuc']) || !$alreadyInstalled) {
+        $errors[] = 'Kurulum klasörünü yalnızca kurulumu yapan tarayıcı oturumu silebilir. Panele yönetici olarak girip Sistem Bilgisi sayfasından silin.';
     } else {
         unset($_SESSION['kurulum'], $_SESSION['kurulum_sonuc']);
+        @unlink(KEY_PATH);
 
         if (remove_directory(__DIR__)) {
-            header('Location: ../index.php?kurulum=temizlendi');
+            header('Location: ../?kurulum=temizlendi');
             exit;
         }
 
-        /* Silinemedi: en azından klasörü web'e kapatalım. Bu istekten
-         * sonra sihirbaz tarayıcıdan hiç açılmaz. */
+        /* Silinemedi: en azından web'e kapatalım. */
         deny_web_access();
 
-        $errors[] = 'Klasör silinemedi; web erişimine kapatıldı. Yine de "kurulum" klasörünü FTP/dosya yöneticisi ile elle silin.';
+        $errors[] = 'Klasör silinemedi; web erişimine kapatıldı. Yine de "kurulum" klasörünü FTP/dosya yöneticisiyle silin.';
+        $adim = 'tamam';
     }
 }
 
 
 /* =====================================================================
- *  SİSTEM KONTROLLERİ
+ *  SİSTEM KONTROLLERİ — zorunlu olanlar kurulumu durdurur
  * ================================================================== */
 $checks = [
-    ['label' => 'PHP sürümü 8.1 veya üzeri', 'ok' => version_compare(PHP_VERSION, '8.1.0', '>='), 'note' => 'Mevcut sürüm: ' . PHP_VERSION],
-    ['label' => 'pdo_mysql eklentisi yüklü', 'ok' => extension_loaded('pdo_mysql'), 'note' => extension_loaded('pdo_mysql') ? '' : 'php.ini içinde extension=pdo_mysql satırını açın.'],
-    ['label' => 'mbstring eklentisi yüklü', 'ok' => extension_loaded('mbstring'), 'note' => extension_loaded('mbstring') ? '' : 'Türkçe karakter işlemleri için gereklidir.'],
-    ['label' => 'Proje klasörüne yazma izni (.env için)', 'ok' => is_writable(ROOT_PATH), 'note' => is_writable(ROOT_PATH) ? '' : 'Klasör izinlerini kontrol edin.'],
-    ['label' => 'kurulum/database.sql dosyası mevcut', 'ok' => is_file(SCHEMA_PATH), 'note' => is_file(SCHEMA_PATH) ? '' : 'Şema dosyası bulunamadı.'],
-    ['label' => 'upload/ klasörü yazılabilir', 'ok' => !is_dir(ROOT_PATH . '/upload') || is_writable(ROOT_PATH . '/upload'), 'note' => 'Avatar ve görsel yükleme için gerekli.'],
-    ['label' => 'storage/ klasörü yazılabilir', 'ok' => !is_dir(ROOT_PATH . '/storage') || is_writable(ROOT_PATH . '/storage'), 'note' => 'Günlük kayıtları, önbellek ve kuyruk dosyaları buraya yazılır.'],
-    ['label' => 'kurulum/ klasörü silinebilir', 'ok' => is_writable(ROOT_PATH) && is_writable(__DIR__), 'note' => 'Kurulum bitince klasörü tek tıkla silebilmek için gerekli.'],
+    ['label' => 'PHP 8.1 veya üzeri', 'ok' => version_compare(PHP_VERSION, '8.1.0', '>='), 'note' => 'Mevcut: PHP ' . PHP_VERSION, 'zorunlu' => true],
+    ['label' => 'pdo_mysql eklentisi', 'ok' => extension_loaded('pdo_mysql'), 'note' => 'php.ini içinde extension=pdo_mysql satırını açın.', 'zorunlu' => true],
+    ['label' => 'mbstring eklentisi', 'ok' => extension_loaded('mbstring'), 'note' => 'Türkçe karakter işlemleri için gereklidir.', 'zorunlu' => true],
+    ['label' => 'Proje klasörüne yazma izni (.env)', 'ok' => is_writable(ROOT_PATH), 'note' => 'Proje klasörünün izinlerini kontrol edin.', 'zorunlu' => true],
+    ['label' => 'kurulum/database.sql mevcut', 'ok' => is_file(SCHEMA_PATH), 'note' => 'Şema dosyası bulunamadı; dosyaları yeniden yükleyin.', 'zorunlu' => true],
+    ['label' => 'storage/ yazılabilir', 'ok' => !is_dir(ROOT_PATH . '/storage') || is_writable(ROOT_PATH . '/storage'), 'note' => 'Günlükler, önbellek ve kuyruk buraya yazılır.', 'zorunlu' => true],
+    ['label' => 'upload/ yazılabilir', 'ok' => !is_dir(ROOT_PATH . '/upload') || is_writable(ROOT_PATH . '/upload'), 'note' => 'Avatar, logo ve görseller için.', 'zorunlu' => true],
+    ['label' => 'gd eklentisi', 'ok' => extension_loaded('gd'), 'note' => 'Yüklenen görseller güvenlik için yeniden kodlanır; gd olmadan görsel yüklenemez.', 'zorunlu' => false],
+    ['label' => 'fileinfo eklentisi', 'ok' => extension_loaded('fileinfo'), 'note' => 'Yüklenen dosyanın gerçek türünü anlamak için.', 'zorunlu' => false],
+    ['label' => 'kurulum/ klasörü silinebilir', 'ok' => is_writable(ROOT_PATH) && is_writable(__DIR__), 'note' => 'Bitince klasörü tek tıkla silmek için; değilse elle silersiniz.', 'zorunlu' => false],
 ];
-$allChecksOk = !in_array(false, array_column($checks, 'ok'), true);
+$eksikZorunlu  = array_filter($checks, static fn (array $c): bool => $c['zorunlu'] && !$c['ok']);
+$uyarilar      = array_filter($checks, static fn (array $c): bool => !$c['zorunlu'] && !$c['ok']);
+$gereksinimTamam = $eksikZorunlu === [];
+
+
+/* =====================================================================
+ *  BAĞLANTIYI DENE — "Bağlantıyı dene" düğmesi (fetch, JSON)
+ * ================================================================== */
+if ($isPost && $islem === 'dene') {
+    header('Content-Type: application/json; charset=utf-8');
+
+    $yanit = static function (bool $ok, string $mesaj, string $ayrinti = ''): never {
+        echo json_encode(['ok' => $ok, 'mesaj' => $mesaj, 'ayrinti' => $ayrinti], JSON_UNESCAPED_UNICODE);
+        exit;
+    };
+
+    if ($alreadyInstalled) {
+        $yanit(false, 'Kurulum zaten tamamlanmış.');
+    }
+    if (!$tokenGecerli()) {
+        $yanit(false, 'Oturum doğrulaması başarısız. Sayfayı yenileyin.');
+    }
+    if (key_required() && ($hata = check_install_key(post_str('kurulum_anahtari'))) !== null) {
+        $yanit(false, $hata);
+    }
+
+    $host = trim(post_str('db_host'));
+    $ad   = trim(post_str('db_name'));
+
+    if ($host === '' || preg_match('/^[A-Za-z0-9._\-\[\]:]+\z/', $host) !== 1) {
+        $yanit(false, 'Sunucu adresi geçersiz. Örn: localhost ya da 127.0.0.1:3307');
+    }
+    if ($ad === '' || !preg_match(IDENTIFIER_RE, $ad)) {
+        $yanit(false, 'Veritabanı adı yalnızca harf, rakam ve alt çizgi içerebilir.');
+    }
+
+    try {
+        $pdo      = connect_without_database($host, trim(post_str('db_user')), post_str('db_pass'));
+        $surum    = (string) $pdo->query('SELECT VERSION()')->fetchColumn();
+        $tablolar = count_tables($pdo, $ad);
+
+        $yanit(true, $tablolar === 0
+            ? sprintf('Bağlantı başarılı (%s). "%s" boş ya da henüz yok; kurulum oluşturacak.', $surum, $ad)
+            : sprintf('Bağlantı başarılı (%s). "%s" içinde %d tablo var; devam edince onay istenecek.', $surum, $ad, $tablolar));
+    } catch (PDOException $e) {
+        $yanit(false, db_error_message($e), db_error_detail($e));
+    }
+}
 
 
 /* =====================================================================
  *  FORM İŞLEME
  * ================================================================== */
-/* İKİ KİLİT BİRDEN: $kilitli özet ekranı için gevşer, ama hiçbir
- * kurulum adımı .env varken çalışmamalıdır — bu yüzden dosya kontrolü
- * burada ayrıca yapılır. */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && !$alreadyInstalled && ($_POST['islem'] ?? '') !== 'temizle') {
+/* İKİ KİLİT BİRDEN: $kilitli bitiş ekranı için gevşer, ama hiçbir kurulum
+ * adımı .env varken çalışmamalıdır — dosya kontrolü burada ayrıca yapılır. */
+if ($isPost && !$alreadyInstalled && !in_array($islem, ['temizle', 'dene'], true)) {
 
-    $token = $_POST['csrf_token'] ?? '';
-    if (!is_string($token) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
+    if (!$tokenGecerli()) {
         $errors[] = 'Oturum doğrulaması başarısız. Lütfen sayfayı yenileyip tekrar deneyin.';
+    } elseif (key_required() && ($hata = check_install_key(post_str('kurulum_anahtari'))) !== null) {
+        $fieldErrors['kurulum_anahtari'] = $hata;
     } else {
 
-        /* ---------- ADIM 2: VERİTABANI ---------- */
+        /* ---------- 1) VERİTABANI ---------- */
         if ($adim === 'veritabani') {
             $db_host = trim(post_str('db_host'));
             $db_name = trim(post_str('db_name'));
@@ -859,144 +1068,134 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && !$alreadyInstalled && 
             $db_pass = post_str('db_pass');
             $db_ustune_yaz = isset($_POST['db_ustune_yaz']);
 
+            if (!$gereksinimTamam) {
+                $errors[] = 'Sunucu gereksinimleri karşılanmıyor; ayrıntılara bakın.';
+            }
             if ($db_host === '') {
-                $errors[] = 'Veritabanı sunucusu boş bırakılamaz.';
+                $fieldErrors['db_host'] = 'Sunucu boş bırakılamaz.';
             } elseif (preg_match('/^[A-Za-z0-9._\-\[\]:]+\z/', $db_host) !== 1) {
-                $errors[] = 'Veritabanı sunucusu geçersiz karakter içeriyor. Örn: 127.0.0.1 ya da localhost:3307';
+                $fieldErrors['db_host'] = 'Geçersiz karakter. Örn: localhost ya da 127.0.0.1:3307';
             }
             if ($db_name === '') {
-                $errors[] = 'Veritabanı adı boş bırakılamaz.';
+                $fieldErrors['db_name'] = 'Veritabanı adı boş bırakılamaz.';
             } elseif (!preg_match(IDENTIFIER_RE, $db_name)) {
-                $errors[] = 'Veritabanı adı yalnızca harf, rakam ve alt çizgi (_) içerebilir, rakamla başlayamaz.';
+                $fieldErrors['db_name'] = 'Yalnızca harf, rakam ve alt çizgi; rakamla başlayamaz.';
             }
             if ($db_user === '') {
-                $errors[] = 'Veritabanı kullanıcı adı boş bırakılamaz.';
+                $fieldErrors['db_user'] = 'Kullanıcı adı boş bırakılamaz.';
             }
 
             $mevcutTablolar = [];
             $engelleyenler  = [];
-            $silinecekler   = schema_drop_tables(__DIR__ . '/database.sql');
+            $silinecekler   = schema_drop_tables(SCHEMA_PATH);
 
-            if ($errors === []) {
+            if ($errors === [] && $fieldErrors === []) {
                 try {
                     $baglanti       = connect_without_database($db_host, $db_user, $db_pass);
                     $mevcutTablolar = existing_tables($baglanti, $db_name);
                     $engelleyenler  = blocking_foreign_keys($baglanti, $db_name, $silinecekler);
                 } catch (PDOException $e) {
-                    $errors[] = 'Veritabanı sunucusuna bağlanılamadı: ' . $e->getMessage();
+                    $errors[]    = db_error_message($e);
+                    $hataAyrinti = db_error_detail($e);
                 }
             }
 
-            /* YABANCI ANAHTAR ENGELİ: onay kutusu işaretli olsa bile
-             * kurulum başlamaz; aksi hâlde şema yarıda kalırdı. */
-            if ($errors === [] && $engelleyenler !== []) {
-                $errors[] = 'Bu veritabanındaki bazı tablolar, kurulumun silip yeniden oluşturacağı tablolara '
-                    . 'yabancı anahtarla bağlı. Kurulum yarıda kalmasın diye hiçbir şeye dokunulmadı. '
-                    . 'Boş bir veritabanı kullanın ya da önce şu kısıtları kaldırın: ' . implode('; ', $engelleyenler);
+            /* YABANCI ANAHTAR ENGELİ: onay kutusu işaretli olsa bile kurulum
+             * başlamaz; aksi hâlde şema yarıda kalırdı. */
+            if ($errors === [] && $fieldErrors === [] && $engelleyenler !== []) {
+                $errors[] = 'Bu veritabanındaki bazı tablolar, kurulumun yeniden oluşturacağı tablolara yabancı anahtarla bağlı. '
+                    . 'Hiçbir şeye dokunulmadı. Boş bir veritabanı kullanın ya da şu kısıtları kaldırın: ' . implode('; ', $engelleyenler);
             }
 
-            /* DOLU VERİTABANI KORUMASI: şema DROP TABLE içerir. Onay
-             * ekranında SİLİNECEK tablolar tek tek listelenir; "N tablo
-             * var" demek neyin kaybolacağını söylemiyordu. */
-            if ($errors === [] && $mevcutTablolar !== [] && !$db_ustune_yaz) {
-                $errors[] = sprintf(
-                    '"%s" veritabanı boş değil (%d tablo var). Boş bir veritabanı adı girin ya da aşağıdaki listeyi inceleyip onay kutusunu işaretleyin.',
-                    $db_name,
-                    count($mevcutTablolar)
-                );
+            /* DOLU VERİTABANI KORUMASI: şema DROP TABLE içerir. Silinecek
+             * tablolar tek tek listelenir ve açık onay istenir. */
+            if ($errors === [] && $fieldErrors === [] && $mevcutTablolar !== [] && !$db_ustune_yaz) {
                 $dbDoluUyarisi = [
                     'silinecek' => array_values(array_intersect($mevcutTablolar, $silinecekler)),
                     'kalacak'   => array_values(array_diff($mevcutTablolar, $silinecekler)),
                 ];
             }
 
-            if ($errors === []) {
+            if ($errors === [] && $fieldErrors === [] && empty($dbDoluUyarisi)) {
                 $kurulum['db'] = compact('db_host', 'db_name', 'db_user', 'db_pass');
-                header('Location: index.php?adim=site');
+                header('Location: index.php?adim=kur');
                 exit;
             }
         }
 
-        /* ---------- ADIM 3: SİTE AYARLARI ---------- */
-        if ($adim === 'site') {
-            [$site_adi, $siteHata] = validate_text(post_str('site_adi'), 'Site adı', 2, 150);
-            $site_aciklama = trim(post_str('site_aciklama'));
-            $site_url      = trim(post_str('site_url'));
-
-            /* Uygulama modu VARSAYILAN AÇIK gelir; kutuyu boşaltmak
-             * yalnızca "pwa_aktif" ayarını 0 yapar, başka hiçbir şeye
-             * dokunmaz ve panelden istendiği an geri açılır. */
-            $pwa_aktif = isset($_POST['pwa_aktif']);
-
-            /* GELİŞTİRME MODU VARSAYILAN KAPALI gelir. Eskiden kurulum
-             * her siteyi APP_ENV=local + APP_DEBUG=true ile kuruyordu;
-             * canlıya alınan sitede hata ayrıntıları (dosya yolları,
-             * SQL metinleri) ziyaretçiye görünüyor, giriş ekranı demo
-             * parolalarını öneriyordu. Yerel makinede çalışan geliştirici
-             * kutuyu bilerek işaretler. */
-            $gelistirme = isset($_POST['gelistirme']);
-
-            /* Yalnızca diskte GERÇEKTEN bulunan modül adları kabul
-             * edilir; formdan gelen ad doğrudan kullanılmaz. */
-            $gonderilen = is_array($_POST['moduller'] ?? null) ? array_filter($_POST['moduller'], 'is_string') : [];
-            $moduller   = array_values(array_intersect(array_keys(discover_modules()), $gonderilen));
-
-            if ($siteHata !== null) {
-                $errors[] = $siteHata;
-            }
-
-            if ($site_url !== '' && filter_var($site_url, FILTER_VALIDATE_URL) === false) {
-                $errors[] = 'Site adresi geçerli bir adres olmalıdır (örn. https://ornek.com).';
-            } elseif ($site_url !== '' && !preg_match('#^https?://#i', $site_url)) {
-                $errors[] = 'Site adresi http:// ya da https:// ile başlamalıdır.';
-            }
-
-            if ($errors === []) {
-                $site_url = rtrim($site_url, '/');
-                $kurulum['site'] = compact('site_adi', 'site_aciklama', 'site_url', 'pwa_aktif', 'gelistirme', 'moduller');
-                header('Location: index.php?adim=yonetici');
-                exit;
-            }
-        }
-
-        /* ---------- ADIM 4: YÖNETİCİ + KURULUMU ÇALIŞTIR ---------- */
-        if ($adim === 'yonetici') {
-            [$admin_ad, $adHata]         = validate_name(post_str('admin_ad'), 'Ad');
-            [$admin_soyad, $soyadHata]   = validate_name(post_str('admin_soyad'), 'Soyad');
-            [$admin_kadi, $kadiHata]     = validate_username(post_str('admin_kadi'));
-            [$admin_eposta, $epostaHata] = validate_email(post_str('admin_eposta'));
-            $admin_sifre = post_str('admin_sifre');
-            $demo_yukle  = isset($_POST['demo_yukle']);
-
-            /* DEMO MODU örnek hesaplar olmadan anlamsızdır: giriş
-             * ekranı listelenecek hesap bulamazdı. Seçildiyse örnek
-             * veri de yüklenir. */
-            $demo_modu = isset($_POST['demo_modu']);
-            if ($demo_modu) {
-                $demo_yukle = true;
-            }
-
-            foreach ([$adHata, $soyadHata, $kadiHata, $epostaHata] as $fieldError) {
-                if ($fieldError !== null) {
-                    $errors[] = $fieldError;
-                }
-            }
-
-            $sifreHata = validate_password($admin_sifre);
-            if ($sifreHata !== null) {
-                $errors[] = $sifreHata;
-            }
-
-            if (empty($kurulum['db']) || empty($kurulum['site'])) {
+        /* ---------- 2) SİTE + YÖNETİCİ → KURULUMU ÇALIŞTIR ---------- */
+        if ($adim === 'kur') {
+            if (empty($kurulum['db'])) {
                 header('Location: index.php?adim=veritabani');
                 exit;
             }
 
-            if ($errors === []) {
-                try {
-                    $db   = $kurulum['db'];
-                    $site = $kurulum['site'];
+            [$site_adi, $hata] = validate_text(post_str('site_adi'), 'Site adı', 2, 150);
+            if ($hata !== null) {
+                $fieldErrors['site_adi'] = $hata;
+            }
 
+            /* SİTE ADRESİ ZORUNLU: boş kalınca e-postalardaki bağlantılar
+             * göreli olup kırılıyor, canonical ve site haritası adresleri
+             * Host başlığından (istemcinin elinden) üretiliyordu. */
+            $site_url = rtrim(trim(post_str('site_url')), '/');
+            if ($site_url === '') {
+                $fieldErrors['site_url'] = 'Site adresi zorunludur (örn. https://ornek.com).';
+            } elseif (filter_var($site_url, FILTER_VALIDATE_URL) === false || !preg_match('#^https?://#i', $site_url)) {
+                $fieldErrors['site_url'] = 'http:// ya da https:// ile başlayan geçerli bir adres yazın.';
+            }
+
+            $site_aciklama = trim((string) preg_replace('/\s+/u', ' ', post_str('site_aciklama')));
+            if (mb_strlen($site_aciklama, 'UTF-8') > 300) {
+                $fieldErrors['site_aciklama'] = 'Açıklama en fazla 300 karakter olabilir.';
+            }
+
+            [$admin_ad, $admin_soyad, $hata] = split_full_name(post_str('admin_ad_soyad'));
+            if ($hata !== null) {
+                $fieldErrors['admin_ad_soyad'] = $hata;
+            }
+
+            [$admin_kadi, $hata] = validate_username(post_str('admin_kadi'));
+            if ($hata !== null) {
+                $fieldErrors['admin_kadi'] = $hata;
+            }
+
+            [$admin_eposta, $hata] = validate_email(post_str('admin_eposta'));
+            if ($hata !== null) {
+                $fieldErrors['admin_eposta'] = $hata;
+            }
+
+            $admin_sifre = post_str('admin_sifre');
+            if (($hata = validate_password($admin_sifre)) !== null) {
+                $fieldErrors['admin_sifre'] = $hata;
+            } elseif (!hash_equals($admin_sifre, post_str('admin_sifre2'))) {
+                $fieldErrors['admin_sifre2'] = 'Parolalar eşleşmiyor.';
+            }
+
+            $ornek_veri = isset($_POST['ornek_veri']);
+            $demo_modu  = isset($_POST['demo_modu']);
+            $gelistirme = isset($_POST['gelistirme']);
+            $pwa_aktif  = isset($_POST['pwa_aktif']);
+
+            /* Demo modu örnek hesaplar olmadan anlamsızdır: giriş ekranı
+             * listelenecek hesap bulamazdı. Seçildiyse örnek veri de gelir. */
+            if ($demo_modu) {
+                $ornek_veri = true;
+            }
+
+            // Yalnızca diskte GERÇEKTEN bulunan modül adları kabul edilir.
+            $gonderilen = is_array($_POST['moduller'] ?? null) ? array_filter($_POST['moduller'], 'is_string') : [];
+            $moduller   = array_values(array_intersect(array_keys(discover_modules()), $gonderilen));
+
+            // Hata sonrası form değerlerini koru (parolalar hariç).
+            $kurulum['form'] = compact('site_adi', 'site_url', 'site_aciklama', 'admin_kadi', 'admin_eposta', 'ornek_veri', 'demo_modu', 'gelistirme', 'pwa_aktif', 'moduller')
+                + ['admin_ad_soyad' => post_str('admin_ad_soyad')];
+
+            if ($fieldErrors === []) {
+                $db      = $kurulum['db'];
+                $yapilan = [];   // [başlık, başarılı mı, ayrıntı]
+
+                try {
                     $pdo = connect_without_database($db['db_host'], $db['db_user'], $db['db_pass']);
 
                     $pdo->exec(sprintf(
@@ -1004,68 +1203,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && !$alreadyInstalled && 
                         $db['db_name']
                     ));
                     $pdo->exec(sprintf('USE `%s`', $db['db_name']));
+                    $yapilan[] = ['Veritabanı hazırlandı', true, $db['db_name']];
 
-                    $statements = import_schema($pdo, SCHEMA_PATH);
-
-                    /* Örnek veri temel şemadan SONRA gelir: demo
-                     * kullanıcılar "kullanicilar" tablosuna, demo
-                     * mesajlar ona bağlı "mesajlar" tablosuna yazar. */
-                    if ($demo_yukle && is_file(DEMO_PATH)) {
-                        $statements += import_schema($pdo, DEMO_PATH);
-                    }
-
-                    $settingsStmt = $pdo->prepare('UPDATE ayarlar SET deger = :deger WHERE anahtar = :anahtar');
-                    /* "site_url" AYAR SATIRI YOKTUR: adres artık yalnızca
-                     * .env → APP_URL içinde tutulur. İki yerde durduğu
-                     * sürece hangisinin geçerli olduğu belirsizdi ve
-                     * panelden değiştirilen değer .env'i güncellemediği
-                     * için hiçbir işe yaramıyordu. */
-                    /* PWA'nın YALNIZCA açma anahtarı yazılır. Uygulama adı,
-                     * açıklaması ve simgesi bilerek BOŞ bırakılır: künyeyi
-                     * üreten PwaController boş alanlarda site ayarlarına
-                     * düşer, yani uygulama yukarıda girilen site adıyla
-                     * kurulur ve site adı sonradan değişirse uygulama adı
-                     * da onunla birlikte değişir. Buraya kopyalasaydık iki
-                     * ayrı doğruluk kaynağı olur, biri sessizce bayatlardı. */
-                    foreach ([
-                        'site_adi'        => $site['site_adi'],
-                        'site_aciklama'   => $site['site_aciklama'],
-                        'iletisim_eposta' => $admin_eposta,
-                        'pwa_aktif'       => ($site['pwa_aktif'] ?? true) ? '1' : '0',
-                    ] as $anahtar => $deger) {
-                        $settingsStmt->execute([':deger' => $deger, ':anahtar' => $anahtar]);
-                    }
+                    $komut     = import_schema($pdo, SCHEMA_PATH);
+                    $yapilan[] = ['Şema kuruldu', true, $komut . ' komut'];
 
                     $pdo->prepare(
                         'INSERT INTO kullanicilar (ad, soyad, kullanici_adi, eposta, sifre, rol, durum)
-                         VALUES (:ad, :soyad, :kadi, :eposta, :sifre, :rol, :durum)'
+                         VALUES (:ad, :soyad, :kadi, :eposta, :sifre, \'admin\', \'aktif\')'
                     )->execute([
                         ':ad'     => $admin_ad,
                         ':soyad'  => $admin_soyad,
                         ':kadi'   => $admin_kadi,
                         ':eposta' => $admin_eposta,
                         ':sifre'  => hash_password($admin_sifre),
-                        ':rol'    => 'admin',
-                        ':durum'  => 'aktif',
                     ]);
+                    $yapilan[] = ['Yönetici hesabı açıldı', true, $admin_kadi];
 
                     [$dbSunucu, $dbKapi] = split_host($db['db_host']);
-                    $gelistirme          = !empty($site['gelistirme']);
 
-                    /* .env, .env.example ile AYNI anahtarları taşır.
-                     * Eksik bırakılan her anahtar için kod varsayılana
-                     * düşerdi; dosyada görünmediği için de kullanıcı
-                     * öyle bir ayarın var olduğunu fark etmezdi.
-                     *
-                     * SESSION_NAME ve APP_KEY HER KURULUMA ÖZELDİR. Aynı
-                     * alan adında iki kurulum (örn. /demo1 ve /demo2) eski
-                     * sürümde aynı çerez adını ve oturum klasörünü
-                     * paylaşıyordu; birinde yönetici olan, diğerinde de
-                     * yönetici sayılabiliyordu (bkz. App\Core\Session). */
+                    /* .env, .env.example ile AYNI anahtarları taşır. SESSION_NAME
+                     * ve APP_KEY HER KURULUMA ÖZELDİR (bkz. App\Core\Session). */
                     write_env_file(ENV_PATH, [
-                        'APP_NAME'         => $site['site_adi'],
-                        'APP_DESCRIPTION'  => $site['site_aciklama'],
-                        'APP_URL'          => $site['site_url'],
+                        'APP_NAME'         => $site_adi,
+                        'APP_DESCRIPTION'  => $site_aciklama,
+                        'APP_URL'          => $site_url,
                         '# --- Ortam (yayında: production + false) ---' => null,
                         'APP_ENV'          => $gelistirme ? 'local' : 'production',
                         'APP_DEBUG'        => $gelistirme ? 'true' : 'false',
@@ -1092,6 +1254,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && !$alreadyInstalled && 
                         'REGISTER_MAX_ATTEMPTS_PER_HOUR' => '20',
                         '# Site Cloudflare/vekil arkasındaysa vekil adresleri (bkz. .env.example)' => null,
                         'TRUSTED_PROXIES'       => '',
+                        '# --- REST API / mobil uygulama oturumu (gün) ---' => null,
+                        'API_SESSION_DAYS'      => '30',
                         '# --- Yüklemeler ---' => null,
                         'UPLOAD_MAX_MB'     => '2',
                         'UPLOAD_MAX_PIXELS' => '25000000',
@@ -1104,32 +1268,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && !$alreadyInstalled && 
                         'CACHE_TTL'        => '3600',
                         'CACHE_PREFIX'     => 'cy_' . substr(bin2hex(random_bytes(3)), 0, 6),
                     ]);
-
                     write_lock_file();
+                    $yapilan[] = ['.env yazıldı, kurulum kilitlendi', true, $gelistirme ? 'geliştirme modu' : 'yayın modu'];
 
-                    /* Artık .env var: ek tabloları uygulamanın kendi
-                     * Migrator'ı kurabilir. Komut satırı gerekmez. */
+                    /* Artık .env var: ek tabloları ve 1.6 ayarlarını
+                     * uygulamanın kendi Migrator'ı kurar. */
                     [$migrationSayisi, $migrationHatasi] = run_migrations();
-                    [$acilanModuller, $modulHatasi]      = enable_modules($site['moduller'] ?? []);
+                    $yapilan[] = ['Migration\'lar çalıştı', $migrationHatasi === null,
+                        $migrationHatasi ?? $migrationSayisi . ' dosya'];
 
-                    if ($demo_yukle && $acilanModuller !== [] && $modulHatasi === null) {
-                        $modulHatasi = run_module_seeders();
+                    [$acilanModuller, $modulHatasi] = enable_modules($moduller);
+                    if ($moduller !== []) {
+                        $yapilan[] = ['Modüller açıldı', $modulHatasi === null,
+                            $modulHatasi ?? implode(', ', $acilanModuller)];
                     }
 
+                    if ($ornek_veri) {
+                        $demoHatasi = $migrationHatasi === null ? run_demo_seed() : 'Migration hatası yüzünden atlandı.';
+
+                        if ($demoHatasi === null && $acilanModuller !== [] && $modulHatasi === null) {
+                            $demoHatasi = run_module_seeders();
+                        }
+
+                        $yapilan[] = ['Örnek veri yüklendi', $demoHatasi === null,
+                            $demoHatasi ?? '6 demo hesap, sayfalar, mesajlar, vitrin'];
+                    }
+
+                    /* Formdaki değerler EN SON yazılır: örnek veri vitrin
+                     * markasını kurar ama kullanıcının yazdığı site adı ve
+                     * açıklaması her zaman kazanır. */
+                    $ayar = $pdo->prepare('UPDATE ayarlar SET deger = :deger WHERE anahtar = :anahtar');
+                    $son  = ['site_adi' => $site_adi, 'iletisim_eposta' => $admin_eposta, 'pwa_aktif' => $pwa_aktif ? '1' : '0'];
+                    if ($site_aciklama !== '' || !$ornek_veri) {
+                        $son['site_aciklama'] = $site_aciklama;
+                    }
+                    foreach ($son as $anahtar => $deger) {
+                        $ayar->execute([':deger' => $deger, ':anahtar' => $anahtar]);
+                    }
+
+                    @unlink(KEY_PATH);
+
                     $_SESSION['kurulum_sonuc'] = [
-                        'db_name'     => $db['db_name'],
-                        'statements'  => $statements,
-                        'migrations'  => $migrationSayisi,
-                        'migr_hata'   => $migrationHatasi,
-                        'moduller'    => $acilanModuller,
-                        'modul_hata'  => $modulHatasi,
-                        'demo'        => $demo_yukle,
-                        'demo_modu'   => $demo_modu,
-                        'kadi'        => $admin_kadi,
-                        'eposta'      => $admin_eposta,
-                        'site_adi'    => $site['site_adi'],
-                        'pwa'         => (bool) ($site['pwa_aktif'] ?? true),
-                        'gelistirme'  => $gelistirme,
+                        'adimlar'    => $yapilan,
+                        'site_adi'   => $site_adi,
+                        'site_url'   => $site_url,
+                        'kadi'       => $admin_kadi,
+                        'ornek_veri' => $ornek_veri,
+                        'demo_modu'  => $demo_modu,
+                        'gelistirme' => $gelistirme,
                     ];
                     unset($_SESSION['kurulum']);
 
@@ -1137,7 +1323,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && !$alreadyInstalled && 
                     exit;
 
                 } catch (PDOException $e) {
-                    $errors[] = 'Veritabanı hatası: ' . $e->getMessage();
+                    $errors[]    = db_error_message($e);
+                    $hataAyrinti = db_error_detail($e);
                 } catch (RuntimeException $e) {
                     $errors[] = $e->getMessage();
                 }
@@ -1147,455 +1334,411 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && !$alreadyInstalled && 
 }
 
 if (!$kilitli) {
-    if ($adim === 'site' && empty($kurulum['db'])) {
+    if ($adim === 'kur' && empty($kurulum['db'])) {
         $adim = 'veritabani';
     }
-    if ($adim === 'yonetici' && (empty($kurulum['db']) || empty($kurulum['site']))) {
-        $adim = empty($kurulum['db']) ? 'veritabani' : 'site';
-    }
     if ($adim === 'tamam' && empty($_SESSION['kurulum_sonuc'])) {
-        $adim = 'gereksinimler';
+        $adim = 'veritabani';
     }
 }
 
-$sonuc = $_SESSION['kurulum_sonuc'] ?? null;
+$sonuc        = $_SESSION['kurulum_sonuc'] ?? null;
+$adimSirasi   = array_keys(ADIMLAR);
+$aktifIndeks  = (int) array_search($kilitli ? 'tamam' : $adim, $adimSirasi, true);
+$form         = $kurulum['form'] ?? [];
 
-$adimAnahtarlari = array_keys(ADIMLAR);
-$aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
+/** Formdaki önceki değer: POST > oturum > varsayılan. */
+$deger = static function (string $alan, string $varsayilan = '') use ($form, $kurulum): string {
+    if (isset($_POST[$alan]) && is_string($_POST[$alan])) {
+        return $_POST[$alan];
+    }
+
+    return (string) ($form[$alan] ?? $kurulum['db'][$alan] ?? $varsayilan);
+};
+
+/** Onay kutusu: form gönderildiyse gönderilen, değilse oturum, değilse varsayılan. */
+$secili = static function (string $alan, bool $varsayilan) use ($form, $isPost, $adim): bool {
+    if ($isPost && $adim === 'kur') {
+        return isset($_POST[$alan]);
+    }
+
+    return (bool) ($form[$alan] ?? $varsayilan);
+};
+
+$hataMetni = static fn (string $alan): string => isset($fieldErrors[$alan])
+    ? '<p class="kur-field__error" id="hata_' . e($alan) . '">' . e($fieldErrors[$alan]) . '</p>'
+    : '';
+$hataAria = static fn (string $alan): string => isset($fieldErrors[$alan])
+    ? ' aria-invalid="true" aria-describedby="hata_' . e($alan) . '"'
+    : '';
 ?>
 <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow">
-    <title>Kurulum Sihirbazı | Çılgın Yazılım</title>
-    <link rel="icon" type="image/png" href="../assets/images/logo.png">
+    <meta name="color-scheme" content="light dark">
+    <title>Kurulum · CY PHP Starter</title>
+    <link rel="icon" type="image/png" href="../assets/images/favicon.png">
     <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="../assets/css/cilginyazilim.css">
-    <style>
-        body.cy-app { min-height: 100vh; display: flex; align-items: center; padding: 2rem 0;
-            background:
-                radial-gradient(480px 260px at 15% 0%, var(--cy-brand-50), transparent 60%),
-                radial-gradient(420px 260px at 100% 100%, var(--cy-brand-100), transparent 55%); }
-
-        .kurulum-wizard { box-shadow: var(--cy-shadow-sm); }
-
-        .kurulum-wizard .cy-card__header {
-            background: var(--cy-gradient);
-            border-bottom: 0;
-            border-radius: var(--cy-radius-lg) var(--cy-radius-lg) 0 0;
-        }
-        .kurulum-wizard .cy-card__header img { background: #fff; border-radius: 8px; padding: 3px; }
-        .kurulum-wizard .cy-card__header strong { color: #fff; font-size: .95rem; }
-
-        .kurulum-steps { display: flex; gap: .35rem; list-style: none; padding: 0; margin: 1rem 0 0; flex-wrap: wrap; }
-        .kurulum-steps li { flex: 1 1 0; min-width: 90px; font-size: .74rem; font-weight: 600; letter-spacing: .03em;
-            text-transform: uppercase; color: rgba(255,255,255,.65); padding-top: .55rem; border-top: 3px solid rgba(255,255,255,.25);
-            transition: color .2s, border-color .2s; }
-        .kurulum-steps li.is-active,
-        .kurulum-steps li.is-done { color: #fff; border-top-color: #fff; }
-
-        .kurulum-summary { background: var(--cy-surface-soft); border: 1px solid var(--cy-border); border-radius: var(--cy-radius);
-            padding: 1rem; font-family: var(--cy-font-mono, monospace); font-size: .8125rem; line-height: 1.8; }
-
-        @media (max-width: 575.98px) {
-            .kurulum-steps li { min-width: 72px; font-size: .65rem; }
-        }
-    </style>
+    <link rel="stylesheet" href="kurulum.css">
 </head>
-<body class="cy-app">
-<div class="container" style="max-width: 720px">
+<body class="kur">
 
-    <div class="cy-card kurulum-wizard">
-        <div class="cy-card__header">
-            <div class="w-100">
-                <div class="d-flex align-items-center gap-2 mb-1">
-                    <img src="../assets/images/logo.png" alt="" style="width:32px;height:32px">
-                    <strong>Kurulum Sihirbazı</strong>
+<main class="kur-wrap">
+
+    <header class="kur-head">
+        <img src="../assets/images/logo.png" alt="" width="36" height="36">
+        <div>
+            <strong>CY PHP Starter</strong>
+            <span>Kurulum</span>
+        </div>
+    </header>
+
+    <ol class="kur-steps" aria-label="Kurulum adımları">
+        <?php foreach (ADIMLAR as $anahtar => $etiket): ?>
+            <?php $sira = array_search($anahtar, $adimSirasi, true); ?>
+            <li class="<?= $sira === $aktifIndeks ? 'is-active' : ($sira < $aktifIndeks ? 'is-done' : '') ?>"
+                <?= $sira === $aktifIndeks ? 'aria-current="step"' : '' ?>>
+                <span class="kur-steps__dot"><?= $sira < $aktifIndeks ? '✓' : $sira + 1 ?></span>
+                <span class="kur-steps__label"><?= e($etiket) ?></span>
+            </li>
+        <?php endforeach; ?>
+    </ol>
+
+    <section class="kur-card">
+
+        <?php foreach ($errors as $hata): ?>
+            <div class="cy-alert cy-alert--danger mb-3" role="alert">
+                <div class="cy-alert__body">
+                    <?= e($hata) ?>
+                    <?php if ($hataAyrinti !== ''): ?>
+                        <details class="kur-detail"><summary>Teknik ayrıntı (yalnızca bu bilgisayarda görünür)</summary><code><?= e($hataAyrinti) ?></code></details>
+                    <?php endif; ?>
                 </div>
-                <ul class="kurulum-steps">
-                    <?php foreach (ADIMLAR as $key => $label): ?>
-                        <?php $index = array_search($key, $adimAnahtarlari, true); ?>
-                        <li class="<?= $index === $aktifIndeks ? 'is-active' : ($index < $aktifIndeks ? 'is-done' : '') ?>">
-                            <?= e($label) ?>
+            </div>
+        <?php endforeach; ?>
+
+        <?php if ($kilitli): ?>
+            <!-- ============ KİLİTLİ ============ -->
+            <div class="kur-done__icon kur-done__icon--muted" aria-hidden="true">✓</div>
+            <h1 class="kur-title">Kurulum zaten tamamlanmış</h1>
+            <p class="kur-lead">Sihirbaz kendini kilitledi; kimse buradan veritabanınızı sıfırlayamaz.</p>
+
+            <div class="kur-links">
+                <a class="kur-link" href="../"><strong>Siteyi aç</strong><span>Ana sayfa</span></a>
+                <a class="kur-link" href="../giris"><strong>Panele git</strong><span>Yönetici girişi</span></a>
+            </div>
+
+            <?php /* Silme düğmesi bu ekranda YOK: kurulumu yapan oturum dışında
+                     herkes için kapalıdır. Yönetici panelden siler. */ ?>
+            <p class="kur-note">
+                Bu klasörü silmek için panele yönetici olarak girin: <strong>Sistem Bilgisi → Kurulum ve örnek veri → Klasörü sil</strong>.
+                Sıfırdan yeniden kurmak için sunucudan <code>.env</code> ve <code>storage/installed.lock</code> dosyalarını silin;
+                bu işlem bilerek yalnızca sunucuya erişimi olan kişiye bırakılmıştır.
+            </p>
+
+        <?php elseif ($adim === 'veritabani'): ?>
+            <!-- ============ 1) VERİTABANI ============ -->
+            <h1 class="kur-title">Veritabanı</h1>
+            <p class="kur-lead">Boş bir MySQL/MariaDB veritabanı yeterli; yoksa kurulum oluşturur.</p>
+
+            <details class="kur-req <?= !$gereksinimTamam ? 'is-error' : ($uyarilar !== [] ? 'is-warn' : '') ?>" <?= !$gereksinimTamam ? 'open' : '' ?>>
+                <summary>
+                    <span class="kur-req__icon" aria-hidden="true"><?= !$gereksinimTamam ? '✕' : ($uyarilar !== [] ? '!' : '✓') ?></span>
+                    <?php if (!$gereksinimTamam): ?>
+                        <?= count($eksikZorunlu) ?> gereksinim eksik — kurulum başlayamaz
+                    <?php else: ?>
+                        Sunucu hazır (PHP <?= e(PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION) ?>, <?= count($checks) ?> kontrol<?= $uyarilar !== [] ? ', ' . count($uyarilar) . ' uyarı' : '' ?>)
+                    <?php endif; ?>
+                    <span class="kur-req__more">Ayrıntılar</span>
+                </summary>
+                <ul class="kur-req__list">
+                    <?php foreach ($checks as $check): ?>
+                        <li class="<?= $check['ok'] ? 'is-ok' : ($check['zorunlu'] ? 'is-error' : 'is-warn') ?>">
+                            <span aria-hidden="true"><?= $check['ok'] ? '✓' : ($check['zorunlu'] ? '✕' : '!') ?></span>
+                            <span><strong><?= e($check['label']) ?></strong><?php if (!$check['ok'] || str_starts_with($check['note'], 'Mevcut')): ?> <small><?= e($check['note']) ?></small><?php endif; ?></span>
                         </li>
                     <?php endforeach; ?>
                 </ul>
-            </div>
-        </div>
+            </details>
 
-        <div class="cy-card__body">
+            <form method="post" action="index.php?adim=veritabani" novalidate id="db_form">
+                <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
 
-            <?php foreach ($errors as $error): ?>
-                <div class="cy-alert cy-alert--danger mb-3"><?= e($error) ?></div>
-            <?php endforeach; ?>
+                <?php if (key_required()): ?>
+                    <div class="kur-key">
+                        <label class="form-label" for="kurulum_anahtari">Kurulum anahtarı</label>
+                        <input type="text" class="form-control" id="kurulum_anahtari" name="kurulum_anahtari" autocomplete="off"
+                               placeholder="XXXX-XXXX-XXXX" required<?= $hataAria('kurulum_anahtari') ?>>
+                        <?= $hataMetni('kurulum_anahtari') ?>
+                        <p class="kur-help">Sihirbaz yerel bir bilgisayardan açılmadı. Kurulumu yalnızca sunucunun sahibi yapabilsin diye bir anahtar oluşturduk: sunucudaki <code>storage/kurulum-anahtari.txt</code> dosyasını (FTP ya da dosya yöneticisiyle) açıp içindeki kodu girin.</p>
+                    </div>
+                <?php endif; ?>
 
-            <?php if ($kilitli): ?>
-                <!-- ============ KİLİTLİ: kurulum zaten tamamlanmış ============ -->
-                <h2 class="cy-title mb-1">Kurulum zaten tamamlanmış</h2>
-                <p class="cy-subtitle mb-3">Sihirbaz kendini kilitledi; kimse buradan veritabanınızı sıfırlayamaz.</p>
-
-                <?php /* Bu ekranda da silme düğmesi VARDIR. Kullanıcı kurulumu
-                         bitirip tarayıcıyı kapatmış, sonra "klasörü silmeyi
-                         unutmuştum" diye geri dönmüş olabilir. Düğme yalnızca
-                         son ekranda olsaydı, tam da en çok gereken durumda
-                         ortada olmazdı. */ ?>
-                <div class="cy-alert cy-alert--warning mb-3">
-                    <strong>Bu klasör hâlâ sunucuda.</strong> Güvenlik için silin.
-                    Kilit açık olsa bile, bu dosyanın var olması sunucunuz hakkında
-                    gereksiz bilgi verir.
+                <div class="kur-grid">
+                    <div class="kur-field">
+                        <label class="form-label" for="db_host">Sunucu</label>
+                        <input type="text" class="form-control" id="db_host" name="db_host" required
+                               value="<?= e($deger('db_host', 'localhost')) ?>"<?= $hataAria('db_host') ?>>
+                        <?= $hataMetni('db_host') ?>
+                    </div>
+                    <div class="kur-field">
+                        <label class="form-label" for="db_name">Veritabanı adı</label>
+                        <input type="text" class="form-control" id="db_name" name="db_name" required
+                               value="<?= e($deger('db_name', 'cy_php_starter')) ?>"<?= $hataAria('db_name') ?>>
+                        <?= $hataMetni('db_name') ?>
+                    </div>
+                    <div class="kur-field">
+                        <label class="form-label" for="db_user">Kullanıcı</label>
+                        <input type="text" class="form-control" id="db_user" name="db_user" required autocomplete="username"
+                               value="<?= e($deger('db_user', $yerel ? 'root' : '')) ?>"<?= $hataAria('db_user') ?>>
+                        <?= $hataMetni('db_user') ?>
+                    </div>
+                    <div class="kur-field">
+                        <label class="form-label" for="db_pass">Parola</label>
+                        <input type="password" class="form-control" id="db_pass" name="db_pass" autocomplete="current-password"
+                               value="<?= e($deger('db_pass')) ?>">
+                    </div>
                 </div>
+                <p class="kur-help">Farklı bir kapı kullanıyorsanız sunucuya ekleyin: <code>localhost:3307</code></p>
 
-                <div class="d-flex flex-wrap gap-2 mb-3">
-                    <form method="post" action="index.php">
-                        <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
-                        <input type="hidden" name="islem" value="temizle">
-                        <button type="submit" class="btn cy-btn cy-btn--danger">Kurulum Klasörünü Sil</button>
-                    </form>
-                    <a class="btn cy-btn cy-btn--primary" href="../index.php">Siteye Git</a>
-                </div>
-
-                <?php /* Yeniden kurulum TARAYICIDAN BAŞLATILAMAZ. Eskiden
-                         "?yeniden=1" kilidi kaldırıyordu ve herhangi bir
-                         ziyaretçi siteyi kendi veritabanına bağlayıp kendine
-                         yönetici hesabı açabiliyordu. */ ?>
-                <p class="cy-subtitle mb-0">
-                    Sıfırdan yeniden kurmak isterseniz sunucudan <code>.env</code> ve
-                    <code>storage/installed.lock</code> dosyalarını silin. Bu işlem bilerek yalnızca
-                    sunucuya erişimi olan kişiye bırakılmıştır.
-                </p>
-
-            <?php elseif ($adim === 'gereksinimler'): ?>
-                <!-- ============ ADIM 1 ============ -->
-                <h2 class="cy-title mb-1">Gereksinimler</h2>
-                <p class="cy-subtitle mb-3">Kuruluma başlamadan önce sunucunuzun aşağıdaki koşulları sağlaması gerekir.</p>
-
-                <div class="cy-timeline mb-3">
-                    <?php foreach ($checks as $check): ?>
-                        <div class="cy-timeline__item">
-                            <span class="cy-timeline__icon cy-timeline__icon--<?= $check['ok'] ? 'success' : 'warning' ?>">
-                                <?= $check['ok'] ? '✓' : '!' ?>
-                            </span>
-                            <div class="cy-timeline__body">
-                                <p class="cy-timeline__text"><strong><?= e($check['label']) ?></strong></p>
-                                <?php if ($check['note'] !== ''): ?><span class="cy-timeline__meta"><?= e($check['note']) ?></span><?php endif; ?>
+                <?php if (!empty($dbDoluUyarisi) && is_array($dbDoluUyarisi)): ?>
+                    <div class="cy-alert cy-alert--warning mb-3">
+                        <div class="cy-alert__body">
+                            <strong>Bu veritabanı boş değil.</strong>
+                            <?php if ($dbDoluUyarisi['silinecek'] !== []): ?>
+                                Şu tablolar silinip yeniden oluşturulacak (içindeki veriler kaybolur):
+                                <code><?= e(implode(', ', $dbDoluUyarisi['silinecek'])) ?></code>.
+                            <?php else: ?>
+                                Kurulumun sileceği adla bir tablo yok; yalnızca yeni tablolar eklenecek.
+                            <?php endif; ?>
+                            <?php if ($dbDoluUyarisi['kalacak'] !== []): ?>
+                                Dokunulmayacak: <code><?= e(implode(', ', $dbDoluUyarisi['kalacak'])) ?></code>.
+                            <?php endif; ?>
+                            <div class="form-check mt-2">
+                                <input type="checkbox" class="form-check-input" id="db_ustune_yaz" name="db_ustune_yaz" value="1">
+                                <label class="form-check-label" for="db_ustune_yaz">Anladım, bu veritabanına kur</label>
                             </div>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <p class="kur-test" id="db_test_sonuc" role="status" aria-live="polite"></p>
+
+                <div class="kur-actions">
+                    <button type="button" class="btn cy-btn cy-btn--ghost" id="db_test" hidden>Bağlantıyı dene</button>
+                    <button type="submit" class="btn cy-btn cy-btn--primary" <?= $gereksinimTamam ? '' : 'disabled' ?>>Devam →</button>
+                </div>
+            </form>
+
+        <?php elseif ($adim === 'kur'): ?>
+            <!-- ============ 2) SİTE VE YÖNETİCİ ============ -->
+            <h1 class="kur-title">Site ve yönetici</h1>
+            <p class="kur-lead">Hepsini sonradan panelden değiştirebilirsiniz. <strong>Kur</strong> düğmesi kurulumu başlatır.</p>
+
+            <form method="post" action="index.php?adim=kur" novalidate id="kur_form">
+                <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+
+                <?php if (key_required()): ?>
+                    <div class="kur-key">
+                        <label class="form-label" for="kurulum_anahtari">Kurulum anahtarı</label>
+                        <input type="text" class="form-control" id="kurulum_anahtari" name="kurulum_anahtari" autocomplete="off" required<?= $hataAria('kurulum_anahtari') ?>>
+                        <?= $hataMetni('kurulum_anahtari') ?>
+                        <p class="kur-help">Sunucudaki <code>storage/kurulum-anahtari.txt</code> dosyasındaki kod.</p>
+                    </div>
+                <?php endif; ?>
+
+                <h2 class="kur-section">Site</h2>
+                <div class="kur-field">
+                    <label class="form-label" for="site_adi">Site adı</label>
+                    <input type="text" class="form-control" id="site_adi" name="site_adi" required maxlength="150"
+                           value="<?= e($deger('site_adi', $yerel ? 'CY PHP Starter' : '')) ?>" placeholder="Örn. Çılgın Projeler"<?= $hataAria('site_adi') ?>>
+                    <?= $hataMetni('site_adi') ?>
+                </div>
+                <div class="kur-field">
+                    <label class="form-label" for="site_url">Site adresi</label>
+                    <input type="url" class="form-control" id="site_url" name="site_url" required inputmode="url"
+                           value="<?= e($deger('site_url', guess_site_url())) ?>"<?= $hataAria('site_url') ?>>
+                    <?= $hataMetni('site_url') ?>
+                    <p class="kur-help">E-postalardaki bağlantılar ve site haritası bu adresle üretilir.</p>
+                </div>
+                <details class="kur-more" <?= $deger('site_aciklama') !== '' || isset($fieldErrors['site_aciklama']) ? 'open' : '' ?>>
+                    <summary>Açıklama ekle (isteğe bağlı)</summary>
+                    <div class="kur-field">
+                        <label class="form-label" for="site_aciklama">Açıklama</label>
+                        <textarea class="form-control" id="site_aciklama" name="site_aciklama" rows="2" maxlength="300"<?= $hataAria('site_aciklama') ?>><?= e($deger('site_aciklama')) ?></textarea>
+                        <?= $hataMetni('site_aciklama') ?>
+                        <p class="kur-help">Arama motorlarında görünen kısa tanıtım; 120–160 karakter idealdir.</p>
+                    </div>
+                </details>
+
+                <h2 class="kur-section">Yönetici hesabı</h2>
+                <div class="kur-field">
+                    <label class="form-label" for="admin_ad_soyad">Ad soyad</label>
+                    <input type="text" class="form-control" id="admin_ad_soyad" name="admin_ad_soyad" required autocomplete="name"
+                           value="<?= e($deger('admin_ad_soyad')) ?>"<?= $hataAria('admin_ad_soyad') ?>>
+                    <?= $hataMetni('admin_ad_soyad') ?>
+                </div>
+                <div class="kur-grid">
+                    <div class="kur-field">
+                        <label class="form-label" for="admin_kadi">Kullanıcı adı</label>
+                        <input type="text" class="form-control" id="admin_kadi" name="admin_kadi" required autocomplete="username"
+                               value="<?= e($deger('admin_kadi', 'admin')) ?>"<?= $hataAria('admin_kadi') ?>>
+                        <?= $hataMetni('admin_kadi') ?>
+                    </div>
+                    <div class="kur-field">
+                        <label class="form-label" for="admin_eposta">E-posta</label>
+                        <input type="email" class="form-control" id="admin_eposta" name="admin_eposta" required autocomplete="email"
+                               value="<?= e($deger('admin_eposta')) ?>"<?= $hataAria('admin_eposta') ?>>
+                        <?= $hataMetni('admin_eposta') ?>
+                    </div>
+                </div>
+                <div class="kur-grid">
+                    <div class="kur-field">
+                        <label class="form-label" for="admin_sifre">Parola</label>
+                        <div class="cy-password">
+                            <input type="password" class="form-control" id="admin_sifre" name="admin_sifre" required autocomplete="new-password"
+                                   aria-describedby="sifre_guc<?= isset($fieldErrors['admin_sifre']) ? ' hata_admin_sifre' : '' ?>"<?= isset($fieldErrors['admin_sifre']) ? ' aria-invalid="true"' : '' ?>>
+                            <button type="button" class="cy-password__toggle" data-sifre-goster aria-label="Parolayı göster"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                        </div>
+                        <?= $hataMetni('admin_sifre') ?>
+                        <div class="kur-meter" id="sifre_guc" data-guc="0" aria-live="polite">
+                            <span class="kur-meter__bar"><span></span></span>
+                            <span class="kur-meter__label">En az 8 karakter; harf ve rakam</span>
+                        </div>
+                    </div>
+                    <div class="kur-field">
+                        <label class="form-label" for="admin_sifre2">Parola (tekrar)</label>
+                        <input type="password" class="form-control" id="admin_sifre2" name="admin_sifre2" required autocomplete="new-password"<?= $hataAria('admin_sifre2') ?>>
+                        <?= $hataMetni('admin_sifre2') ?>
+                    </div>
+                </div>
+
+                <h2 class="kur-section">Seçenekler</h2>
+                <div class="kur-switches">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" id="ornek_veri" name="ornek_veri" value="1"
+                               <?= $secili('ornek_veri', $yerel) ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="ornek_veri"><strong>Örnek veriyle kur</strong></label>
+                        <p class="kur-help">6 demo hesap, sayfalar, mesajlar, örnek modül kayıtları ve CY PHP Starter vitrini. Daha sonra Panel → Sistem'den tek tıkla kaldırılabilir.</p>
+                    </div>
+                    <div class="form-check form-switch" id="demo_modu_satiri">
+                        <input class="form-check-input" type="checkbox" role="switch" id="demo_modu" name="demo_modu" value="1"
+                               <?= $secili('demo_modu', false) ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="demo_modu"><strong>Demo modu</strong> (herkese açık deneme sitesi)</label>
+                        <p class="kur-help">Giriş ekranı demo hesapları tek tıkla girişle listeler; bu hesaplarla parola, kullanıcı, ayar ve e-posta işlemleri kilitlidir. Demo her 3 saatte bir sıfırlanır. Gerçek bir sitede açmayın.</p>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" id="gelistirme" name="gelistirme" value="1"
+                               <?= $secili('gelistirme', $yerel) ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="gelistirme"><strong>Geliştirme modu</strong></label>
+                        <p class="kur-help">Hata ayrıntıları ekranda görünür. Yayındaki bir sitede kapalı bırakın.</p>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" id="pwa_aktif" name="pwa_aktif" value="1"
+                               <?= $secili('pwa_aktif', true) ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="pwa_aktif"><strong>Uygulama modu (PWA)</strong></label>
+                        <p class="kur-help">Ziyaretçiler siteyi telefonlarına uygulama olarak kurabilir.</p>
+                    </div>
+                    <?php
+                    $modulSecenekleri = discover_modules();
+                    $seciliModuller   = $isPost && $adim === 'kur'
+                        ? (is_array($_POST['moduller'] ?? null) ? $_POST['moduller'] : [])
+                        : ($form['moduller'] ?? array_keys(array_filter($modulSecenekleri, static fn (array $m): bool => $m['varsayilan'])));
+                    ?>
+                    <?php foreach ($modulSecenekleri as $modulAdi => $modul): ?>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="modul_<?= e($modulAdi) ?>" name="moduller[]" value="<?= e($modulAdi) ?>"
+                                   <?= in_array($modulAdi, $seciliModuller, true) ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="modul_<?= e($modulAdi) ?>"><strong><?= e($modul['baslik']) ?></strong> açık kurulsun</label>
+                            <?php if ($modul['aciklama'] !== ''): ?><p class="kur-help"><?= e($modul['aciklama']) ?></p><?php endif; ?>
                         </div>
                     <?php endforeach; ?>
                 </div>
 
-                <?php if ($allChecksOk): ?>
-                    <a class="btn cy-btn cy-btn--primary" href="index.php?adim=veritabani">Devam Et →</a>
-                <?php else: ?>
-                    <button type="button" class="btn cy-btn cy-btn--ghost" disabled>Önce yukarıdaki sorunları giderin</button>
-                <?php endif; ?>
-
-            <?php elseif ($adim === 'veritabani'): ?>
-                <!-- ============ ADIM 2 ============ -->
-                <h2 class="cy-title mb-1">Veritabanı Bilgileri</h2>
-                <p class="cy-subtitle mb-3">Bağlantı formu gönderildiğinde hemen test edilir.</p>
-
-                <form method="post" action="index.php?adim=veritabani" novalidate>
-                    <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
-                    <div class="row g-3">
-                        <div class="col-12 col-md-6">
-                            <label class="form-label" for="db_host">Sunucu</label>
-                            <input type="text" class="form-control" id="db_host" name="db_host" value="<?= e(eski('db_host', $kurulum['db'] ?? [], '127.0.0.1')) ?>" required>
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <label class="form-label" for="db_name">Veritabanı Adı</label>
-                            <input type="text" class="form-control" id="db_name" name="db_name" value="<?= e(eski('db_name', $kurulum['db'] ?? [], 'yeni_proje')) ?>" required>
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <label class="form-label" for="db_user">Kullanıcı Adı</label>
-                            <input type="text" class="form-control" id="db_user" name="db_user" value="<?= e(eski('db_user', $kurulum['db'] ?? [], 'root')) ?>" required>
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <label class="form-label" for="db_pass">Parola</label>
-                            <input type="password" class="form-control" id="db_pass" name="db_pass" value="<?= e(eski('db_pass', $kurulum['db'] ?? [])) ?>">
-                        </div>
-                        <div class="col-12">
-                            <div class="form-text">
-                                Varsayılan dışında bir kapı kullanıyorsanız sunucuya ekleyin: <code>localhost:3307</code>
-                            </div>
-                        </div>
-
-                        <?php if (!empty($dbDoluUyarisi) && is_array($dbDoluUyarisi)): ?>
-                            <div class="col-12">
-                                <?php if ($dbDoluUyarisi['silinecek'] !== []): ?>
-                                    <p class="mb-1"><strong>SİLİNİP yeniden oluşturulacak tablolar (içindeki veriler kaybolur):</strong></p>
-                                    <p class="small mb-2"><code><?= e(implode(', ', $dbDoluUyarisi['silinecek'])) ?></code></p>
-                                <?php else: ?>
-                                    <p class="small mb-2">Kurulumun sileceği adla bir tablo yok; yalnızca yeni tablolar eklenecek.</p>
-                                <?php endif; ?>
-                                <?php if ($dbDoluUyarisi['kalacak'] !== []): ?>
-                                    <p class="mb-1"><strong>Dokunulmayacak tablolar:</strong></p>
-                                    <p class="small mb-2"><code><?= e(implode(', ', $dbDoluUyarisi['kalacak'])) ?></code></p>
-                                <?php endif; ?>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" id="db_ustune_yaz" name="db_ustune_yaz" value="1">
-                                    <label class="form-check-label" for="db_ustune_yaz">
-                                        <strong>Yukarıdaki tabloların silinip yeniden oluşturulmasını onaylıyorum.</strong>
-                                    </label>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                    <button type="submit" class="btn cy-btn cy-btn--primary mt-3">Bağlantıyı Test Et ve Devam Et →</button>
-                </form>
-
-            <?php elseif ($adim === 'site'): ?>
-                <!-- ============ ADIM 3 ============ -->
-                <h2 class="cy-title mb-1">Site Ayarları</h2>
-                <p class="cy-subtitle mb-3">Bu bilgileri daha sonra yönetim panelinden değiştirebilirsiniz.</p>
-
-                <form method="post" action="index.php?adim=site" novalidate>
-                    <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label class="form-label" for="site_adi">Site Adı</label>
-                            <input type="text" class="form-control" id="site_adi" name="site_adi" value="<?= e(eski('site_adi', $kurulum['site'] ?? [], 'Yeni Proje')) ?>" required>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label" for="site_aciklama">Site Açıklaması</label>
-                            <textarea class="form-control" id="site_aciklama" name="site_aciklama" rows="2"><?= e(eski('site_aciklama', $kurulum['site'] ?? [], 'Çılgın Yazılım örnek uygulaması')) ?></textarea>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label" for="site_url">Site Adresi</label>
-                            <input type="url" class="form-control" id="site_url" name="site_url" value="<?= e(eski('site_url', $kurulum['site'] ?? [], guess_site_url())) ?>">
-                        </div>
-
-                        <?php
-                        /* ONAY KUTUSU "eski()" İLE GERİ GETİRİLEMEZ: işaretlenmemiş
-                         * bir kutu hiç gönderilmez, yani "kullanıcı kapattı" ile
-                         * "form hiç gönderilmedi" aynı görünür. Bu yüzden isteğin
-                         * POST olup olmadığına bakıyoruz; ilk açılışta ve geri
-                         * dönüldüğünde varsayılan AÇIK'tır. */
-                        $pwaSecili = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'
-                            ? isset($_POST['pwa_aktif'])
-                            : (bool) ($kurulum['site']['pwa_aktif'] ?? true);
-                        ?>
-                        <div class="col-12">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch"
-                                       id="pwa_aktif" name="pwa_aktif" value="1" <?= $pwaSecili ? 'checked' : '' ?>>
-                                <label class="form-check-label" for="pwa_aktif">
-                                    Uygulama modu (PWA) açık kurulsun
-                                </label>
-                            </div>
-                            <div class="form-text">
-                                Ziyaretçiler siteyi telefonlarına uygulama olarak kurabilir ve ağ
-                                yokken açabilir. Uygulamanın adı, açıklaması ve simgesi yukarıdaki
-                                site bilgilerinden gelir; hepsi daha sonra
-                                <strong>Panel → Site Ayarları → Uygulama (PWA)</strong>
-                                bölümünden değiştirilebilir.
-                            </div>
-                        </div>
-
-                        <?php
-                        /* MODÜLLER: module.json'da "kurulumda_acik": true olan modül
-                         * işaretli gelir. Açılan modülün tabloları kurulumla birlikte
-                         * kurulur. Panelde modül aç/kapa ekranı yoktur; sonradan
-                         * değiştirmek için "php cy module --enable=Ad / --disable=Ad". */
-                        $modulSecenekleri = discover_modules();
-                        $seciliModuller   = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'
-                            ? (is_array($_POST['moduller'] ?? null) ? $_POST['moduller'] : [])
-                            : ($kurulum['site']['moduller'] ?? array_keys(array_filter($modulSecenekleri, static fn (array $m): bool => $m['varsayilan'])));
-                        ?>
-                        <?php if ($modulSecenekleri !== []): ?>
-                            <div class="col-12">
-                                <span class="form-label d-block">Modüller</span>
-                                <?php foreach ($modulSecenekleri as $modulAdi => $modul): ?>
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch"
-                                               id="modul_<?= e($modulAdi) ?>" name="moduller[]" value="<?= e($modulAdi) ?>"
-                                               <?= in_array($modulAdi, $seciliModuller, true) ? 'checked' : '' ?>>
-                                        <label class="form-check-label" for="modul_<?= e($modulAdi) ?>">
-                                            <?= e($modul['baslik']) ?> açık kurulsun
-                                        </label>
-                                        <?php if ($modul['aciklama'] !== ''): ?>
-                                            <div class="form-text mt-0"><?= e($modul['aciklama']) ?> (<code>modules/<?= e($modulAdi) ?></code>)</div>
-                                        <?php endif; ?>
-                                    </div>
-                                <?php endforeach; ?>
-                                <div class="form-text">
-                                    Açılan modülün tabloları kurulumla birlikte kurulur ve panel menüsünde görünür.
-                                    Sonradan değiştirmek için: <code>php cy module --enable=Ad</code> /
-                                    <code>--disable=Ad</code>.
-                                </div>
-                            </div>
-                        <?php endif; ?>
-
-                        <?php
-                        $gelistirmeSecili = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'
-                            ? isset($_POST['gelistirme'])
-                            : (bool) ($kurulum['site']['gelistirme'] ?? false);
-                        ?>
-                        <div class="col-12">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch"
-                                       id="gelistirme" name="gelistirme" value="1" <?= $gelistirmeSecili ? 'checked' : '' ?>>
-                                <label class="form-check-label" for="gelistirme">
-                                    Geliştirme ortamı (hata ayrıntıları ekranda görünsün)
-                                </label>
-                            </div>
-                            <div class="form-text">
-                                Yalnızca kendi bilgisayarınızda deneme yapıyorsanız işaretleyin.
-                                <strong>Yayındaki bir sitede kapalı bırakın:</strong> açıkken hata
-                                ekranları dosya yollarını ve SQL ayrıntılarını ziyaretçiye gösterir.
-                                Daha sonra <code>.env</code> dosyasındaki <code>APP_ENV</code> ve
-                                <code>APP_DEBUG</code> satırlarından değiştirilebilir.
-                            </div>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn cy-btn cy-btn--primary mt-3">Devam Et →</button>
-                </form>
-
-            <?php elseif ($adim === 'yonetici'): ?>
-                <!-- ============ ADIM 4 ============ -->
-                <h2 class="cy-title mb-1">Yönetici Hesabı</h2>
-                <p class="cy-subtitle mb-3">Bu bilgilerle panele giriş yapacaksınız. Bu adım kurulumu ÇALIŞTIRIR.</p>
-
-                <form method="post" action="index.php?adim=yonetici" novalidate>
-                    <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
-                    <div class="row g-3">
-                        <div class="col-12 col-md-6">
-                            <label class="form-label" for="admin_ad">Ad</label>
-                            <input type="text" class="form-control" id="admin_ad" name="admin_ad" value="<?= e(post_str('admin_ad')) ?>" required>
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <label class="form-label" for="admin_soyad">Soyad</label>
-                            <input type="text" class="form-control" id="admin_soyad" name="admin_soyad" value="<?= e(post_str('admin_soyad')) ?>" required>
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <label class="form-label" for="admin_kadi">Kullanıcı Adı</label>
-                            <input type="text" class="form-control" id="admin_kadi" name="admin_kadi" value="<?= e($_SERVER['REQUEST_METHOD'] === 'POST' ? post_str('admin_kadi') : 'admin') ?>" required>
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <label class="form-label" for="admin_eposta">E-posta</label>
-                            <input type="email" class="form-control" id="admin_eposta" name="admin_eposta" value="<?= e(post_str('admin_eposta')) ?>" required>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label" for="admin_sifre">Parola</label>
-                            <input type="password" class="form-control" id="admin_sifre" name="admin_sifre" required>
-                            <div class="form-text">En az 8 karakter; harf ve rakam içermelidir.</div>
-                        </div>
-
-                        <div class="col-12">
-                            <hr class="my-1">
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="demo_yukle" name="demo_yukle" value="1"
-                                       <?= isset($_POST['demo_yukle']) ? 'checked' : '' ?>>
-                                <label class="form-check-label" for="demo_yukle">
-                                    <strong>Örnek verileri de yükle</strong>
-                                </label>
-                                <div class="form-text">
-                                    Şablonu ilk kez deniyorsanız işaretleyin: 5 örnek kullanıcı (yönetici, editör,
-                                    üye, pasif, askıda; parolaları <code>Demo1234!</code>) ve 2 iletişim mesajı
-                                    eklenir, böylece listeleri ve filtreleri dolu görürsünüz.
-                                    Gerçek bir projeye başlıyorsanız <strong>boş bırakın</strong>.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-12">
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="demo_modu" name="demo_modu" value="1"
-                                       <?= isset($_POST['demo_modu']) ? 'checked' : '' ?>>
-                                <label class="form-check-label" for="demo_modu">
-                                    <strong>Demo modu</strong> (herkese açık deneme sitesi)
-                                </label>
-                                <div class="form-text">
-                                    Giriş ekranı Yönetici, Editör ve Üye örnek hesaplarını parolasıyla listeler;
-                                    ziyaretçi tek tıkla giriş yapar. Örnek hesaplarla hesap bilgileri, kullanıcılar,
-                                    site ayarları ve e-posta gönderimi kilitlidir; yukarıda açtığınız yönetici hesabı
-                                    kısıtlanmaz. Örnek verileri de yükler. <strong>Gerçek bir sitede işaretlemeyin</strong>
-                                    — sonradan <code>.env</code> içindeki <code>APP_DEMO</code> satırından kapatılır.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn cy-btn cy-btn--primary mt-3">Kurulumu Tamamla</button>
-                </form>
-
-            <?php elseif ($adim === 'tamam' && $sonuc !== null): ?>
-                <!-- ============ ADIM 5 ============ -->
-                <div class="cy-alert cy-alert--success mb-3">Kurulum başarıyla tamamlandı!</div>
-
-                <div class="kurulum-summary mb-3">
-                    Veritabanı&nbsp;: <?= e($sonuc['db_name']) ?> (<?= (int) $sonuc['statements'] ?> ifade)<br>
-                    Ek tablolar : <?= (int) ($sonuc['migrations'] ?? 0) ?> migration çalıştı<br>
-                    Örnek veri&nbsp;: <?= !empty($sonuc['demo']) ? 'yüklendi' : 'yüklenmedi (temiz kurulum)' ?><br>
-                    Site&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <?= e($sonuc['site_adi']) ?><br>
-                    Uygulama&nbsp;&nbsp;: <?= !empty($sonuc['pwa']) ? 'PWA açık (telefona kurulabilir)' : 'PWA kapalı' ?><br>
-                    Ortam&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <?= !empty($sonuc['gelistirme']) ? 'geliştirme (APP_DEBUG=true)' : 'yayın (APP_DEBUG=false)' ?><br>
-                    Modüller&nbsp;&nbsp;: <?= !empty($sonuc['moduller']) ? e(implode(', ', $sonuc['moduller'])) . ' açık' : 'hiçbiri açılmadı' ?><br>
-                    Demo modu&nbsp;: <?= !empty($sonuc['demo_modu']) ? 'açık (APP_DEMO=true)' : 'kapalı' ?><br>
-                    Yönetici&nbsp;&nbsp;: <?= e($sonuc['kadi']) ?> · <?= e($sonuc['eposta']) ?>
+                <div class="kur-actions">
+                    <a class="btn cy-btn cy-btn--ghost" href="index.php?adim=veritabani">← Geri</a>
+                    <button type="submit" class="btn cy-btn cy-btn--primary" id="kur_dugmesi">Kur</button>
                 </div>
+            </form>
 
-                <?php if (!empty($sonuc['modul_hata'])): ?>
-                    <div class="cy-alert cy-alert--warning mb-3">
-                        <strong>Modül kurulumu tamamlanamadı.</strong> Site çalışır durumda; tabloları kurmak için
-                        <code>php cy migrate</code> çalıştırın ya da <strong>Panel → Sistem Bilgisi</strong>
-                        sayfasındaki düğmeyi kullanın, örnek veri için <code>php cy db:seed</code>.<br>
-                        <small><?= e($sonuc['modul_hata']) ?></small>
-                    </div>
-                <?php endif; ?>
+        <?php elseif ($adim === 'tamam' && $sonuc !== null): ?>
+            <!-- ============ BİTİŞ ============ -->
+            <div class="kur-done__icon" aria-hidden="true">✓</div>
+            <h1 class="kur-title text-center"><?= e($sonuc['site_adi']) ?> hazır</h1>
 
-                <?php if (!empty($sonuc['demo_modu'])): ?>
-                    <div class="cy-alert cy-alert--info mb-3">
-                        <strong>Demo modu açık.</strong> Giriş ekranı Yönetici, Editör ve Üye örnek hesaplarını
-                        tek tıkla giriş için listeler. Demoyu kendi hesabınızla
-                        (<strong><?= e($sonuc['kadi']) ?></strong>) yönetin; örnek hesaplar için hesap, kullanıcı,
-                        ayar ve e-posta işlemleri kilitlidir.
-                    </div>
-                <?php endif; ?>
+            <ol class="kur-log">
+                <?php foreach ($sonuc['adimlar'] as $i => [$baslik, $tamam, $ayrinti]): ?>
+                    <li class="<?= $tamam ? 'is-ok' : 'is-warn' ?>" style="--sira: <?= (int) $i ?>">
+                        <span aria-hidden="true"><?= $tamam ? '✓' : '!' ?></span>
+                        <span><strong><?= e($baslik) ?></strong> <small><?= e((string) $ayrinti) ?></small></span>
+                    </li>
+                <?php endforeach; ?>
+            </ol>
 
-                <?php if (!empty($sonuc['gelistirme'])): ?>
-                    <div class="cy-alert cy-alert--warning mb-3">
-                        Site <strong>geliştirme modunda</strong> kuruldu. Yayına almadan önce
-                        <code>.env</code> içinde <code>APP_ENV=production</code> ve
-                        <code>APP_DEBUG=false</code> yapın.
-                    </div>
-                <?php endif; ?>
+            <div class="kur-links">
+                <a class="kur-link" href="../"><strong>Siteyi aç</strong><span>Ana sayfa</span></a>
+                <a class="kur-link" href="../giris"><strong>Panele git</strong><span><?= e($sonuc['kadi']) ?> ile giriş</span></a>
+                <form method="post" action="index.php" class="kur-link kur-link--form">
+                    <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                    <input type="hidden" name="islem" value="temizle">
+                    <button type="submit"><strong>Kurulum klasörünü sil</strong><span>Önerilir · geri dönüşü yok</span></button>
+                </form>
+            </div>
 
-                <?php if (!empty($sonuc['migr_hata'])): ?>
-                    <div class="cy-alert cy-alert--warning mb-3">
-                        <strong>Ek tablolar kurulamadı.</strong> Site çalışır durumda, ancak önbelleğin
-                        veritabanı sürücüsü, iş kuyruğu ve API anahtarları için şu komutu çalıştırın:
-                        <code>php cy migrate</code><br>
-                        <small><?= e($sonuc['migr_hata']) ?></small>
-                    </div>
-                <?php endif; ?>
-
-                <?php if (!empty($sonuc['demo']) && empty($sonuc['demo_modu'])): ?>
-                    <div class="cy-alert cy-alert--info mb-3">
-                        Örnek kullanıcıların tümünün parolası <code>Demo1234!</code>.
-                        Canlıya çıkmadan önce silin:
-                        <code>DELETE FROM kullanicilar WHERE eposta LIKE '%.demo@ornek.com';</code>
-                    </div>
-                <?php endif; ?>
-
-                <div class="cy-alert cy-alert--warning mb-3">
-                    <strong>Son adım:</strong> "kurulum/" klasörünü şimdi silin. Sihirbaz kendini
-                    kilitledi (<code>.env</code> ve <code>storage/installed.lock</code> varken hiçbir
-                    adım çalışmaz), ama kullanılmayan kodu sunucuda bırakmamak en iyisidir.
-                    Aşağıdaki düğme klasörü siler ve sizi sitenin ana sayfasına götürür.
-                </div>
-
-                <div class="d-flex flex-wrap gap-2">
-                    <form method="post" action="index.php">
-                        <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
-                        <input type="hidden" name="islem" value="temizle">
-                        <button type="submit" class="btn cy-btn cy-btn--danger">Kurulum Klasörünü Sil ve Bitir</button>
-                    </form>
-                    <a class="btn cy-btn cy-btn--ghost" href="../index.php?r=giris">Klasörü elle sileceğim, girişe git</a>
-                </div>
+            <?php if (!empty($sonuc['ornek_veri'])): ?>
+                <h2 class="kur-section">Demo hesaplar</h2>
+                <table class="kur-table">
+                    <thead><tr><th>Rol</th><th>Kullanıcı adı</th></tr></thead>
+                    <tbody>
+                        <tr><td>Yönetici</td><td><code>ali.yonetici</code></td></tr>
+                        <tr><td>Editör</td><td><code>elif.editor</code></td></tr>
+                        <tr><td>Üye</td><td><code>mehmet.uye</code></td></tr>
+                    </tbody>
+                </table>
+                <p class="kur-help">
+                    Ortak parola: <code>Demo1234!</code>
+                    <?= !empty($sonuc['demo_modu'])
+                        ? '· Demo modu açık: giriş ekranı bu hesapları tek tıkla girişle listeler.'
+                        : '· Bu hesaplar yalnızca geliştirme ortamında giriş ekranında listelenir. Yayına çıkmadan Panel → Sistem\'den kaldırın.' ?>
+                </p>
             <?php endif; ?>
-        </div>
+
+            <?php if (!empty($sonuc['gelistirme'])): ?>
+                <p class="kur-note">Site <strong>geliştirme modunda</strong> kuruldu. Yayına almadan önce <code>.env</code> içinde <code>APP_ENV=production</code> ve <code>APP_DEBUG=false</code> yapın.</p>
+            <?php endif; ?>
+
+            <p class="kur-next">
+                Sonraki adımlar:
+                <a href="../panel/ayarlar/eposta">SMTP ayarla</a> ·
+                <a href="../panel/ayarlar/genel">Logonu yükle</a> ·
+                <a href="https://github.com/CilginYazilim/cy-php-starter/blob/main/modules/Ornek/README.md" target="_blank" rel="noopener">İlk modülünü üret</a>
+                (<code>php cy make:module Stok</code>)
+            </p>
+        <?php endif; ?>
+    </section>
+
+    <p class="kur-foot">ÇILGIN Yazılım · <a href="https://cilginyazilim.com/kutuphane/php-baslangic-sablonu" target="_blank" rel="noopener">Belgeler</a> · <a href="https://github.com/CilginYazilim/cy-php-starter" target="_blank" rel="noopener">GitHub</a></p>
+</main>
+
+<?php /* Kur düğmesine basınca: kurulum sunucuda TEK istekte çalışır; bu
+         katman yapılacakları sırayla canlandırır ki ekran donmuş görünmesin. */ ?>
+<div class="kur-overlay" id="kur_overlay" hidden>
+    <div class="kur-overlay__card" role="status" aria-live="polite">
+        <span class="kur-spinner" aria-hidden="true"></span>
+        <strong>Kuruluyor…</strong>
+        <ol class="kur-log kur-log--pending">
+            <li><span aria-hidden="true">•</span><span>Veritabanı ve şema</span></li>
+            <li><span aria-hidden="true">•</span><span>Yönetici hesabı ve .env</span></li>
+            <li><span aria-hidden="true">•</span><span>Migration'lar ve modüller</span></li>
+            <li><span aria-hidden="true">•</span><span>Örnek veri</span></li>
+        </ol>
     </div>
 </div>
+
+<script src="kurulum.js"></script>
 </body>
 </html>

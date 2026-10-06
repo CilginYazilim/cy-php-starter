@@ -54,6 +54,8 @@ final class SystemController extends Controller
             'moduller'   => Modules::all(),
             'kuyruklar'  => $kuyruklar,
             'bekleyenMigrationlar' => $this->safe(fn (): array => $this->migrator()->pending(), []),
+            'kurulumKlasoru'       => is_dir(CY_BASE . DIRECTORY_SEPARATOR . 'kurulum'),
+            'ornekVeri'            => $this->safe(fn (): bool => \App\Core\DemoData::present($this->db), false),
         ]);
     }
 
@@ -118,6 +120,78 @@ final class SystemController extends Controller
     private function migrator(): \App\Core\Database\Migrator
     {
         return Modules::migrator($this->db, (string) Config::get('db.migrations'));
+    }
+
+    /* =================================================================
+     *  KURULUM KLASÖRÜNÜ SİL
+     * -----------------------------------------------------------------
+     *  Sihirbaz kurulum bittikten sonra kendini kilitler; klasörü silme
+     *  düğmesi yalnızca kurulumu YAPAN oturumda görünür. Sonradan silmek
+     *  isteyen (ya da o ekranı kapatmış olan) yönetici bunu buradan yapar.
+     *  Eskiden sihirbazdaki "sil" işlemini giriş yapmamış biri de
+     *  tetikleyebiliyordu.
+     * ============================================================== */
+
+    public function removeInstaller(Request $request): void
+    {
+        $klasor = CY_BASE . DIRECTORY_SEPARATOR . 'kurulum';
+
+        if (!is_dir($klasor) || !is_file(CY_BASE . '/storage/installed.lock') && !is_file(CY_BASE . '/.env')) {
+            Flash::info('Kurulum klasörü zaten yok.');
+            Response::redirect(url('panel/sistem'));
+        }
+
+        if (self::removeDirectory($klasor)) {
+            Logger::info('Kurulum klasörü panelden silindi', [], 'app');
+            Flash::success('Kurulum klasörü silindi.');
+        } else {
+            Flash::error('Kurulum klasörü silinemedi (dosya izinleri). FTP ya da dosya yöneticisiyle elle silin.');
+        }
+
+        Response::redirect(url('panel/sistem'));
+    }
+
+    /** Klasörü içindekilerle siler; sembolik bağlantıların içine girmez. */
+    private static function removeDirectory(string $yol): bool
+    {
+        foreach (scandir($yol) ?: [] as $ad) {
+            if ($ad === '.' || $ad === '..') {
+                continue;
+            }
+
+            $tam = $yol . DIRECTORY_SEPARATOR . $ad;
+
+            if (is_dir($tam) && !is_link($tam)) {
+                if (!self::removeDirectory($tam)) {
+                    return false;
+                }
+            } elseif (!@unlink($tam)) {
+                return false;
+            }
+        }
+
+        return @rmdir($yol);
+    }
+
+    /* =================================================================
+     *  ÖRNEK VERİYİ KALDIR ("php cy demo:temizle" karşılığı)
+     * ============================================================== */
+
+    public function removeDemo(Request $request): void
+    {
+        if (\App\Core\Demo::enabled()) {
+            Flash::error('Demo modu açıkken örnek veri kaldırılamaz. Önce .env dosyasında APP_DEMO=false yapın.');
+            Response::redirect(url('panel/sistem'));
+        }
+
+        $sonuc = (new \App\Core\DemoData($this->db))->remove();
+
+        Logger::info('Demo verisi panelden kaldırıldı', $sonuc, 'app');
+        Flash::success(sprintf(
+            'Örnek veri kaldırıldı: %d hesap, %d mesaj, %d e-posta kaydı, %d sayfa, %d Örnek Modül kaydı.',
+            $sonuc['hesap'], $sonuc['mesaj'], $sonuc['eposta'], $sonuc['sayfa'], $sonuc['kayit']
+        ));
+        Response::redirect(url('panel/sistem'));
     }
 
     /* =================================================================

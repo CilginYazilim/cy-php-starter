@@ -30,8 +30,8 @@ final class PanelNotices
      * BİLDİRİM BİÇİMİ: kısa başlık + tek cümle açıklama + (varsa)
      * düzeltmenin yapılacağı sayfaya bağlantı. Yalnızca BİLGİ türündekiler
      * kapatılabilir; uyarılar sorun çözülene kadar her sayfada kalır.
-     * Kapatılan bildirim tarayıcı oturumu boyunca gizlenir (çerez:
-     * cy_uyari_<id>, bkz. layouts/admin.php ve app.js).
+     * Kapatılan bildirim OTURUM boyunca gizlenir: kimlik sunucu tarafında
+     * oturuma yazılır (bkz. dismiss), sayfa yüklenirken hiç basılmaz.
      *
      * @return array<int,array{id:string,tur:string,baslik:string,metin:string,yol:string,baglanti:string,kapatilabilir:bool}>
      */
@@ -49,7 +49,8 @@ final class PanelNotices
 
         if ($demoHesabi) {
             $notices[] = self::notice('demo-hesabi', 'info', 'Demo hesabı',
-                'Her şeyi gezip deneyebilirsiniz; hesap bilgileri, kullanıcılar, site ayarları, sistem işlemleri ve e-posta gönderimi bu hesapta kilitli.',
+                'Her şeyi gezip deneyebilirsiniz; hesap bilgileri, kullanıcılar, site ayarları, sistem işlemleri ve e-posta gönderimi bu hesapta kilitli.'
+                . self::nextResetText(),
                 kapatilabilir: true);
         }
 
@@ -79,10 +80,22 @@ final class PanelNotices
 
         $bekleyen = self::pendingMigrations();
 
+        /* Demo hesabı bu işlemleri yapamaz (kilitli): ona "Şimdi
+         * çalıştır" bağlantısı göstermek yalnızca hata mesajına götürürdü. */
+        $kilitli = $demoHesabi;
+
         if ($bekleyen > 0) {
             $notices[] = self::notice('migration', 'warning', $bekleyen . ' migration bekliyor',
                 'Güncellemeden sonra çalıştırılmazsa bazı özellikler eksik ya da hatalı çalışır.',
-                'panel/sistem#migration', 'Şimdi çalıştır');
+                $kilitli ? '' : 'panel/sistem#migration', $kilitli ? '' : 'Şimdi çalıştır');
+        }
+
+        /* Kurulum kilitli olsa da klasörün sunucuda durması gereksiz bir
+         * risktir; eskiden yalnızca Sistem sayfasındaki denetimde görünüyordu. */
+        if (is_dir(CY_BASE . DIRECTORY_SEPARATOR . 'kurulum')) {
+            $notices[] = self::notice('kurulum-klasoru', 'warning', 'Kurulum klasörü duruyor',
+                'Kurulum tamamlandı ama kurulum/ klasörü hâlâ sunucuda. Sihirbaz kilitli olsa da klasörü silmek en güvenlisidir.',
+                $kilitli ? '' : 'panel/sistem#kurulum', $kilitli ? '' : 'Şimdi sil');
         }
 
         if (trim((string) Config::get('app.key', '')) === '') {
@@ -113,10 +126,52 @@ final class PanelNotices
         return compact('id', 'tur', 'baslik', 'metin', 'yol', 'baglanti', 'kapatilabilir');
     }
 
-    /** Kullanıcı bu bildirimi bu tarayıcı oturumunda kapatmış mı? */
+    /** Kullanıcı bu bildirimi bu oturumda kapatmış mı? */
     public static function dismissed(array $notice): bool
     {
-        return $notice['kapatilabilir'] && ($_COOKIE['cy_uyari_' . $notice['id']] ?? '') === '1';
+        $kapali = Session::get('_kapali_bildirimler', []);
+
+        return $notice['kapatilabilir'] && is_array($kapali) && isset($kapali[$notice['id']]);
+    }
+
+    /**
+     * Bildirimi bu oturum için kapatır. Yalnızca KAPATILABİLİR (bilgi)
+     * bildirimleri: uyarı kimliği gönderilse bile yok sayılır.
+     */
+    public static function dismiss(string $id): bool
+    {
+        foreach (self::forCurrentUser() as $notice) {
+            if ($notice['id'] === $id && $notice['kapatilabilir']) {
+                $kapali       = Session::get('_kapali_bildirimler', []);
+                $kapali       = is_array($kapali) ? $kapali : [];
+                $kapali[$id]  = true;
+                Session::set('_kapali_bildirimler', $kapali);
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** " Bu demo her 3 saatte bir sıfırlanır · sonraki: 14:00" ya da boş. */
+    private static function nextResetText(): string
+    {
+        $son = Setting::get('demo_son_sifirlama');
+        $zaman = $son !== '' ? strtotime($son) : false;
+
+        if ($zaman === false) {
+            return '';
+        }
+
+        $sonraki = $zaman + Demo::SIFIRLAMA_DAKIKA * 60;
+
+        // Zamanlayıcı biraz gecikebilir; geçmiş bir saat gösterme.
+        while ($sonraki <= time()) {
+            $sonraki += Demo::SIFIRLAMA_DAKIKA * 60;
+        }
+
+        return sprintf(' Bu demo her %d saatte bir sıfırlanır · sonraki: %s.', intdiv(Demo::SIFIRLAMA_DAKIKA, 60), date('H:i', $sonraki));
     }
 
     /**

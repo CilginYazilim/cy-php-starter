@@ -25,9 +25,11 @@
 --    "USE yeni_proje" sabit yazılıydı: dosyayı başka bir veritabanına
 --    aktarmak isteyen kişi farkında olmadan "yeni_proje"yi kuruyordu.
 --
---  ► ÖRNEK VERİ bu dosyada DEĞİLDİR. Demo kullanıcı ve mesajlar
---    "kurulum/demo.sql" içindedir; sihirbazda onay kutusuyla
---    seçilir. Boş bir projeye başlarken yüklemeyin.
+--  ► ÖRNEK VERİ ve MARKA bu dosyada DEĞİLDİR; şema nötrdür ("Yeni
+--    Proje"). Demo hesaplar, sayfalar, mesajlar ve CY PHP Starter
+--    vitrini App\Core\DemoData içindedir (tek kaynak): sihirbazda
+--    "Örnek veriyle kur" ya da "php cy db:seed". Boş bir projeye
+--    başlarken yüklemeyin.
 -- ===============================================================
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
@@ -42,6 +44,9 @@ SET NAMES utf8mb4;
 -- eski sürümde ikinci içe aktarım FK hatasıyla duruyordu. Migration'ların
 -- kurduğu tablolar da (isler, onbellek) ve kayıt tablosu (migrasyonlar)
 -- temizlenir: yarım kalan bir şema sonradan "zaten var" hatalarına yol açar.
+-- parola_sifirlama 1.6 migration'ıyla gelir; kullanicilar'a yabancı anahtarla
+-- bağlı olduğu için ÖNCE silinmeli, yoksa yeniden kurulum yarıda kalırdı.
+DROP TABLE IF EXISTS `parola_sifirlama`;
 DROP TABLE IF EXISTS `api_anahtarlari`;
 DROP TABLE IF EXISTS `mail_kayitlari`;
 DROP TABLE IF EXISTS `mesajlar`;
@@ -84,7 +89,7 @@ INSERT INTO `ayarlar`
 
 -- ---- GENEL ----
 ('site_adi',        'Yeni Proje', 'genel', 'metin',      'Site Adı',        'Tarayıcı sekmesinde ve başlıkta görünür.', NULL, 10),
-('site_aciklama',   'Çılgın Yazılım örnek uygulaması', 'genel', 'uzun_metin', 'Site Açıklaması', 'Arama motorları için kısa tanıtım.', NULL, 20),
+('site_aciklama',   '', 'genel', 'uzun_metin', 'Site Açıklaması', 'Arama motorları için kısa tanıtım.', NULL, 20),
 ('site_slogan',     '',           'genel', 'metin',      'Slogan',          'Başlığın altında görünecek kısa cümle.', NULL, 30),
 ('site_dil',        'tr',         'genel', 'secim',      'Dil',             'HTML lang özniteliği.', '["tr","en"]', 50),
 
@@ -251,7 +256,7 @@ COLLATE=utf8mb4_turkish_ci;
 --   INSERT INTO kullanicilar (ad, soyad, kullanici_adi, eposta, sifre, rol)
 --   VALUES ('Ad', 'Soyad', 'admin', 'admin@ornek.com', '<uretilen_ozet>', 'admin');
 --
--- Demo kullanıcılar için: kurulum/demo.sql
+-- Demo kullanıcılar için: php cy db:seed --class=DemoSeeder
 
 
 -- ===============================================================

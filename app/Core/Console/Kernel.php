@@ -23,6 +23,8 @@ use App\Core\Console\Commands\CacheClearCommand;
 use App\Core\Console\Commands\ConfigCacheCommand;
 use App\Core\Console\Commands\ConfigClearCommand;
 use App\Core\Console\Commands\DbSeedCommand;
+use App\Core\Console\Commands\DemoRemoveCommand;
+use App\Core\Console\Commands\DemoResetCommand;
 use App\Core\Console\Commands\LogPurgeCommand;
 use App\Core\Console\Commands\MailTestCommand;
 use App\Core\Console\Commands\MailWorkCommand;
@@ -50,6 +52,8 @@ final class Kernel
         MigrateStatusCommand::class,
         MigrateFreshCommand::class,
         DbSeedCommand::class,
+        DemoResetCommand::class,
+        DemoRemoveCommand::class,
 
         MakeMigrationCommand::class,
         MakeSeederCommand::class,

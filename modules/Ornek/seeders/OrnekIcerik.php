@@ -6,9 +6,10 @@
  *  Kurulum sihirbazında "Örnek verileri de yükle" seçilirse ve modül
  *  açıksa çalışır; elle: php cy db:seed --class=OrnekIcerik
  *
- *  Kayıtlar aktif yönetici ve editörler arasında dağıtılır, üçte biri
- *  taslaktır: her rol RBAC ekranında farklı bir liste görür. Tablo
- *  doluysa hiçbir şey yapmaz (tekrar çalıştırmak çoğaltmaz).
+ *  18 kayıt: her rolden (yönetici, editör, üye) her durumda (yayında,
+ *  onay bekliyor, taslak) ikişer tane. Böylece her rol RBAC ekranında
+ *  farklı bir liste görür, editörün onaylayacağı üye kayıtları hazırdır.
+ *  Tablo doluysa hiçbir şey yapmaz (tekrar çalıştırmak çoğaltmaz).
  * =====================================================================
  */
 
@@ -28,6 +29,6 @@ return new class extends App\Core\Database\Seeder
             return;
         }
 
-        $this->say($kayitlar->seedSamples(12, $kayitlar->ownerCandidates()) . ' örnek kayıt eklendi.');
+        $this->say($kayitlar->seedDemo() . ' örnek kayıt eklendi.');
     }
 };

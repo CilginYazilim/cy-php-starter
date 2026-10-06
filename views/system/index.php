@@ -159,6 +159,62 @@ $bilgiKarti = static function (string $baslik, string $ikon, array $satirlar): v
     </div>
 </div>
 
+<!-- KURULUM VE ÖRNEK VERİ — yalnızca yapılacak bir iş varsa görünür. -->
+<?php
+$kurulumKlasoru = $kurulumKlasoru ?? false;
+$ornekVeri      = $ornekVeri ?? false;
+$bakimKilidi    = !can('system.manage') ? 'Bu işlemler için yetkiniz yok.' : \App\Core\Demo::lockReason('panel/sistem/kurulum-sil');
+?>
+<?php if ($kurulumKlasoru || $ornekVeri): ?>
+    <section class="cy-panel mb-3" id="kurulum">
+        <header class="cy-panel__head">
+            <div>
+                <h3 class="cy-panel__title"><?= icon('settings', 'cy-icon cy-icon--sm') ?> Kurulum ve örnek veri</h3>
+                <p class="cy-panel__sub">Yayına çıkmadan önce kurulum klasörünü silin; örnek veriyle kurduysanız gerçek projeye geçerken kaldırın.</p>
+            </div>
+        </header>
+        <ul class="cy-modules">
+            <?php if ($kurulumKlasoru): ?>
+                <li class="cy-module">
+                    <span class="cy-module__icon"><?= icon('alert', 'cy-icon cy-icon--sm') ?></span>
+                    <span class="cy-module__body">
+                        <strong>Kurulum klasörü sunucuda</strong>
+                        <span class="cy-module__desc">Sihirbaz kilitli ama <code class="cy-mono">kurulum/</code> klasörü duruyor. Silmek en güvenlisidir; geri dönüşü yoktur.</span>
+                    </span>
+                    <form method="post" action="<?= e(url('panel/sistem/kurulum-sil')) ?>" class="cy-module__toggle"
+                          data-confirm="kurulum/ klasörü kalıcı olarak silinecek. Devam edilsin mi?">
+                        <?= csrf_field() ?>
+                        <button type="submit" class="btn cy-btn cy-btn--ghost cy-btn--sm" <?= $bakimKilidi !== null ? 'disabled title="' . e($bakimKilidi) . '"' : '' ?>>
+                            <?= icon('trash', 'cy-icon cy-icon--sm') ?> Klasörü sil
+                        </button>
+                    </form>
+                </li>
+            <?php endif; ?>
+            <?php if ($ornekVeri): ?>
+                <?php $demoAcik = \App\Core\Demo::enabled(); ?>
+                <li class="cy-module">
+                    <span class="cy-module__icon"><?= icon('users', 'cy-icon cy-icon--sm') ?></span>
+                    <span class="cy-module__body">
+                        <strong>Örnek veri yüklü</strong>
+                        <span class="cy-module__desc">
+                            Demo hesapları, örnek mesajlar ve e-postalar, demo sayfaları, Örnek Modül kayıtları ve ana sayfa vitrini.
+                            Kendi hesaplarınıza ve yazdığınız içeriğe dokunulmaz.
+                            <?php if ($demoAcik): ?><br>Demo modu açık; kaldırmak için önce <code class="cy-mono">.env</code> içinde <code class="cy-mono">APP_DEMO=false</code> yapın.<?php endif; ?>
+                        </span>
+                    </span>
+                    <form method="post" action="<?= e(url('panel/sistem/demo-kaldir')) ?>" class="cy-module__toggle"
+                          data-confirm="Örnek veri kaldırılacak (demo hesapları, mesajları, sayfaları, Örnek Modül kayıtları). Devam edilsin mi?">
+                        <?= csrf_field() ?>
+                        <button type="submit" class="btn cy-btn cy-btn--ghost cy-btn--sm" <?= $bakimKilidi !== null || $demoAcik ? 'disabled' : '' ?>>
+                            <?= icon('trash', 'cy-icon cy-icon--sm') ?> Örnek veriyi kaldır
+                        </button>
+                    </form>
+                </li>
+            <?php endif; ?>
+        </ul>
+    </section>
+<?php endif; ?>
+
 <!-- MODÜLLER — panelden aç/kapat (bkz. SystemController::toggleModule).
      Düğme bir <button>: JavaScript olmadan da çalışır. Açarken modülün
      tabloları kurulur; kapatmak hiçbir veriyi silmez. -->

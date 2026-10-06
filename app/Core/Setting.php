@@ -212,6 +212,7 @@ final class Setting
     {
         return [
             'genel'    => 'Genel',
+            'anasayfa' => 'Ana Sayfa',
             'iletisim' => 'İletişim',
             'eposta'   => 'E-posta',
             'sosyal'   => 'Sosyal Medya',

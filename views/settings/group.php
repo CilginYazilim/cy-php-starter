@@ -21,6 +21,52 @@ use App\Core\Setting;
 $rows     = $rows ?? [];
 $errors   = $errors ?? [];
 $old      = $old ?? [];
+
+/**
+ * "liste" tipinin tek satırı. $i = satır numarası ya da şablon için
+ * "__i__" (JavaScript yeni satır eklerken gerçek numarayla değiştirir).
+ *
+ * @param array<int,array<string,string>> $alanlar
+ * @param array<string,string>            $satir
+ */
+$listeSatiri = static function (string $key, array $alanlar, int|string $i, array $satir): void {
+    ?>
+    <li class="cy-repeater__row" data-repeater-row>
+        <div class="cy-repeater__fields">
+            <?php foreach ($alanlar as $alan): ?>
+                <?php
+                $ad    = (string) $alan['ad'];
+                $tip   = (string) ($alan['tip'] ?? 'metin');
+                $id    = 'set_' . $key . '_' . $i . '_' . $ad;
+                $isim  = $key . '[' . $i . '][' . $ad . ']';
+                $deger = (string) ($satir[$ad] ?? '');
+                ?>
+                <div class="cy-repeater__field cy-repeater__field--<?= e($tip) ?>">
+                    <label class="form-label" for="<?= e($id) ?>"><?= e((string) ($alan['etiket'] ?? $ad)) ?></label>
+                    <?php if ($tip === 'uzun'): ?>
+                        <textarea class="form-control" rows="2" id="<?= e($id) ?>" name="<?= e($isim) ?>" maxlength="500"><?= e($deger) ?></textarea>
+                    <?php elseif ($tip === 'ikon'): ?>
+                        <select class="form-select" id="<?= e($id) ?>" name="<?= e($isim) ?>">
+                            <option value="">—</option>
+                            <?php foreach (icon_names() as $ikonAdi): ?>
+                                <option value="<?= e($ikonAdi) ?>" <?= $deger === $ikonAdi ? 'selected' : '' ?>><?= e($ikonAdi) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    <?php else: ?>
+                        <input type="text" class="form-control" id="<?= e($id) ?>" name="<?= e($isim) ?>" maxlength="150"
+                               value="<?= e($deger) ?>" <?= $tip === 'adres' ? 'placeholder="iletisim ya da https://…" inputmode="url"' : '' ?>>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <div class="cy-repeater__tools" role="group" aria-label="Satır işlemleri">
+            <button type="button" class="cy-btn-icon" data-repeater-up title="Yukarı taşı" aria-label="Yukarı taşı"><?= icon('chevron', 'cy-icon cy-icon--sm cy-rotate--up') ?></button>
+            <button type="button" class="cy-btn-icon" data-repeater-down title="Aşağı taşı" aria-label="Aşağı taşı"><?= icon('chevron', 'cy-icon cy-icon--sm cy-rotate--down') ?></button>
+            <button type="button" class="cy-btn-icon cy-btn-icon--danger" data-repeater-remove title="Satırı sil" aria-label="Satırı sil"><?= icon('trash', 'cy-icon cy-icon--sm') ?></button>
+        </div>
+    </li>
+    <?php
+};
 ?>
 
 <?php if ($errors !== []): ?>
@@ -43,7 +89,7 @@ $old      = $old ?? [];
                             $key       = (string) $row['anahtar'];
                             $type      = (string) $row['tip'];
                             $editable  = (int) $row['duzenlenebilir'] === 1;
-                            $width     = in_array($type, ['uzun_metin'], true) ? 'col-12' : 'col-12 col-md-6';
+                            $width     = in_array($type, ['uzun_metin', 'liste', 'coklu'], true) ? 'col-12' : 'col-12 col-md-6';
                             $hasError  = array_key_exists($key, $errors);
                             $errorCls  = $hasError ? ' is-invalid' : '';
 
@@ -64,6 +110,49 @@ $old      = $old ?? [];
                                                name="<?= e($key) ?>" id="set_<?= e($key) ?>" value="1"
                                                <?= $value === '1' ? 'checked' : '' ?>>
                                         <label class="form-check-label" for="set_<?= e($key) ?>">Etkin</label>
+                                    </div>
+
+                                <?php elseif ($type === 'coklu'): ?>
+                                    <?php
+                                    $secenekler = json_decode((string) ($row['secenekler'] ?? '{}'), true) ?: [];
+                                    $secili     = json_decode($value, true);
+                                    $secili     = is_array($secili) ? $secili : [];
+                                    ?>
+                                    <fieldset class="cy-choices" aria-describedby="set_<?= e($key) ?>_aciklama">
+                                        <legend class="visually-hidden"><?= e($row['etiket']) ?></legend>
+                                        <?php foreach ($secenekler as $secenek => $secenekEtiket): ?>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="<?= e($key) ?>[]"
+                                                       id="set_<?= e($key) ?>_<?= e((string) $secenek) ?>" value="<?= e((string) $secenek) ?>"
+                                                       <?= in_array($secenek, $secili, true) ? 'checked' : '' ?>>
+                                                <label class="form-check-label" for="set_<?= e($key) ?>_<?= e((string) $secenek) ?>"><?= e((string) $secenekEtiket) ?></label>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </fieldset>
+
+                                <?php elseif ($type === 'liste'): ?>
+                                    <?php
+                                    $tanim    = json_decode((string) ($row['secenekler'] ?? '{}'), true) ?: [];
+                                    $alanlar  = is_array($tanim['alanlar'] ?? null) ? $tanim['alanlar'] : [];
+                                    $satirlar = json_decode($value, true);
+                                    $satirlar = is_array($satirlar) ? array_values($satirlar) : [];
+                                    ?>
+                                    <?php /* Kaydedilmiş satırlar + JavaScript yokken de bir satır
+                                             eklenebilsin diye sonda BİR BOŞ satır. Boş satır
+                                             kaydedilmez (bkz. SettingsController::validateList). */ ?>
+                                    <div class="cy-repeater" data-repeater data-name="<?= e($key) ?>" data-max="<?= (int) ($tanim['en_fazla'] ?? 20) ?>">
+                                        <ol class="cy-repeater__list" data-repeater-list>
+                                            <?php foreach ($satirlar as $i => $satir): ?>
+                                                <?php $listeSatiri($key, $alanlar, $i, is_array($satir) ? $satir : []); ?>
+                                            <?php endforeach; ?>
+                                            <?php $listeSatiri($key, $alanlar, count($satirlar), []); ?>
+                                        </ol>
+                                        <template data-repeater-template>
+                                            <?php $listeSatiri($key, $alanlar, '__i__', []); ?>
+                                        </template>
+                                        <button type="button" class="btn cy-btn cy-btn--ghost cy-btn--sm" data-repeater-add>
+                                            <?= icon('plus', 'cy-icon cy-icon--sm') ?> Satır ekle
+                                        </button>
                                     </div>
 
                                 <?php elseif ($type === 'uzun_metin'): ?>
@@ -117,7 +206,7 @@ $old      = $old ?? [];
                                 <?php if ($hasError): ?>
                                     <div class="invalid-feedback d-block"><?= e($errors[$key]) ?></div>
                                 <?php elseif (!empty($row['aciklama'])): ?>
-                                    <div class="form-text"><?= e($row['aciklama']) ?></div>
+                                    <div class="form-text" id="set_<?= e($key) ?>_aciklama"><?= e($row['aciklama']) ?></div>
                                 <?php endif; ?>
                             </div>
                         <?php endforeach; ?>

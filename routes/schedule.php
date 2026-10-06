@@ -65,6 +65,26 @@ Schedule::call('gunluk-temizle', static function (): void {
 })->daily('04:10')->describe('Saklama süresi dolmuş günlükleri siler');
 
 /* ---------------------------------------------------------------------
+ *  CANLI DEMO SIFIRLAMA (yalnızca APP_DEMO=true)
+ * ---------------------------------------------------------------------
+ *  Herkese açık demoda ziyaretçilerin değişikliklerini geri alır ve örnek
+ *  veriyi baştan kurar (bkz. App\Core\DemoData::reset). Demo modu kapalı
+ *  bir sitede hiçbir şey yapmaz. Panel bildirimi bir sonraki sıfırlama
+ *  saatini "demo_son_sifirlama" ayarından hesaplar.
+ * ------------------------------------------------------------------ */
+Schedule::call('demo-sifirla', static function (): void {
+    if (!App\Core\Demo::enabled()) {
+        return;
+    }
+
+    $demo = new App\Core\DemoData(App\Core\Database::connection());
+    $demo->reset();
+    $demo->seedModules();
+
+    Logger::info('Demo sıfırlandı (zamanlanmış)', [], 'app');
+})->everyMinutes(App\Core\Demo::SIFIRLAMA_DAKIKA)->describe('Canlı demoyu sıfırlar (yalnızca demo modunda)');
+
+/* ---------------------------------------------------------------------
  *  ÖRNEKLER — kendi projenizde açabilirsiniz
  * ---------------------------------------------------------------------
  *  Schedule::call('gunluk-rapor', function () {

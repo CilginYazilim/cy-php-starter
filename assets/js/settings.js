@@ -11,6 +11,65 @@
  *  tahmin etmekten çok daha hızlı anlatır.
  * ================================================================== */
 
+/* ==================================================================
+ *  LİSTE AYARLARI (Ayarlar → Ana Sayfa → Özellikler, SSS…)
+ * ------------------------------------------------------------------
+ *  Satır ekle / sil / yukarı / aşağı. Alan adları "anahtar[3][baslik]"
+ *  biçimindedir; PHP diziyi formdaki SIRAYLA kurar, bu yüzden taşımak
+ *  için adları yeniden numaralamak gerekmez. Yeni satır <template>'ten
+ *  kopyalanır ve benzersiz bir numara alır.
+ *
+ *  JavaScript yoksa sunucu kayıtlı satırların altına bir boş satır
+ *  basar; form yine çalışır.
+ * ================================================================== */
+(function () {
+    'use strict';
+
+    var sayac = 1000;
+
+    function guncelle(kutu) {
+        var max   = parseInt(kutu.getAttribute('data-max'), 10) || 20;
+        var adet  = kutu.querySelectorAll('[data-repeater-list] > [data-repeater-row]').length;
+        var ekle  = kutu.querySelector('[data-repeater-add]');
+
+        if (ekle) { ekle.disabled = adet >= max; }
+    }
+
+    document.addEventListener('click', function (olay) {
+        var dugme = olay.target.closest('[data-repeater-add], [data-repeater-remove], [data-repeater-up], [data-repeater-down]');
+        if (!dugme) { return; }
+
+        var kutu  = dugme.closest('[data-repeater]');
+        var liste = kutu && kutu.querySelector('[data-repeater-list]');
+        if (!liste) { return; }
+
+        if (dugme.hasAttribute('data-repeater-add')) {
+            var sablon = kutu.querySelector('template[data-repeater-template]');
+            var html   = sablon.innerHTML.replace(/__i__/g, String(sayac++));
+            liste.insertAdjacentHTML('beforeend', html);
+
+            var ilk = liste.lastElementChild.querySelector('input, textarea, select');
+            if (ilk) { ilk.focus(); }
+        } else {
+            var satir = dugme.closest('[data-repeater-row]');
+
+            if (dugme.hasAttribute('data-repeater-remove')) {
+                satir.remove();
+            } else if (dugme.hasAttribute('data-repeater-up') && satir.previousElementSibling) {
+                liste.insertBefore(satir, satir.previousElementSibling);
+                dugme.focus();
+            } else if (dugme.hasAttribute('data-repeater-down') && satir.nextElementSibling) {
+                liste.insertBefore(satir.nextElementSibling, satir);
+                dugme.focus();
+            }
+        }
+
+        guncelle(kutu);
+    });
+
+    document.querySelectorAll('[data-repeater]').forEach(guncelle);
+}());
+
 /* global jQuery, CY */
 jQuery(function ($) {
     'use strict';

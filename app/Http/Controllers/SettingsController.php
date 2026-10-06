@@ -46,7 +46,8 @@ final class SettingsController extends Controller
      * @var array<string,array{ikon:string,aciklama:string}>
      */
     private const GROUP_META = [
-        'genel'    => ['ikon' => 'settings', 'aciklama' => 'Site adı, açıklama, slogan, dil, logo ve favicon.'],
+        'genel'    => ['ikon' => 'settings', 'aciklama' => 'Site adı, açıklama, slogan, marka, logo ve favicon.'],
+        'anasayfa' => ['ikon' => 'dashboard', 'aciklama' => 'Ana sayfanın bölümleri, başlığı, düğmeleri, özellik kartları ve sık sorulan sorular.'],
         'iletisim' => ['ikon' => 'phone',    'aciklama' => 'E-posta, telefon, WhatsApp, adres ve çalışma saatleri.'],
         'eposta'   => ['ikon' => 'send',     'aciklama' => 'SMTP bilgileri, gönderen adresi ve otomatik bildirimler.'],
         'sosyal'   => ['ikon' => 'globe',    'aciklama' => 'Alt bilgide görünecek sosyal medya bağlantıları.'],
@@ -96,6 +97,7 @@ final class SettingsController extends Controller
     {
         return match ($group) {
             'genel'    => Setting::get('site_adi', '—'),
+            'anasayfa' => count(json_decode(Setting::get('anasayfa_bolumler', '[]'), true) ?: []) . ' bölüm görünüyor',
             'iletisim' => Setting::get('iletisim_eposta') === ''
                 ? 'İletişim e-postası tanımlı değil'
                 : Setting::get('iletisim_eposta')
@@ -238,6 +240,21 @@ final class SettingsController extends Controller
                 continue;
             }
 
+            /* coklu / liste: formdan DİZİ gelir, JSON olarak saklanır. */
+            if ($type === 'coklu' || $type === 'liste') {
+                [$json, $error] = $type === 'coklu'
+                    ? self::validateChoices($row, $request->raw($key, []))
+                    : self::validateList($row, $request->raw($key, []));
+
+                if ($error !== null) {
+                    $errors[$key] = $error;
+                } else {
+                    $values[$key] = $json;
+                }
+
+                continue;
+            }
+
             $error = $this->validateSetting($row, $value);
 
             if ($error !== null) {
@@ -257,8 +274,13 @@ final class SettingsController extends Controller
             $old = [];
 
             foreach ($rows as $row) {
-                if ($row['tip'] !== 'sifre') {
-                    $old[(string) $row['anahtar']] = $request->string((string) $row['anahtar']);
+                $anahtar = (string) $row['anahtar'];
+
+                if (in_array($row['tip'], ['coklu', 'liste'], true)) {
+                    $ham = $request->raw($anahtar, []);
+                    $old[$anahtar] = (string) json_encode(is_array($ham) ? array_values($ham) : [], JSON_UNESCAPED_UNICODE);
+                } elseif ($row['tip'] !== 'sifre') {
+                    $old[$anahtar] = $request->string($anahtar);
                 }
             }
 
@@ -273,6 +295,97 @@ final class SettingsController extends Controller
 
         Flash::success(count($values) . ' ayar kaydedildi.');
         Response::redirect(url('panel/ayarlar/' . $grup));
+    }
+
+    /**
+     * "coklu" ayar: yalnızca tanımlı seçenekler kabul edilir; sıra
+     * seçenek listesinin sırasıdır (formdaki işaretleme sırası değil).
+     *
+     * @param array<string,mixed> $row
+     * @return array{0:string,1:?string} [JSON, hata]
+     */
+    private static function validateChoices(array $row, mixed $raw): array
+    {
+        $secenekler = json_decode((string) ($row['secenekler'] ?? '{}'), true) ?: [];
+        $gelen      = is_array($raw) ? array_filter($raw, 'is_string') : [];
+        $secilen    = array_values(array_intersect(array_keys($secenekler), $gelen));
+
+        return [(string) json_encode($secilen), null];
+    }
+
+    /**
+     * "liste" ayar: satır satır JSON. Alanlar "secenekler"deki tanımdan
+     * gelir; tanımda olmayan alan atılır, tamamen boş satır silinir.
+     *
+     * Alan tipleri: metin (≤150), uzun (≤500), ikon (icon_names()
+     * içinden), adres (site içi yol ya da http/https).
+     *
+     * @param array<string,mixed> $row
+     * @return array{0:string,1:?string} [JSON, hata]
+     */
+    private static function validateList(array $row, mixed $raw): array
+    {
+        $tanim   = json_decode((string) ($row['secenekler'] ?? '{}'), true) ?: [];
+        $alanlar = is_array($tanim['alanlar'] ?? null) ? $tanim['alanlar'] : [];
+        $enFazla = max(1, (int) ($tanim['en_fazla'] ?? 20));
+        $label   = (string) $row['etiket'];
+        $satirlar = [];
+
+        foreach (is_array($raw) ? $raw : [] as $satir) {
+            if (!is_array($satir)) {
+                continue;
+            }
+
+            $temiz = [];
+
+            foreach ($alanlar as $alan) {
+                $ad    = (string) ($alan['ad'] ?? '');
+                $tip   = (string) ($alan['tip'] ?? 'metin');
+                $deger = is_string($satir[$ad] ?? null) ? trim((string) preg_replace('/\s+/u', ' ', $satir[$ad])) : '';
+
+                if ($deger !== '' && !mb_check_encoding($deger, 'UTF-8')) {
+                    return ['', $label . ': geçersiz karakter.'];
+                }
+
+                $sinir = $tip === 'uzun' ? 500 : 150;
+
+                if (mb_strlen($deger, 'UTF-8') > $sinir) {
+                    return ['', sprintf('%s: "%s" en fazla %d karakter olabilir.', $label, (string) ($alan['etiket'] ?? $ad), $sinir)];
+                }
+
+                if ($deger !== '' && $tip === 'ikon' && !in_array($deger, icon_names(), true)) {
+                    return ['', $label . ': bilinmeyen ikon "' . $deger . '".'];
+                }
+
+                if ($deger !== '' && $tip === 'adres' && !self::isSafeLink($deger)) {
+                    return ['', $label . ': adres site içi bir yol (örn. iletisim) ya da https:// ile başlayan bir adres olmalıdır.'];
+                }
+
+                $temiz[$ad] = $deger;
+            }
+
+            if (implode('', $temiz) !== '') {
+                $satirlar[] = $temiz;
+            }
+        }
+
+        if (count($satirlar) > $enFazla) {
+            return ['', sprintf('%s en fazla %d satır olabilir.', $label, $enFazla)];
+        }
+
+        return [(string) json_encode($satirlar, JSON_UNESCAPED_UNICODE), null];
+    }
+
+    /** Site içi yol ya da http(s) adresi — "javascript:" gibi şemalar reddedilir. */
+    public static function isSafeLink(string $value): bool
+    {
+        if (self::isHttpUrl($value)) {
+            return true;
+        }
+
+        return preg_match('#^[A-Za-z0-9/_.\#?=&-]*\z#', $value) === 1
+            && !str_contains($value, '..')
+            && !str_starts_with($value, '//');
     }
 
     /**
@@ -327,6 +440,28 @@ final class SettingsController extends Controller
                 return preg_match('/^[A-Za-z0-9_-]{0,100}\z/', $value) === 1
                     ? null
                     : 'Yalnızca doğrulama kodunu yazın (etiketin tamamını değil).';
+
+            case 'anasayfa_birincil_adres':
+            case 'anasayfa_ikincil_adres':
+                return $value === '' || self::isSafeLink($value)
+                    ? null
+                    : 'Adres site içi bir yol (örn. iletisim) ya da https:// ile başlayan bir adres olmalıdır.';
+
+            case 'anasayfa_gorsel':
+                return $value === '' || $value === 'vitrin' || self::isHttpUrl($value)
+                    || (preg_match('#^[A-Za-z0-9/_.-]+\z#', $value) === 1 && !str_contains($value, '..'))
+                    ? null
+                    : 'Görsel boş, "vitrin", upload/ altındaki bir dosya adı ya da https:// adresi olmalıdır.';
+
+            case 'sistem_kvkk_sayfa':
+                return preg_match('/^[a-z0-9-]{0,190}\z/', $value) === 1
+                    ? null
+                    : 'Sayfanın adresini (slug) yazın, örn. gizlilik-ve-kvkk.';
+
+            case 'sistem_ip_saklama':
+                return ctype_digit($value) && (int) $value <= 3650
+                    ? null
+                    : '0 ile 3650 arasında bir gün sayısı yazın.';
 
             case 'mail_host':
                 return $value === '' || preg_match('/^[A-Za-z0-9.-]{1,253}\z/', $value) === 1

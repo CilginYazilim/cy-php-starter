@@ -103,7 +103,7 @@ $demoMode     = $demoMode ?? false;
                                                 <?= e($account['etiket']) ?>
                                             </span>
                                             <span class="cy-quick-login__text">
-                                                <strong><?= e($account['ad']) ?></strong>
+                                                <strong><?= e($account['ad'] . ' ' . $account['soyad']) ?></strong>
                                                 <small>
                                                     <code><?= e($account['kullanici_adi']) ?></code>
                                                     · <code><?= e($account['parola']) ?></code>

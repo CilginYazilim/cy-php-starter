@@ -100,6 +100,17 @@ final class DashboardController extends Controller
     }
 
     /**
+     * Bir bilgi bildirimini bu oturum için kapatır (bkz. PanelNotices).
+     * Çerezde değil oturumda tutulur: sunucu bildirimi hiç basmaz.
+     */
+    public function dismissNotice(Request $request): void
+    {
+        \App\Core\Response::json([
+            'success' => \App\Core\PanelNotices::dismiss($request->input('id')),
+        ]);
+    }
+
+    /**
      * "Profilini tamamla" ilerlemesi: fotoğraf, telefon, hakkında.
      *
      * @return array{yuzde:int,eksik:array<int,string>}

@@ -22,10 +22,11 @@
  *
  *  İçerik işleri (sayfa yazmak, mesajları okumak/silmek, Ornek
  *  modülüne kayıt eklemek) bilerek AÇIK kalır: demonun amacı bunları
- *  denetmektir. Herkese açık bir demoyu belirli aralıklarla sıfırdan
- *  kurmanız önerilir.
+ *  denetmektir. Demo modunda zamanlayıcı her 3 saatte bir "php cy
+ *  demo:reset" çalıştırır ve örnek veriyi baştan kurar.
  *
- *  Örnek hesaplar kurulum/demo.sql ile gelir; parolaları aynıdır.
+ *  Örnek hesaplar ve diğer demo verisi App\Core\DemoData'dadır (TEK
+ *  KAYNAK): sihirbaz, "php cy db:seed" ve demo:reset aynı veriyi üretir.
  * =====================================================================
  */
 
@@ -39,24 +40,43 @@ use Throwable;
 
 final class Demo
 {
-    /** kurulum/demo.sql'deki bütün örnek hesapların parolası. */
+    /** Canlı demonun sıfırlanma aralığı (dakika) — zamanlayıcı ve panel bildirimi aynı değeri kullanır. */
+    public const SIFIRLAMA_DAKIKA = 180;
+
+    /** Bütün örnek hesapların ortak parolası. */
     public const PAROLA = 'Demo1234!';
 
     /**
-     * kurulum/demo.sql ile gelen hesaplar. Anahtar kullanıcı adıdır.
+     * Örnek hesaplar. Anahtar kullanıcı adıdır; DemoData bu listeden
+     * kurar, giriş ekranı bu listeden gösterir — ikisi ayrışamaz.
      *
-     * "herkese" → demo modunda giriş ekranında listelenir. Pasif ve
-     * askıdaki hesaplar bilerek giriş yapamaz; yalnızca geliştirme
-     * ortamında, durum kontrolünü denemek için gösterilir.
+     * "herkese" → demo modunda giriş ekranında listelenir. Pasif, askıda
+     * ve onay bekleyen hesaplar bilerek giriş yapamaz; yalnızca
+     * geliştirme ortamında, durum kontrolünü denemek için gösterilir.
+     * "gun" → kayıt tarihi (bugünden geriye), kontrol panelindeki 14
+     * günlük grafik dolu görünsün diye.
      *
-     * @var array<string,array{ad:string,eposta:string,etiket:string,variant:string,icon:string,herkese:bool}>
+     * @var array<string,array{ad:string,soyad:string,eposta:string,rol:string,durum:string,etiket:string,variant:string,icon:string,herkese:bool,telefon:string,hakkinda:string,gun:int}>
      */
     public const HESAPLAR = [
-        'ali.yonetici' => ['ad' => 'Ali Yılmaz',  'eposta' => 'ali.demo@ornek.com',    'etiket' => 'Yönetici',   'variant' => 'admin',   'icon' => 'shield', 'herkese' => true],
-        'elif.editor'  => ['ad' => 'Elif Demir',  'eposta' => 'elif.demo@ornek.com',   'etiket' => 'Editör',     'variant' => 'editor',  'icon' => 'edit',   'herkese' => true],
-        'mehmet.uye'   => ['ad' => 'Mehmet Kaya', 'eposta' => 'mehmet.demo@ornek.com', 'etiket' => 'Üye',        'variant' => 'member',  'icon' => 'user',   'herkese' => true],
-        'ayse.pasif'   => ['ad' => 'Ayşe Şahin',  'eposta' => 'ayse.demo@ornek.com',   'etiket' => 'Pasif Üye',  'variant' => 'passive', 'icon' => 'user',   'herkese' => false],
-        'can.askida'   => ['ad' => 'Can Yıldız',  'eposta' => 'can.demo@ornek.com',    'etiket' => 'Askıda Üye', 'variant' => 'hold',    'icon' => 'user',   'herkese' => false],
+        'ali.yonetici' => ['ad' => 'Ali', 'soyad' => 'Yılmaz', 'eposta' => 'ali.demo@ornek.com', 'rol' => 'admin', 'durum' => 'aktif',
+            'etiket' => 'Yönetici', 'variant' => 'admin', 'icon' => 'shield', 'herkese' => true, 'gun' => 13,
+            'telefon' => '+90 555 000 00 01', 'hakkinda' => 'Demo yönetici hesabı: her ekranı gezebilir; parola, kullanıcı ve ayar işlemleri demo modunda kilitli.'],
+        'elif.editor'  => ['ad' => 'Elif', 'soyad' => 'Demir', 'eposta' => 'elif.demo@ornek.com', 'rol' => 'editor', 'durum' => 'aktif',
+            'etiket' => 'Editör', 'variant' => 'editor', 'icon' => 'edit', 'herkese' => true, 'gun' => 11,
+            'telefon' => '+90 555 000 00 02', 'hakkinda' => 'İçerik editörü: sayfaları yazar, mesajları yanıtlar, Örnek Modül\'de onay bekleyen kayıtları yayınlar.'],
+        'mehmet.uye'   => ['ad' => 'Mehmet', 'soyad' => 'Kaya', 'eposta' => 'mehmet.demo@ornek.com', 'rol' => 'uye', 'durum' => 'aktif',
+            'etiket' => 'Üye', 'variant' => 'member', 'icon' => 'user', 'herkese' => true, 'gun' => 8,
+            'telefon' => '', 'hakkinda' => ''],
+        'ayse.pasif'   => ['ad' => 'Ayşe', 'soyad' => 'Şahin', 'eposta' => 'ayse.demo@ornek.com', 'rol' => 'uye', 'durum' => 'pasif',
+            'etiket' => 'Pasif Üye', 'variant' => 'passive', 'icon' => 'user', 'herkese' => false, 'gun' => 6,
+            'telefon' => '', 'hakkinda' => ''],
+        'can.askida'   => ['ad' => 'Can', 'soyad' => 'Yıldız', 'eposta' => 'can.demo@ornek.com', 'rol' => 'uye', 'durum' => 'askida',
+            'etiket' => 'Askıda Üye', 'variant' => 'hold', 'icon' => 'user', 'herkese' => false, 'gun' => 4,
+            'telefon' => '', 'hakkinda' => ''],
+        'zeynep.onay'  => ['ad' => 'Zeynep', 'soyad' => 'Arslan', 'eposta' => 'zeynep.demo@ornek.com', 'rol' => 'uye', 'durum' => 'onay_bekliyor',
+            'etiket' => 'Onay Bekleyen Üye', 'variant' => 'hold', 'icon' => 'mail', 'herkese' => false, 'gun' => 1,
+            'telefon' => '', 'hakkinda' => ''],
     ];
 
     /**
@@ -172,7 +192,7 @@ final class Demo
      * Demo modunda Yönetici, Editör ve Üye; geliştirme ortamında
      * (debug açık, ortam yayın değil) pasif ve askıdakiler de. Yayındaki
      * sıradan bir sitede hiçbiri — parolası bilinen hesap önermek
-     * güvenlik açığıdır. Hesap ancak veritabanında demo.sql'deki
+     * güvenlik açığıdır. Hesap ancak veritabanında HESAPLAR'daki
      * e-postasıyla GERÇEKTEN varsa listelenir.
      *
      * @return array<int,array<string,mixed>>

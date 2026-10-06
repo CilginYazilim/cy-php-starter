@@ -2227,3 +2227,48 @@ a.cy-stat--link:focus-visible { outline: 2px solid var(--cy-brand); outline-offs
 .cy-me__progress-hint { font-size: .74rem; color: var(--cy-text-muted); }
 .cy-progress { display: block; height: 6px; border-radius: 999px; background: var(--cy-surface-soft); overflow: hidden; }
 .cy-progress__bar { display: block; height: 100%; border-radius: inherit; background: var(--cy-brand-500); }
+
+/* --- Ayarlar: liste (tekrarlayıcı) ve çoklu seçim alanları --- */
+.cy-repeater__list { list-style: none; margin: 0 0 .6rem; padding: 0; display: flex; flex-direction: column; gap: .55rem; }
+.cy-repeater__row {
+    display: flex;
+    align-items: flex-start;
+    gap: .6rem;
+    padding: .7rem;
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius);
+    background: var(--cy-surface-soft);
+}
+.cy-repeater__fields { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .5rem .75rem; }
+.cy-repeater__field--uzun { grid-column: 1 / -1; }
+.cy-repeater__field .form-label { margin-bottom: .2rem; font-size: .75rem; }
+.cy-repeater__tools { display: flex; flex-direction: column; gap: .25rem; padding-top: 1.35rem; }
+.cy-rotate--up { transform: rotate(-90deg); }
+.cy-rotate--down { transform: rotate(90deg); }
+
+.cy-choices {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: .35rem 1rem;
+    margin: 0;
+    padding: .6rem .75rem;
+    border: 1px solid var(--cy-border);
+    border-radius: var(--cy-radius);
+}
+
+@media (max-width: 575.98px) {
+    .cy-repeater__row { flex-direction: column; }
+    .cy-repeater__tools { flex-direction: row; padding-top: 0; align-self: flex-end; }
+}
+
+/* --- Bildirimler mobilde tek satır; dokununca açılır (app.js) --- */
+@media (max-width: 575.98px) {
+    .cy-notice__text {
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        cursor: pointer;
+    }
+    .cy-notice.is-open .cy-notice__text { display: block; -webkit-line-clamp: unset; }
+}
