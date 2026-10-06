@@ -1,22 +1,25 @@
 <div align="center">
 
-# Çılgın Yazılım – PHP Başlangıç Şablonu
+# PHP Başlangıç Şablonu (CY PHP Starter)
 
-### Her yeni projeye buradan başlayın
+### Sıfır bağımlılıklı PHP 8 başlangıç şablonu — her yeni projeye buradan başlayın
 
-**Kurulum sihirbazı · rol tabanlı panel · konsol · migration · kuyruk · olay · modül sistemi · REST API · PWA — hepsi hazır.**
+**Kurulum sihirbazı · rol tabanlı yönetim paneli · konsol · migration · kuyruk · olay · modül sistemi · REST API · PWA — hepsi hazır.**
 
-[![Sürüm](https://img.shields.io/badge/Sürüm-1.4.0-0b5cb5?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/releases)
-[![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://php.net)
-[![Bootstrap](https://img.shields.io/badge/Bootstrap-5.2-7952B3?style=flat-square&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
-[![Bağımlılık](https://img.shields.io/badge/Bağımlılık-Sıfır-16a34a?style=flat-square)](#)
-[![License](https://img.shields.io/badge/Lisans-MIT-16a34a?style=flat-square)](LICENSE)
+[![Sürüm](https://img.shields.io/badge/Sürüm-1.4.0-0b5cb5?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/releases/latest)
+[![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net)
+[![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?style=flat-square&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
+![Bağımlılık: sıfır](https://img.shields.io/badge/Bağımlılık-Sıfır-16a34a?style=flat-square)
+[![Testler](https://img.shields.io/badge/Birim_testi-112-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/actions)
+[![Lisans](https://img.shields.io/badge/Lisans-MIT-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/blob/main/LICENSE)
 
-[**▶ Canlı Demo**](https://cilginyazilim.com/kutuphane/uygulama/cy-php-starter/) · [Kaynak Kütüphanesi](https://cilginyazilim.com/kutuphane/php-baslangic-sablonu) · [cilginyazilim.com](https://cilginyazilim.com)
+[**▶ Canlı Demo**](https://cilginyazilim.com/kutuphane/uygulama/cy-php-starter/) · [PHP Başlangıç Şablonu sayfası](https://cilginyazilim.com/kutuphane/php-baslangic-sablonu) · [Çılgın Yazılım](https://cilginyazilim.com)
 
-**[📖 Sistem Kılavuzu → SISTEM.md](SISTEM.md)**
-· **[💡 Örnek kodlar → Kod Kütüphanesi](https://cilginyazilim.com/kutuphane)**
-· **[📦 Şablonun sayfası](https://cilginyazilim.com/kutuphane/php-baslangic-sablonu)**
+**[📖 Sistem Kılavuzu](https://github.com/CilginYazilim/cy-php-starter/blob/main/SISTEM.md)**
+· **[💡 Kod Kütüphanesi](https://cilginyazilim.com/kutuphane)**
+· **[📝 Değişiklik Günlüğü](https://github.com/CilginYazilim/cy-php-starter/blob/main/CHANGELOG.md)**
+
+<sub>Zero-dependency PHP 8 starter template (boilerplate) with a setup wizard, role-based admin panel, migrations, queue, events, modules, REST API and PWA. No Composer, no framework, no CDN.</sub>
 
 </div>
 
@@ -28,21 +31,21 @@
 
 **Kurulum yok, kayıt yok, indirme yok — tarayıcınızdan 3 saniyede deneyin.**
 
-<a href="https://cilginyazilim.com/kutuphane/uygulama/cy-php-starter/"><img src="https://img.shields.io/badge/CANLI_DEMOYU_A%C3%87-0b5cb5?style=for-the-badge&logo=googlechrome&logoColor=white&labelColor=061321" alt="Canlı Demoyu Aç" height="42"></a>
-<a href="https://cilginyazilim.com/kutuphane/php-baslangic-sablonu"><img src="https://img.shields.io/badge/KAYNAK_KODU_%C4%B0NCELE-0ea5e9?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=061321" alt="Kaynak Kodu İncele" height="42"></a>
-<a href="https://github.com/CilginYazilim/cy-php-starter/archive/refs/heads/main.zip"><img src="https://img.shields.io/badge/ZIP_%C4%B0ND%C4%B0R-16a34a?style=for-the-badge&logo=github&logoColor=white&labelColor=061321" alt="ZIP İndir" height="42"></a>
+<a href="https://cilginyazilim.com/kutuphane/uygulama/cy-php-starter/"><img src="https://img.shields.io/badge/CANLI_DEMOYU_A%C3%87-0b5cb5?style=for-the-badge&logo=googlechrome&logoColor=white&labelColor=061321" alt="PHP başlangıç şablonunun canlı demosunu aç" height="42"></a>
+<a href="https://cilginyazilim.com/kutuphane/php-baslangic-sablonu"><img src="https://img.shields.io/badge/KAYNAK_KODU_%C4%B0NCELE-0ea5e9?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=061321" alt="PHP başlangıç şablonunun kaynak kodunu incele" height="42"></a>
+<a href="https://github.com/CilginYazilim/cy-php-starter/archive/refs/heads/main.zip"><img src="https://img.shields.io/badge/ZIP_%C4%B0ND%C4%B0R-16a34a?style=for-the-badge&logo=github&logoColor=white&labelColor=061321" alt="PHP başlangıç şablonunu ZIP olarak indir" height="42"></a>
 
 <br><br>
 
 <a href="https://cilginyazilim.com/kutuphane/uygulama/cy-php-starter/" title="Canlı demoyu açmak için tıklayın">
-  <img src="docs/screenshots/05-panel-ozet.png" alt="PHP başlangıç şablonu kontrol paneli canlı demo önizlemesi" width="860">
+  <img src="https://raw.githubusercontent.com/CilginYazilim/cy-php-starter/main/docs/screenshots/05-panel-ozet.png" alt="PHP başlangıç şablonu yönetim paneli: özet kartları, kayıt grafiği ve son mesajlar" width="860">
 </a>
 
 <sub>▲ Görsele tıklayarak demoyu açabilirsiniz</sub>
 
 </div>
 
-> **`kurulum/` adresini açın; dört adımda çalışan bir site ve panel elde edin.**
+> **`kurulum/` adresini açın; dört adımda çalışan bir site ve yönetim paneli elde edin.**
 
 ---
 
@@ -59,8 +62,8 @@ veritabanını elle açmazsınız. Sihirbaz önce sunucunuzu denetler, sonra
 
 <table>
 <tr>
-<td width="50%"><img src="docs/screenshots/02-kurulum-gereksinimler.png" alt="Kurulum sihirbazı: PHP sürümü ve eklenti denetimi"></td>
-<td width="50%"><img src="docs/screenshots/03-kurulum-veritabani.png" alt="Kurulum sihirbazı: veritabanı bağlantı adımı"></td>
+<td width="50%"><img src="https://raw.githubusercontent.com/CilginYazilim/cy-php-starter/main/docs/screenshots/02-kurulum-gereksinimler.png" alt="PHP kurulum sihirbazı: PHP sürümü ve eklenti gereksinim denetimi"></td>
+<td width="50%"><img src="https://raw.githubusercontent.com/CilginYazilim/cy-php-starter/main/docs/screenshots/03-kurulum-veritabani.png" alt="PHP kurulum sihirbazı: MySQL veritabanı bağlantı adımı"></td>
 </tr>
 <tr>
 <td align="center"><sub><b>1. adım</b> — gereksinim denetimi</sub></td>
@@ -70,22 +73,22 @@ veritabanını elle açmazsınız. Sihirbaz önce sunucunuzu denetler, sonra
 
 ### Panel
 
-<img src="docs/screenshots/05-panel-ozet.png" alt="Kontrol paneli: özet kartları, kayıt hareketi grafiği ve son mesajlar" width="100%">
+<img src="https://raw.githubusercontent.com/CilginYazilim/cy-php-starter/main/docs/screenshots/05-panel-ozet.png" alt="PHP yönetim paneli: özet kartları, 14 günlük kayıt grafiği ve son mesajlar" width="100%">
 
 <sub>Kontrol paneli. Kartlar, 14 günlük kayıt grafiği ve son mesajlar — hepsi veritabanından, sahte veri yok.</sub>
 
 <table>
 <tr>
-<td width="50%"><img src="docs/screenshots/06-panel-kullanicilar.png" alt="Kullanıcı yönetimi: sunucu taraflı tablo, rol rozetleri"></td>
-<td width="50%"><img src="docs/screenshots/07-panel-mesajlar.png" alt="Mesaj yönetimi: okundu durumu ve toplu işlem"></td>
+<td width="50%"><img src="https://raw.githubusercontent.com/CilginYazilim/cy-php-starter/main/docs/screenshots/06-panel-kullanicilar.png" alt="Kullanıcı yönetimi: sunucu taraflı tablo, rol rozetleri ve toplu işlem"></td>
+<td width="50%"><img src="https://raw.githubusercontent.com/CilginYazilim/cy-php-starter/main/docs/screenshots/07-panel-mesajlar.png" alt="Mesaj yönetimi: iletişim formundan gelen kayıtlar ve okundu durumu"></td>
 </tr>
 <tr>
 <td align="center"><sub>Kullanıcılar — rol rozetleri, arama, toplu işlem</sub></td>
 <td align="center"><sub>Mesajlar — iletişim formundan gelen kayıtlar</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="docs/screenshots/08-panel-ayarlar.png" alt="Site ayarları: tanımdan otomatik üretilen form"></td>
-<td width="50%"><img src="docs/screenshots/09-panel-sistem.png" alt="Sistem bilgisi ve güvenlik denetim listesi"></td>
+<td width="50%"><img src="https://raw.githubusercontent.com/CilginYazilim/cy-php-starter/main/docs/screenshots/08-panel-ayarlar.png" alt="Site ayarları: ayar tanımından otomatik üretilen form"></td>
+<td width="50%"><img src="https://raw.githubusercontent.com/CilginYazilim/cy-php-starter/main/docs/screenshots/09-panel-sistem.png" alt="Sistem bilgisi sayfası ve güvenlik denetim listesi"></td>
 </tr>
 <tr>
 <td align="center"><sub>Site ayarları — form, ayar <b>tanımından</b> üretilir</sub></td>
@@ -97,9 +100,9 @@ veritabanını elle açmazsınız. Sihirbaz önce sunucunuzu denetler, sonra
 
 <table>
 <tr>
-<td width="40%"><img src="docs/screenshots/01-anasayfa.png" alt="Ön yüz ana sayfa"></td>
-<td width="40%"><img src="docs/screenshots/11-koyu-tema.png" alt="Panelin koyu tema görünümü"></td>
-<td width="20%"><img src="docs/screenshots/12-mobil.png" alt="Panelin telefon görünümü"></td>
+<td width="40%"><img src="https://raw.githubusercontent.com/CilginYazilim/cy-php-starter/main/docs/screenshots/01-anasayfa.png" alt="PHP başlangıç şablonunun ön yüz ana sayfası"></td>
+<td width="40%"><img src="https://raw.githubusercontent.com/CilginYazilim/cy-php-starter/main/docs/screenshots/11-koyu-tema.png" alt="Yönetim panelinin koyu tema görünümü"></td>
+<td width="20%"><img src="https://raw.githubusercontent.com/CilginYazilim/cy-php-starter/main/docs/screenshots/12-mobil.png" alt="Yönetim panelinin mobil telefon görünümü"></td>
 </tr>
 <tr>
 <td align="center"><sub>Ön yüz</sub></td>
@@ -112,12 +115,19 @@ veritabanını elle açmazsınız. Sihirbaz önce sunucunuzu denetler, sonra
 
 ## Bu şablon nedir?
 
-Her yeni PHP projesinde baştan yazdığınız teknik altyapıyı hazır sunar.
-Belirli bir iş uygulaması **değildir**; ERP, CRM, CMS, blog, SaaS, REST
-API ya da iç uygulama — hepsinin altına aynı sağlam temeli koyar.
+**CY PHP Starter**, Çılgın Yazılım'ın açık kaynaklı **PHP başlangıç
+şablonudur** (starter kit, boilerplate). Her yeni PHP projesinde baştan
+yazdığınız teknik altyapıyı — kurulum sihirbazı, giriş ve rol-yetki
+sistemi, yönetim paneli, migration, kuyruk, REST API, PWA — hazır ve test
+edilmiş olarak sunar.
 
-**Composer yok, framework yok, CDN yok.** İndirin, `kurulum/` adresini
-açın, birkaç adımda çalışan bir site + panel elde edin.
+Belirli bir iş uygulaması **değildir**; ERP, CRM, CMS, blog, SaaS, REST
+API ya da şirket içi uygulama — hepsinin altına aynı sağlam temeli koyar.
+
+**Composer yok, framework yok, CDN yok.** Saf PHP 8.1+ ve PDO/MySQL ile
+yazılmıştır; paylaşımlı hostingde bile komut satırı olmadan kurulur.
+İndirin, `kurulum/` adresini açın, birkaç adımda çalışan bir site ve
+yönetim paneli elde edin.
 
 ### Tek cümlelik felsefe
 
@@ -132,6 +142,18 @@ ErpPersonel::olustur($user);
 // DOĞRU — çekirdek duyurur, modül dinler
 Events::dispatch(new UserRegistered($user));
 ```
+
+### Framework mü, bu şablon mu?
+
+Laravel ya da Symfony gibi tam bir framework çoğu proje için doğru
+seçimdir. Bu şablon, şu durumlar için yazıldı:
+
+| İhtiyaç | CY PHP Starter | Tam framework |
+|---|---|---|
+| SSH'siz paylaşımlı hosting | Tarayıcıdan kurulur, migration'lar panelden çalışır | Çoğunlukla Composer ve komut satırı ister |
+| Bağımlılık güncellemesi | Yok — `vendor/` klasörü yok | Düzenli `composer update` |
+| Kodu baştan sona okuyabilmek | Saf PHP, küçük ve açıklamalı çekirdek | Framework'ün kendi kavram katmanı |
+| Hazır paket ekosistemi | Yok — ihtiyacınızı kendiniz yazarsınız | Çok geniş |
 
 ---
 
@@ -148,10 +170,10 @@ Events::dispatch(new UserRegistered($user));
 | **Depolama** | `public` / `private` disk · 9 katmanlı yükleme güvenliği · güvenli indirme |
 | **Önbellek** | Dosya / veritabanı / kapalı sürücüleri · `remember()` |
 | **Olaylar** | Yayıncı-dinleyici · hata yalıtımı · test için `fake()` |
-| **Kuyruk** | Veritabanı kuyruğu · atomik ayırma · katlanan yeniden deneme |
+| **Kuyruk** | Veritabanı kuyruğu · atomik ayırma · katlanan yeniden deneme · kilitlenmeye dayanıklı |
 | **Zamanlayıcı** | Tek cron satırı · üst üste binme koruması |
 | **E-posta** | SMTP / mail() / diske yazma · toplu gönderim · kuyruk · panel arayüzü |
-| **REST API** | Standart yanıt zarfı · Bearer anahtarı · hız sınırı · sayfalama |
+| **REST API** | Standart yanıt zarfı · süreli Bearer anahtarı (yalnızca SHA-256 özeti saklanır) · hız sınırı · sayfalama |
 | **Modüller** | Aç/kapa · kendi rotaları, tabloları, görünümleri, menüsü |
 | **PWA** | Panelden yönetilen künye (ad, simge, açılış adresi, görüntüleme modu, renk) · servis çalışanı · çevrimdışı sayfa |
 | **İçerik** | **Sayfa yönetimi** — zengin metin editörü · adres (slug) üretimi · taslak/yayın · menü · sayfa bazlı SEO |
@@ -160,7 +182,8 @@ Events::dispatch(new UserRegistered($user));
 | **İletişim** | Form + spam koruması · **WhatsApp düğmesi** (hazır mesajla) · sosyal medya bağlantıları |
 | **Tema** | Tek renk seçin, panelin ve sitenin tamamı yeniden renklensin |
 | **Mobil** | Ön yüz ve panelin tamamı mobil öncelikli · 44px dokunma hedefleri · yapışkan menü · iOS yakınlaştırma ve çentik payı çözülmüş |
-| **Konsol** | `php cy` — 20 komut, üreteçler dahil |
+| **Konsol** | `php cy` — 21 komut, üreteçler dahil |
+| **Testler** | 112 birim testi (veritabanı gerektirmez) · kurulu siteye duman testi · GitHub Actions'ta PHP 8.1–8.4 |
 
 ---
 
@@ -244,6 +267,7 @@ eksiksiz kurulur.
 ├── assets/                 css · js · images (CDN yok)
 ├── storage/                logs · cache · files · mail (web'e kapalı)
 ├── upload/                 Yüklenen görseller (PHP çalıştırma kapalı)
+├── tests/                  unit.php · smoke.php (web'e kapalı)
 └── kurulum/                Sihirbaz + database.sql + demo.sql (sonra SİLİN)
 ```
 
@@ -347,11 +371,12 @@ php tests/smoke.php http://localhost/proje           # kurulu siteye HTTP deneti
 php tests/smoke.php http://localhost/proje --kullanici=admin --parola=… --api=cy_…
 ```
 
-`smoke.php` siteyi değiştirmez: kurulum kilidi, gizli dosyalar (`.env`,
-`.git/`), açık yönlendirme, kaba kuvvet kilidi, kullanıcı tespiti,
-oturum çerezi, servis çalışanı ve API'yi dışarıdan sınar. Kısa sürede
-arka arkaya çalıştırırsanız IP kilidi devreye girer; ilgili testler
-"atlandı" görünür (koruma çalışıyor demektir).
+`unit.php` 112 testi veritabanı olmadan çalıştırır. `smoke.php` siteyi
+değiştirmez: kurulum kilidi, gizli dosyalar (`.env`, `.git/`), açık
+yönlendirme, kaba kuvvet kilidi, kullanıcı tespiti, oturum çerezi, servis
+çalışanı ve API'yi dışarıdan sınar. Kısa sürede arka arkaya
+çalıştırırsanız IP kilidi devreye girer; ilgili testler "atlandı" görünür
+(koruma çalışıyor demektir).
 
 GitHub Actions her itmede PHP 8.1–8.4 üzerinde sözdizimi denetimi ve
 birim testlerini çalıştırır (`.github/workflows/ci.yml`).
@@ -418,12 +443,14 @@ ApiResponse::paginated($items, $total, $page, $perPage);
 Şablonun her parçası için çalışan örnek kod, açıklamalı anlatım ve
 kopyalanabilir parçacıklar **Çılgın Yazılım Kod Kütüphanesi**'nde:
 
-| Kaynak | Adres |
+| Kaynak | Bağlantı |
 |---|---|
-| Kod kütüphanesi (tüm konular) | <https://cilginyazilim.com/kutuphane> |
-| Bu şablonun sayfası | <https://cilginyazilim.com/kutuphane/php-baslangic-sablonu> |
-| Depo ve sürümler | <https://github.com/CilginYazilim/cy-php-starter> |
-| Mimari ve genişletme rehberi | [SISTEM.md](SISTEM.md) |
+| Tüm konular | [Çılgın Yazılım Kod Kütüphanesi](https://cilginyazilim.com/kutuphane) |
+| Bu şablonun tanıtım sayfası | [PHP Başlangıç Şablonu](https://cilginyazilim.com/kutuphane/php-baslangic-sablonu) |
+| Çalışan örnek | [Canlı demo](https://cilginyazilim.com/kutuphane/uygulama/cy-php-starter/) |
+| Mimari ve genişletme rehberi | [Sistem Kılavuzu (SISTEM.md)](https://github.com/CilginYazilim/cy-php-starter/blob/main/SISTEM.md) |
+| Sürüm notları | [Değişiklik Günlüğü (CHANGELOG.md)](https://github.com/CilginYazilim/cy-php-starter/blob/main/CHANGELOG.md) · [GitHub sürümleri](https://github.com/CilginYazilim/cy-php-starter/releases) |
+| Kaynak kod | [GitHub deposu](https://github.com/CilginYazilim/cy-php-starter) |
 
 Bu bağlantılar sitenin **alt bilgisinde de sabit durur** (Örnek Kodlar
 sütunu); kurduğunuz projede gezinirken bir tık uzaktadır.
@@ -451,6 +478,9 @@ Kırılma noktaları iki yüzde de aynıdır: `992px` (tablet) ve `768px`
 ---
 
 ## Güvenlik
+
+Şablon iki ayrı güvenlik incelemesinden geçti (1.3.0 ve 1.4.0). Her bulgu
+yerel bir kurulumda yeniden üretildi, düzeltildi ve testle sınandı.
 
 | Tehdit | Önlem |
 |---|---|
@@ -550,7 +580,8 @@ rengini kendinize göre ayarlayın; arayüz anında yeni renginizi alır.
 
 ## Sürüm
 
-Sürüm numarası **kodda, tek yerde** durur:
+Güncel sürüm **1.4.0** (6 Ekim 2026). Sürüm numarası **kodda, tek yerde**
+durur:
 
 ```php
 // config/app.php
@@ -558,98 +589,54 @@ Sürüm numarası **kodda, tek yerde** durur:
 ```
 
 `Panel → Sistem Bilgisi` sayfası bu değeri okur. Şablonu güncellediğinizde
-numara kendiliğinden gelir; veritabanında ayrıca tutulmaz. Sürümlerin
-tam listesi: [CHANGELOG.md](CHANGELOG.md).
+numara kendiliğinden gelir; veritabanında ayrıca tutulmaz.
 
-> **GÜNCELLİYORSANIZ (1.2.x ya da 1.3.x → 1.4.0)** — sırayla:
->
-> 1. **Yedek alın** (veritabanı + `.env`).
-> 2. Kodu çekin.
-> 3. `php cy migrate` çalıştırın — SSH yoksa **Panel → Sistem Bilgisi →
->    Migration'ları Çalıştır**. Migration'lar çalıştırılmadan da giriş
->    yapılabilir; panel her sayfada uyarır. Eski kurulum migration'ları
->    bu adımda **kendiliğinden temel partiye (0) taşınır**; elle SQL
->    gerekmez.
-> 4. `.env` dosyanızı açın ve şunları kontrol edin (eski sihirbaz bu
->    satırları geliştirme değerleriyle yazıyordu):
->    - `APP_ENV=production` ve `APP_DEBUG=false` olmalı (satırları SİLMEYİN,
->      değerlerini değiştirin).
->    - `APP_KEY` boşsa doldurun: `php -r "echo bin2hex(random_bytes(32));"`
->    - `SESSION_NAME` boşsa doldurun (örn. `CYS_` + 10 rastgele harf/rakam);
->      aynı alan adında başka kurulum varsa her biri farklı olmalı.
->    - Site bir vekilin arkasındaysa `TRUSTED_PROXIES` yazın.
->    - Eksik anahtarlar için `.env.example`'a bakın.
-> 5. `php cy config:cache` kullanıyorsanız yeniden çalıştırın.
->
-> Kurulum kimliği artık yalnızca `APP_KEY`'den türetildiği için bütün
-> kullanıcılar **bir kez** yeniden giriş yapar.
+### Sürüm geçmişi
 
-### 1.4.0 — İkinci inceleme
+| Sürüm | Tarih | Öne çıkanlar |
+|---|---|---|
+| [1.4.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.4.0) | 2026-10-06 | İkinci güvenlik incelemesi: boşluklu/Türkçe klasörde ve Redis oturumunda giriş, kuyrukta kilitlenme, kayıtta e-posta doğrulaması, parola değişince düşen API anahtarları, hizmet engellemeye dayanıklı IP kilidi |
+| [1.3.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.3.0) | 2026-10-06 | Kapsamlı güvenlik incelemesi: kurulum sihirbazı ele geçirme, açık yönlendirme, kaba kuvvet kilidi, oturum sürümü; REST API anahtarları, birim ve duman testleri, GitHub Actions |
+| [1.2.1](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.2.1) | 2026-09-05 | Takma ad (vitrin) adresinden servis edilen kurulumda 404 ve yönlendirme döngüsü düzeltildi |
+| [1.2.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.2.0) | 2026-09-04 | 12 ekran görüntüsü ve Canlı Demo bölümü |
+| [1.1.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.1.0) | 2026-08-30 | Mobil düzen baştan elden geçirildi, sürüm numarası tek kaynağa indi |
+| [1.0.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.0.0) | 2026-08-18 | İlk kararlı sürüm |
 
-İkinci güvenlik incelemesinin bulguları kapatıldı; ayrıntılar
-[CHANGELOG.md](CHANGELOG.md) içinde. Öne çıkanlar: boşluklu/Türkçe
-klasörde ve Redis oturumunda giriş yapılamaması, kuyruk işçilerinde
-kilitlenme, eski kurulumların korumasız kalması, migration'sız güncellemede
-500, parola değişince düşmeyen API anahtarları, hizmet engellemeye açık
-IP kilidi, kayıtta e-posta doğrulaması.
+Her sürümün ayrıntısı:
+[CHANGELOG.md](https://github.com/CilginYazilim/cy-php-starter/blob/main/CHANGELOG.md).
 
-### 1.3.0 — Güvenlik ve kararlılık
+### Güncelleme (1.2.x ya da 1.3.x → 1.4.0)
 
-Kapsamlı bir güvenlik incelemesinin bulguları kapatıldı; ayrıntılar ve
-güncelleme adımları [CHANGELOG.md](CHANGELOG.md) içinde. Öne çıkanlar:
-kurulum sihirbazı ele geçirme açığı, açık yönlendirme, saat dilimi
-farkında devre dışı kalan kaba kuvvet kilidi, parola değişince düşmeyen
-oturumlar, kurulumdan sonra veri silen `migrate:rollback` ve varsayılan
-olarak açık gelen hata ayıklama modu.
+1. **Yedek alın** (veritabanı + `.env`).
+2. Kodu çekin.
+3. `php cy migrate` çalıştırın — SSH yoksa **Panel → Sistem Bilgisi →
+   Migration'ları Çalıştır**. Migration'lar çalıştırılmadan da giriş
+   yapılabilir; panel her sayfada uyarır. Eski kurulum migration'ları bu
+   adımda **kendiliğinden temel partiye (0) taşınır**; elle SQL gerekmez.
+4. `.env` dosyanızı açın ve şunları kontrol edin (eski sihirbaz bu
+   satırları geliştirme değerleriyle yazıyordu):
+   - `APP_ENV=production` ve `APP_DEBUG=false` olmalı (satırları SİLMEYİN,
+     değerlerini değiştirin).
+   - `APP_KEY` boşsa doldurun: `php -r "echo bin2hex(random_bytes(32));"`
+   - `SESSION_NAME` boşsa doldurun (örn. `CYS_` + 10 rastgele harf/rakam);
+     aynı alan adında başka kurulum varsa her biri farklı olmalı.
+   - Site bir vekilin arkasındaysa `TRUSTED_PROXIES` yazın.
+   - Eksik anahtarlar için `.env.example`'a bakın.
+5. `php cy config:cache` kullanıyorsanız yeniden çalıştırın.
 
-> 1.3.0'a güncelliyorsanız da yukarıdaki 1.4.0 adımlarını izleyin;
-> 1.4.0 bu sürümün eksik bıraktığı güncelleme adımlarını da kapsar.
-
-### 1.1.0
-
-**Mobil**
-
-- Ön yüz menüsü yapışkan hâle geldi; hamburger açılır panel kendi içinde
-  kayıyor, simgesi açıkken çarpıya dönüyor
-- Tema düğmesi hamburgerin dışına alındı — menüyü açmadan erişilebiliyor
-- Ön yüzdeki düğme ve menü satırları 44–46px dokunma hedefine çıkarıldı
-- Ön yüz form alanlarına 16px kuralı eklendi (iOS'un otomatik
-  yakınlaştırması artık düzeni bozmuyor); daha önce yalnızca panelde vardı
-- Ana sayfadaki hero eylemleri telefonda tek sütuna iniyor
-- İletişim sayfasında telefonda **form önce**, bilgi kartları sonra geliyor
-- Alt bilgi sütunları telefonda alt alta diziliyor; sabit WhatsApp düğmesi
-  artık alt bilginin son satırını kapatmıyor
-- Panelde özet kartların tek sütuna inme sınırı 400px'ten 360px'e çekildi —
-  eski sınır iPhone 12/13/14 (390px) ve SE (375px) dahil neredeyse her
-  telefonu kapsıyor, kontrol paneli gereksiz yere uzuyordu
-
-**Düzeltmeler**
-
-- `site.css` ile `site-sections.css` arasındaki çakışan kurallar
-  temizlendi. Bunlardan biri telefonda hero kartının logosunu tamamen
-  gizliyordu (`.cy-hero__logo { display: none }`)
-- Sürüm numarası tek kaynağa indirildi. Üç farklı yerde üç farklı değer
-  duruyordu: `kurulum/database.sql` "2.1.0", Sistem Bilgisi varsayılanı
-  "1.0.0", GitHub sürüm etiketi "v1.0.0"
-
-**Eklenenler**
-
-- Alt bilgide **Örnek Kodlar** sütunu: kod kütüphanesi, şablonun sayfası
-  ve depo bağlantısı
-- `icon()` yardımcısına `book` ve `code` simgeleri
-
-> **Güncelliyorsanız:** `php cy migrate` çalıştırın. Tek migration var,
-> veritabanındaki ölü `sistem_surum` ayarını siler.
+Kurulum kimliği artık yalnızca `APP_KEY`'den türetildiği için bütün
+kullanıcılar **bir kez** yeniden giriş yapar. 1.1.0'dan güncelliyorsanız
+da aynı adımlar yeterlidir.
 
 ---
 
 <div align="center">
 
-**Ayrıntılı mimari, tasarım kararları ve genişletme rehberi için:
-[SISTEM.md](SISTEM.md)**
+**Ayrıntılı mimari, tasarım kararları ve genişletme rehberi:
+[Sistem Kılavuzu](https://github.com/CilginYazilim/cy-php-starter/blob/main/SISTEM.md)**
 
-**Örnek kodlar: [cilginyazilim.com/kutuphane](https://cilginyazilim.com/kutuphane)**
+**Örnek kodlar: [Çılgın Yazılım Kod Kütüphanesi](https://cilginyazilim.com/kutuphane)**
 
-MIT Lisansı · **Çılgın Yazılım** · [cilginyazilim.com](https://cilginyazilim.com)
+[MIT Lisansı](https://github.com/CilginYazilim/cy-php-starter/blob/main/LICENSE) · **Çılgın Yazılım** · [cilginyazilim.com](https://cilginyazilim.com)
 
 </div>

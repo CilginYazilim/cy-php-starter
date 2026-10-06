@@ -2,7 +2,15 @@
 
 Bu klasördeki kareler, **bu depodaki kodun kurulduktan sonraki hâlidir**.
 Hepsi `kurulum/` sihirbazı tamamlandıktan sonra, sihirbazın yüklediği
-örnek veriyle çekilmiştir — gerçek müşteri verisi yoktur.
+örnek veriyle çekilmiştir — gerçek müşteri verisi yoktur. Kareler 1.2.0
+sürümünde çekildi; 1.3.0 ve 1.4.0'ın eklediği bölümler (Hesabım → API
+Anahtarları ve Oturumlar, panel uyarıları, Sistem Bilgisi'ndeki migration
+düğmesi) karelerde yer almaz.
+
+Ana [README](https://github.com/CilginYazilim/cy-php-starter#readme) bu
+görselleri `raw.githubusercontent.com` üzerinden mutlak adresle çağırır;
+böylece README'yi içe aktaran siteler de görselleri gösterebilir. Dosya
+adını değiştirirseniz README'deki adresi de güncelleyin.
 
 | Dosya | İçerik |
 |---|---|

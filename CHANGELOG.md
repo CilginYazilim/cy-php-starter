@@ -1,8 +1,23 @@
-# Değişiklik Günlüğü
+# Değişiklik Günlüğü — CY PHP Starter
+
+[PHP Başlangıç Şablonu (CY PHP Starter)](https://github.com/CilginYazilim/cy-php-starter)
+sürümlerinde yapılan bütün önemli değişiklikler bu dosyadadır: güvenlik
+düzeltmeleri, yeni özellikler ve her sürümün güncelleme adımları.
 
 Bu dosyanın biçimi [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/)
 kalıbını izler ve proje [Semantic Versioning](https://semver.org/lang/tr/)
-kurallarına uyar.
+kurallarına uyar. Sürümlerin indirilebilir paketleri
+[GitHub sürümleri](https://github.com/CilginYazilim/cy-php-starter/releases)
+sayfasındadır.
+
+| Sürüm | Tarih | Özet |
+|---|---|---|
+| [1.4.0](#140--2026-10-06) | 2026-10-06 | İkinci güvenlik incelemesi |
+| [1.3.0](#130--2026-10-06) | 2026-10-06 | Güvenlik ve kararlılık |
+| [1.2.1](#121--2026-09-05) | 2026-09-05 | Takma ad (vitrin) adresi düzeltmesi |
+| [1.2.0](#120--2026-09-04) | 2026-09-04 | Ekran görüntüleri ve Canlı Demo |
+| [1.1.0](#110--2026-08-30) | 2026-08-30 | Mobil düzen, tek kaynaktan sürüm |
+| [1.0.0](#100--2026-08-18) | 2026-08-18 | İlk kararlı sürüm |
 
 ---
 
@@ -396,8 +411,79 @@ düzeltildi ve yeniden sınandı; testler `tests/` klasöründe.
   hangi karenin ne gösterdiğini listeliyor. Görsellerin ne zaman
   yenileneceğine dair kural korundu.
 
+> 1.2.0 ve 1.2.1'de `config/app.php` içindeki sürüm numarası
+> güncellenmemişti; Sistem Bilgisi sayfası bu iki sürümde "1.1.0"
+> gösterir. 1.3.0'da düzeltildi.
+
 ---
 
-> Bu sürümden öncesi ayrı bir günlükte tutulmuyordu. Daha eski
-> değişiklikler için depo geçmişine ve `SISTEM.md` dosyasına
-> bakabilirsiniz.
+## [1.1.0] — 2026-08-30
+
+Mobil düzenin baştan sona elden geçirildiği ve sürüm numarasının tek
+kaynağa indirildiği sürüm.
+
+### Değiştirildi — mobil
+
+- Ön yüz menüsü yapışkan hâle geldi; hamburger açılır panel kendi içinde
+  kayıyor, simgesi açıkken çarpıya dönüyor.
+- Tema düğmesi hamburgerin dışına alındı — menüyü açmadan erişilebiliyor.
+- Ön yüzdeki düğme ve menü satırları 44–46px dokunma hedefine çıkarıldı.
+- Ön yüz form alanlarına 16px kuralı eklendi (iOS'un otomatik
+  yakınlaştırması artık düzeni bozmuyor); daha önce yalnızca panelde vardı.
+- Ana sayfadaki hero eylemleri telefonda tek sütuna iniyor.
+- İletişim sayfasında telefonda **form önce**, bilgi kartları sonra geliyor.
+- Alt bilgi sütunları telefonda alt alta diziliyor; sabit WhatsApp düğmesi
+  artık alt bilginin son satırını kapatmıyor.
+- Panelde özet kartların tek sütuna inme sınırı 400px'ten 360px'e
+  çekildi — eski sınır iPhone 12/13/14 (390px) ve SE (375px) dahil
+  neredeyse her telefonu kapsıyor, kontrol paneli gereksiz yere uzuyordu.
+
+### Düzeltildi
+
+- `site.css` ile `site-sections.css` arasındaki çakışan kurallar
+  temizlendi. Bunlardan biri telefonda hero kartının logosunu tamamen
+  gizliyordu (`.cy-hero__logo { display: none }`).
+- Sürüm numarası tek kaynağa indirildi (`config/app.php` → `'version'`).
+  Üç farklı yerde üç farklı değer duruyordu: `kurulum/database.sql`
+  "2.1.0", Sistem Bilgisi varsayılanı "1.0.0", GitHub sürüm etiketi
+  "v1.0.0".
+
+### Eklendi
+
+- Alt bilgide **Örnek Kodlar** sütunu: kod kütüphanesi, şablonun sayfası
+  ve depo bağlantısı.
+- `icon()` yardımcısına `book` ve `code` simgeleri.
+
+### Güncelleme
+
+`php cy migrate` çalıştırın. Tek migration var, veritabanındaki ölü
+`sistem_surum` ayarını siler.
+
+---
+
+## [1.0.0] — 2026-08-18
+
+İlk kararlı sürüm.
+
+### Eklendi
+
+- **Görsel kurulum sihirbazı:** gereksinim denetimi, veritabanı bağlantısı,
+  `.env` üretimi, yönetici hesabı; komut satırı gerektirmez ve son adımda
+  kendi klasörünü siler.
+- **MVC benzeri yapı:** `app/`, `config/`, `routes/`, `views/` ayrımı;
+  temiz adresli yönlendirici, ara katmanlar, Repository deseni.
+- **Kimlik ve oturum:** giriş/kayıt/çıkış, "beni hatırla", rol-yetki
+  sistemi, CSRF koruması, sertleştirilmiş oturum.
+- **Yönetim paneli:** kullanıcılar, mesajlar, sayfa yönetimi, bölüm bölüm
+  site ayarları, logo ve favicon yükleme, sistem bilgisi.
+- **Ön yüz:** ana sayfa, iletişim formu, içerik sayfaları, SEO alanları.
+- **PWA:** panelden yönetilen künye, servis çalışanı, çevrimdışı sayfa.
+- **Altyapı:** PDO/MySQL, migration ve seeder, önbellek, olaylar, kuyruk,
+  zamanlayıcı, e-posta, REST API temeli, modül sistemi ve `php cy` konsolu.
+
+[1.4.0]: https://github.com/CilginYazilim/cy-php-starter/compare/v1.3.0...v1.4.0
+[1.3.0]: https://github.com/CilginYazilim/cy-php-starter/compare/v1.2.1...v1.3.0
+[1.2.1]: https://github.com/CilginYazilim/cy-php-starter/compare/v1.2.0...v1.2.1
+[1.2.0]: https://github.com/CilginYazilim/cy-php-starter/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/CilginYazilim/cy-php-starter/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.0.0

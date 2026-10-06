@@ -1,8 +1,12 @@
 # CY PHP Starter — Sistem Kılavuzu
 
+**PHP Başlangıç Şablonunun mimarisi, tasarım kararları ve genişletme rehberi** · Sürüm 1.4.0
+
 > Bu dosya sistemin **tamamını** anlatır: mimari kararlar, her katmanın
 > ne işe yaradığı, neden öyle yazıldığı ve nasıl genişletileceği.
-> Hızlı başlangıç için [README.md](README.md) yeterlidir.
+> Hızlı başlangıç için [README](https://github.com/CilginYazilim/cy-php-starter#readme)
+> yeterlidir; sürüm notları [CHANGELOG.md](https://github.com/CilginYazilim/cy-php-starter/blob/main/CHANGELOG.md)
+> içinde, örnek kodlar [Çılgın Yazılım Kod Kütüphanesi](https://cilginyazilim.com/kutuphane)'nde.
 
 ---
 
@@ -1188,6 +1192,7 @@ php cy yardim migrate       # ayrıntılı yardım
 | queue | `queue:work` · `queue:status` |
 | schedule | `schedule:run` (`--list`, `--force`) |
 | mail | `mail:work` · `mail:test` |
+| api | `api:token` (`--gun=`, `--suresiz`, `--liste`, `--iptal=`) |
 
 **Çıkış kodları anlamlıdır:** 0 başarı, ≠0 hata. Cron ve CI buna bakar.
 
@@ -1525,6 +1530,8 @@ nasıl çözüleceğini de yazar.
 ---
 
 <div align="center">
+
+[PHP Başlangıç Şablonu](https://cilginyazilim.com/kutuphane/php-baslangic-sablonu) · [Canlı demo](https://cilginyazilim.com/kutuphane/uygulama/cy-php-starter/) · [GitHub](https://github.com/CilginYazilim/cy-php-starter)
 
 **Çılgın Yazılım** · [cilginyazilim.com](https://cilginyazilim.com)
 
