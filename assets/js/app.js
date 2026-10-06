@@ -464,6 +464,31 @@ window.CY = (function ($) {
             reader.readAsDataURL(file);
         });
 
+        /* --- Yalnızca bir alan değişince gereken alanlar ---
+         * data-reveal-on-change="#eposta" taşıyan blok, hedef alanın
+         * değeri sayfa açıldığındaki değerden (data-original) farklı
+         * olunca görünür. Gizliyken içindeki alanlar DEVRE DIŞIDIR:
+         * forma gönderilmez, tarayıcı da onları otomatik doldurmaz. */
+        $('[data-reveal-on-change]').each(function () {
+            var $block  = $(this);
+            var $source = $($block.data('reveal-on-change'));
+
+            if (!$source.length) { return; }
+
+            var original = String($source.data('original') !== undefined ? $source.data('original') : $source.val());
+            var normalize = function (value) { return $.trim(String(value)).toLowerCase(); };
+
+            var sync = function () {
+                var changed = normalize($source.val()) !== normalize(original);
+
+                $block.toggleClass('d-none', !changed);
+                $block.find('input, select, textarea').prop('disabled', !changed);
+            };
+
+            $source.on('input change', sync);
+            sync();
+        });
+
         /* =========================================================
          *  6) ÖN YÜZ ÜST MENÜSÜ
          * ---------------------------------------------------------

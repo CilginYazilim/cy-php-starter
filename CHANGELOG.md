@@ -6,6 +6,170 @@ kurallarına uyar.
 
 ---
 
+## [1.4.0] — 2026-10-06
+
+İkinci güvenlik incelemesinin bulguları. 1.3.0'ın getirdiği iki gerilemeyi
+(boşluklu klasör ve Redis oturumunda giriş yapılamaması) kapatır; eski
+kurulumların güncellemede korumasız kalmasını önler. Her madde yerelde
+yeniden üretildi, düzeltildi ve canlı sınandı.
+
+### Güncelleme adımları (1.2.x ya da 1.3.x → 1.4.0)
+
+1. **Yedek alın** (veritabanı + `.env`).
+2. Kodu çekin ve `php cy migrate` çalıştırın. SSH yoksa **Panel → Sistem
+   Bilgisi → Migration'ları Çalıştır** (migration'lar çalıştırılmadan da
+   giriş yapılabilir; panel her sayfada uyarır). 3 yeni migration var;
+   sonuncusu eski kurulum migration'larını **kendiliğinden temel partiye
+   (0)** taşır — 1.3.0'daki elle SQL adımı artık gerekmez.
+3. `.env`'de **`APP_ENV=production`** ve **`APP_DEBUG=false`** olduğundan
+   emin olun. 1.2.1 sihirbazı `local` / `true` yazıyordu; satırları
+   silmeyin, değerlerini değiştirin. Debug açık ve site yerel bir adresten
+   (localhost, *.test, *.local) açılmıyorsa panel artık her sayfada
+   kırmızı uyarı gösterir.
+4. `APP_KEY` ve `SESSION_NAME` boşsa doldurun (bkz. `.env.example`).
+   Site Cloudflare / yük dengeleyici / ters vekil arkasındaysa
+   `TRUSTED_PROXIES` yazın.
+5. Kurulum kimliği artık yalnızca `APP_KEY`'den türetilir: bütün
+   kullanıcılar bir kez yeniden giriş yapar.
+6. Kayıt formu artık varsayılan olarak **e-posta doğrulaması** ister.
+   E-posta ayarları yapılmadıysa kayıt formu kapanır; istemiyorsanız
+   **Ayarlar → Sistem → Kayıtta E-posta Doğrulaması**'nı kapatın.
+7. `php cy api:token` süre verilmezse artık **90 gün** geçerli anahtar
+   üretir; süresiz anahtar için `--suresiz` yazın.
+
+### Düzeltildi — yüksek (giriş tamamen bozuluyordu)
+
+- **Klasör adında boşluk ya da Türkçe karakter varsa giriş
+  yapılamıyordu.** Oturum çerezinin yolu çözülmüş hâliyle (`/my app/`)
+  yazılıyor, tarayıcı ise kodlanmış yolu (`/my%20app/`) karşılaştırıyordu;
+  çerez geri gelmediği için her form CSRF hatasıyla düşüyordu. "Beni
+  hatırla" çerezi de boşluk yüzünden `setcookie()` içinde hata verip
+  sayfayı 500'e düşürüyordu. Çerez yolu artık tarayıcının gönderdiği
+  biçimde kodlanır (`Url::cookiePath`).
+- **Redis/Memcached oturum sürücüsünde giriş yapılamıyordu.** Oturum
+  klasörü sürücüye bakılmadan dosya yoluna çekiliyordu. Artık yalnızca
+  `session.save_handler=files` iken değiştirilir.
+
+### Düzeltildi — orta
+
+- **Mail ve iş kuyruğunda kilitlenme (deadlock).** Takılı satırları
+  serbest bırakan aralık UPDATE'i her ayırmada çalışıyor, eşzamanlı
+  işçilerle çakışıp 1213 üretiyordu; gönderilmiş bir mektup "başarısız
+  (Deadlock)" sayılabiliyordu (yeniden kuyruğa alınınca kopya giderdi).
+  Artık: temizlik süreç başına dakikada bir; önce numaralar okunur, sonra
+  birincil anahtarla güncellenir; 1213/1205 yeniden denenir
+  (`Database::retry`); gönderim başarılıysa durum yazılamasa bile mektup
+  asla "başarısız" sayılmaz. Tamamlanan iş, silinirken kilitlenme olsa
+  bile yeniden çalıştırılmaz. 6 işçi × 3 turda 180 mektup kilitlenmeden,
+  tekrarsız gönderildi.
+- **Çöken işçinin ayırdığı partinin tamamı kalıcı olarak "başarısız"
+  sayılıyordu.** Mektuplar artık TEK TEK, gönderimden hemen önce
+  ayrılır (`MailRepository::claimNext`); 15 dakika takılan satır deneme+1
+  ile kuyruğa döner, yalnızca deneme hakkı (3) bitince başarısız olur.
+- **1.2.1'den yükseltilen kurulumlar korumasız kalıyordu.** Kurulum
+  migration'ları 1. partide kaldığı için ilk `migrate:rollback` kurulum
+  tablolarını siliyordu; CHANGELOG'daki debug adımı yanıltıcıydı. Artık
+  bir migration eski kayıtları temel partiye taşır; çekirdek
+  migration'lar `baseline()` ile kendilerini temel partiye yazar (elle
+  kurulumda da); panel debug + yerel olmayan adres, bekleyen migration ve
+  boş `APP_KEY` için uyarır.
+- **Migration çalıştırılmadan güncellenen kurulumda giriş 500
+  veriyordu** (`oturum_surumu` sütunu yok). Sütun yoksa sürüm 0 kabul
+  edilir, giriş çalışır; bekleyen migration'lar panelden tek tıkla
+  çalıştırılır (SSH'siz hostlar için).
+- **API anahtarları parola değişiminde ve "Diğer cihazlardan çıkış"ta
+  düşmüyordu.** Parola değişince kullanıcının bütün anahtarları silinir;
+  "Diğer cihazlardan çıkış" için "API anahtarlarımı da iptal et" kutusu
+  eklendi (varsayılan işaretli). Panelden anahtar üretmek mevcut parolayı
+  ister (hız sınırlı); "Süresiz" seçeneği kalktı.
+- **IP geneli kilit hizmet engellemeye açıktı.** 30 rastgele kullanıcı
+  adı yöneticiyi 15 dakika kilitliyor; vekil arkasında bütün site
+  kilitleniyor; IPv6'da adres değiştirerek aşılıyor; paralel isteklerle
+  sınır aşılıyordu. Artık:
+  - deneme parola doğrulanmadan ÖNCE yazılır, yalnızca kendinden önceki
+    denemeler sayılır (20 paralel denemeden en fazla 5'i geçer);
+  - IP için ham hata yerine **farklı kimlik sayısı** ölçülür ve sert kilit
+    yerine giderek artan bekleme (1, 2, 4… sn, en fazla kilit süresi)
+    uygulanır;
+  - başarılı girişte imzalı **güvenilen cihaz çerezi** verilir; o
+    tarayıcı IP yavaşlatmasına takılmaz, kimlik kilidi ona ayrı sayılır
+    (parola değişince geçersiz);
+  - `TRUSTED_PROXIES` / `TRUSTED_PROXY_HEADER` ile vekil arkasında gerçek
+    adres okunur (zincir sağdan okunur, yalnızca güvenilen vekilden);
+  - IPv6 /64 bloğu tek adres sayılır; `(ip, attempted_at)` indeksi eklendi.
+- **Sihirbazın "dolu veritabanının üstüne yaz" onayı yarıda
+  kalabiliyordu.** Kendi tablonuz `kullanicilar`'a yabancı anahtar
+  veriyorsa beş tablo silindikten sonra işlem hata veriyor, `.env`
+  yazılmıyordu. Yabancı anahtarlar artık hiçbir şeye dokunmadan önce
+  denetlenir; onay ekranı silinecek ve dokunulmayacak tabloları adıyla
+  listeler.
+- **Kayıt formunda dört açık.** "Bu e-posta zaten kayıtlı" mesajı
+  hesapları ele veriyordu; başarısız gönderimler sayılmıyordu; zaman
+  damgası imzasızdı ve alan gönderilmezse kontrol atlanıyordu; paralel
+  isteklerle saatlik sınır aşılıyordu. Artık: **e-posta doğrulaması**
+  (tablosuz, `APP_KEY` ile imzalı bağlantı; hesap `onay_bekliyor`
+  durumunda bekler, hoş geldin mektubu doğrulamadan sonra gider); kayıtlı
+  adreste ekran yeni kayıtla AYNI yanıtı verir, adresin sahibine "zaten
+  hesabınız var" mektubu gider; damga imzalı ve zorunlu (iletişim
+  formunda da); her gönderim sayılır (saatte 20); sayaçlar kilitli
+  dosyada (`Throttle::attempt`) — 10 paralel kayıttan en fazla 5'i açılır.
+- **"Beni hatırla" yarışı.** Çalınan çerezle sürekli istek atan saldırgan,
+  parola değişimiyle aynı anda yenileme yapınca oturumunu koruyabiliyordu.
+  Jeton artık `WHERE hatirla_token = eski AND oturum_surumu = v` ile
+  koşullu döndürülür; satır güncellenmezse oturum açılmaz.
+- **Her dağıtım herkesi çıkarıyordu** (Deployer/Capistrano gibi sürüm
+  klasörlü dağıtımlar). `APP_KEY` doluyken kurulum kimliği yalnızca
+  ondan türetilir.
+
+### Düzeltildi — düşük
+
+- Bakım modunda `/api/v1/...` ve `sitemap.xml` artık `503` (+ `Retry-After`)
+  döner; bakımı aşma yetkisi olanın anahtarı çalışır, `robots.txt` açık kalır.
+- `405` yanıtı `Allow` başlığını taşır; `429` hız sınırları ortak yoldan
+  (`HttpException::tooManyRequests`, `Retry-After` ile) döner.
+- `//klasor/` ile gelinince taban yolu çift bölüyle (`//klasor`) çıkıyor,
+  bağlantılar başka bir siteye gidiyordu; taban artık tek bölüye indirilir.
+- `pwa.js` PWA kapatılınca aynı alan adındaki BÜTÜN servis çalışanlarını
+  siliyordu; artık yalnızca bu uygulamanın kapsamındakini. Önbellek adları
+  kuruluma özel (`cy-v3|<yol>|tür`); kurulumda önceden alınan sayfalar
+  çerezsiz istenir; çıkışta sayfa önbelleği silinir.
+- `_method` yalnızca POST gövdesinden okunur ve POST yalnızca
+  PUT/PATCH/DELETE'e dönüşebilir (`POST /giris?_method=GET` GET gibi
+  işleniyordu).
+- `make:controller Controller` ve `make:model Die` artık reddedilir;
+  üretilen sınıf, dosyanın içe aktardığı bir adla çakışırsa dosya yazılmaz.
+- Görsel bellek tahmini gerçekçi hâle geldi (12 MP fotoğraf 128 MB'ta
+  işlenir); EXIF yönü küçültülmüş görsele uygulanır ve aynalı yönler
+  (2, 4, 5, 7) dahil 8 değerin hepsi desteklenir.
+- Doğrulama düzenli ifadelerinde `$` yerine `\z` (sondaki satır sonu
+  kabul edilmiyor; 26 kalıp).
+- `api:token`: numarasız `--iptal` 1 numaralı anahtarı siliyordu, `--gun=90g`
+  sessizce süresiz anahtar üretiyordu — ikisi de artık hata verir; süre
+  verilmezse 90 gün. Panelde 99999 gün de reddedilir. API tarihleri
+  ISO 8601.
+- Yönetici kendi parolasını Kullanıcılar ekranından değiştirince kendi
+  oturumu kapanıyordu; "Diğer cihazlardan çıkış" bu cihazın "beni
+  hatırla" kaydını da siliyordu. İkisi de düzeldi
+  (`Auth::refreshCurrentDevice`).
+- Profil formunda tarayıcı otomatik doldurması telefonu bozuyordu:
+  "Mevcut parola" alanı yalnızca e-posta değişince görünür, parola
+  yöneticileri için gizli kullanıcı adı alanı eklendi.
+- `.env.example` kodun okuduğu bütün anahtarları içerir; sihirbazın
+  yazdığı `.env`'de eksik 7 anahtar eklendi; `EVENTS_STRICT` `APP_DEBUG`
+  yokken artık kapalı.
+
+### Eklendi
+
+- `App\Core\Ip` (vekil desteği, CIDR, IPv6 kovası), `App\Core\Signer`
+  (APP_KEY ile HMAC; APP_KEY boşsa `storage/app.key`), `App\Core\Registration`,
+  `App\Core\PanelNotices`, `Database::retry()`, `Migration::baseline()`,
+  `Input::positiveIntOption()`.
+- Ayar: `sistem_kayit_dogrulama`. Durum: `onay_bekliyor`. Rota:
+  `kayit/dogrula`, `panel/sistem/migrate`.
+- Birim testleri 68 → 112.
+
+---
+
 ## [1.3.0] — 2026-10-06
 
 Kapsamlı bir güvenlik incelemesinin (yerel kurulum üzerinde canlı
@@ -20,14 +184,18 @@ düzeltildi ve yeniden sınandı; testler `tests/` klasöründe.
    kullanılır):
    `APP_KEY=` (64 onaltılık karakter: `php -r "echo bin2hex(random_bytes(32));"`)
    ve `SESSION_NAME=` (ör. `CYS_projeadi`).
-3. `.env`'de `APP_ENV` / `APP_DEBUG` satırları yoksa artık
-   **production / false** varsayılır.
+3. **`.env`'de `APP_ENV=production` ve `APP_DEBUG=false` yapın.**
+   *(Düzeltme, 1.4.0: bu madde ilk yayında "satırlar yoksa production /
+   false varsayılır" diyordu. 1.2.1 sihirbazı bu satırları
+   `APP_ENV=local` / `APP_DEBUG=true` olarak AÇIKÇA yazdığı için
+   yükseltilen siteler debug modunda kalıyordu. Satırları silmeyin,
+   değerlerini değiştirin.)*
 4. Tüm kullanıcılar bir kez yeniden giriş yapar (oturumlar kuruluma
    bağlandı).
 5. Eski kurulumlarda sihirbazın çalıştırdığı migration'lar 1. partidedir;
-   `migrate:rollback` onları geri alabilir. Kurulumdan sonra hiç
-   migration çalıştırmadıysanız bir kez:
-   `UPDATE migrasyonlar SET parti = 0 WHERE parti = 1;`
+   `migrate:rollback` onları geri alabilir. *(1.4.0 ile gereksiz: oradaki
+   migration bu kayıtları kendiliğinden temel partiye taşır. Elle SQL
+   çalıştırmayın.)*
 
 ### Güvenlik — kritik
 

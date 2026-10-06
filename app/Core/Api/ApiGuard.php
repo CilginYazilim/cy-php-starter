@@ -13,13 +13,14 @@
  *    2. Hız sınırını uygular (anahtar ya da IP başına)
  *    3. Yetki denetler
  *
- *  HIZ SINIRI ÖNBELLEKTE TUTULUR. Veritabanına yazmak, korumaya
+ *  HIZ SINIRI VERİTABANINDA TUTULMAZ. Veritabanına yazmak, korumaya
  *  çalıştığınız yükün ta kendisini üretirdi: her istek bir INSERT
  *  demektir ve saldırı anında bu, veritabanını sizin yerinize
- *  çökertir. Önbellek sayacı çok daha ucuzdur.
+ *  çökertir. Sayaç Throttle'ın kilitli dosyasındadır (bkz.
+ *  app/Core/Throttle.php); önbellek sürücüsünden bağımsızdır.
  *
- *  ÖNBELLEK "kapali" SÜRÜCÜSÜNDEYSE hız sınırı UYGULANAMAZ; bu
- *  durumda sessizce geçmek yerine bunu log'a yazıyoruz.
+ *  BAKIM MODUNDA API de 503 döner; bakımı aşma yetkisi olan
+ *  kullanıcının anahtarı çalışmaya devam eder.
  * =====================================================================
  */
 
@@ -28,10 +29,11 @@ declare(strict_types=1);
 namespace App\Core\Api;
 
 use App\Core\Auth;
-use App\Core\Cache\Cache;
 use App\Core\Config;
 use App\Core\Log\Logger;
 use App\Core\Request;
+use App\Core\Setting;
+use App\Core\Throttle;
 
 final class ApiGuard
 {
@@ -54,6 +56,11 @@ final class ApiGuard
             // Bilinmeyen ad sessizce geçmez (bkz. Middleware::handle).
             default     => throw new \LogicException('Bilinmeyen API ara katmanı: "' . $rule . '"'),
         };
+
+        // Kimlik belli olduktan SONRA: bakımı aşma yetkisi kullanıcıya bağlı.
+        if ($name !== 'api.can') {
+            self::maintenance();
+        }
     }
 
     /* =================================================================
@@ -138,25 +145,13 @@ final class ApiGuard
         $limit  = max(1, (int) Config::get('api.rate_limit', 120));
         $window = max(1, (int) Config::get('api.rate_window', 60));
 
-        $store = Cache::store();
+        /* Sayaç Throttle'da, kilitli bir dosyada tutulur: kontrol ve
+         * artırma tek parçadır. Eskiden önbellekte oku-yaz yapılıyordu;
+         * aynı anda gelen istekler sınırı aşabiliyor, CACHE_DRIVER=kapali
+         * iken sınır hiç uygulanmıyordu. */
+        $retryAfter = Throttle::attempt('api:' . $key, $limit, $window);
 
-        if ($store->name() === 'kapali') {
-            // Sessizce geçmiyoruz: koruma yok demek, bilinmesi gereken
-            // bir durumdur.
-            Logger::warning('API hız sınırı uygulanamıyor: önbellek kapalı.', [], 'security');
-
-            return;
-        }
-
-        /* Pencere anahtarı zamanın kendisini içerir; böylece süre
-         * dolduğunda sayaç kendiliğinden sıfırlanır ve ayrıca
-         * temizlik yapmak gerekmez. */
-        $bucket  = 'api:hiz:' . $key . ':' . (int) floor(time() / $window);
-        $current = (int) Cache::get($bucket, 0);
-
-        if ($current >= $limit) {
-            $retryAfter = $window - (time() % $window);
-
+        if ($retryAfter > 0) {
             if (!headers_sent()) {
                 header('Retry-After: ' . $retryAfter);
                 header('X-RateLimit-Limit: ' . $limit);
@@ -172,12 +167,31 @@ final class ApiGuard
             );
         }
 
-        Cache::put($bucket, $current + 1, $window + 5);
-
         if (!headers_sent()) {
             header('X-RateLimit-Limit: ' . $limit);
-            header('X-RateLimit-Remaining: ' . max(0, $limit - $current - 1));
+            header('X-RateLimit-Remaining: ' . Throttle::remaining('api:' . $key, $limit, $window));
         }
+    }
+
+    /**
+     * BAKIM MODU API'Yİ DE KAPATIR.
+     *
+     * Eskiden bakım modu yalnızca site sayfalarına örtü çekiyordu;
+     * /api/v1/... uçları bakımda da veri vermeye devam ediyordu.
+     * Bakımı aşma yetkisi olan kullanıcı (anahtarı ya da oturumuyla)
+     * yine erişebilir.
+     */
+    private static function maintenance(): void
+    {
+        if (!Setting::bool('sistem_bakim_modu', false) || Auth::can('maintenance.bypass')) {
+            return;
+        }
+
+        if (!headers_sent()) {
+            header('Retry-After: 600');
+        }
+
+        ApiResponse::error('Site bakımda. Lütfen daha sonra tekrar deneyin.', 503, 'bakim');
     }
 
     public static function userId(): ?int

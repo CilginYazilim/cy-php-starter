@@ -167,6 +167,30 @@ final class ApiToken
         return false;
     }
 
+    /**
+     * Kullanıcının BÜTÜN anahtarlarını siler.
+     *
+     * Parola değişince (bkz. UserRepository::update) ve "diğer
+     * cihazlardan çıkış yap" ile birlikte istenirse çağrılır. Eskiden
+     * ekranda "diğer oturumlar kapatıldı" yazarken çalınmış bir API
+     * anahtarı çalışmaya devam ediyordu.
+     *
+     * @return int Silinen anahtar sayısı
+     */
+    public static function revokeAllForUser(int $userId): int
+    {
+        $statement = self::db()->prepare('DELETE FROM `api_anahtarlari` WHERE kullanici_id = :kullanici');
+        $statement->execute([':kullanici' => $userId]);
+
+        $adet = $statement->rowCount();
+
+        if ($adet > 0) {
+            Logger::info('Kullanıcının bütün API anahtarları iptal edildi', ['kullanici' => $userId, 'adet' => $adet], 'auth');
+        }
+
+        return $adet;
+    }
+
     public static function countForUser(int $userId): int
     {
         $statement = self::db()->prepare('SELECT COUNT(*) FROM `api_anahtarlari` WHERE kullanici_id = :id');
@@ -203,7 +227,7 @@ final class ApiToken
             ?? ''
         );
 
-        if ($header !== '' && preg_match('/^Bearer\s+(.+)$/i', trim($header), $m) === 1) {
+        if ($header !== '' && preg_match('/^Bearer\s+(.+)\z/i', trim($header), $m) === 1) {
             return trim($m[1]);
         }
 

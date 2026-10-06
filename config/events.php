@@ -25,7 +25,8 @@ return [
      *  log dosyasında aramak yerine ekranda görürsünüz.
      *
      *  Varsayılan olarak APP_DEBUG'ı izler: geliştirmede açık,
-     *  yayında kapalı.
+     *  yayında kapalı. APP_DEBUG satırı yoksa KAPALI sayılır (bkz.
+     *  config/app.php'deki aynı güvenli varsayılan).
      * -------------------------------------------------------------- */
-    'strict' => Env::bool('EVENTS_STRICT', Env::bool('APP_DEBUG', true)),
+    'strict' => Env::bool('EVENTS_STRICT', Env::bool('APP_DEBUG', false)),
 ];

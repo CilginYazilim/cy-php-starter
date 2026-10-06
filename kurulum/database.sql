@@ -159,6 +159,10 @@ INSERT INTO `ayarlar`
 -- (kapalı gelseydi) kayıt bağlantısının neden yok olduğu ayarlar
 -- ekranı taranmadan anlaşılmıyordu.
 ('sistem_kayit_acik',     '1',    'sistem', 'onay',  'Yeni Kayıtlara Açık',  'Ziyaretçiler kendi hesabını oluşturabilsin mi?', NULL, 20),
+-- Doğrulama AÇIK gelir: kayıt formu, sitenin adıyla rastgele adreslere
+-- mektup attırmanın ve "bu e-posta kayıtlı mı" diye sormanın yolu
+-- olmasın. E-posta ayarları yapılmadıysa kayıt formu kendiliğinden kapanır.
+('sistem_kayit_dogrulama', '1',   'sistem', 'onay',  'Kayıtta E-posta Doğrulaması', 'Yeni hesap, e-postadaki bağlantıya tıklanana kadar giriş yapamaz. E-posta ayarları eksikse kayıt formu kapanır.', NULL, 21),
 ('sistem_iletisim_formu', '1',    'sistem', 'onay',  'İletişim Formu Açık',  'Kapatırsanız iletişim sayfasında sadece bilgiler görünür.', NULL, 25),
 ('sistem_sayfa_basina',   '10',   'sistem', 'sayi',  'Sayfa Başına Kayıt',   'Listelerde varsayılan sayfa boyutu.', NULL, 30),
 ('sistem_zaman_dilimi',   'Europe/Istanbul', 'sistem', 'metin', 'Zaman Dilimi', 'Örn: Europe/Istanbul', NULL, 40),
@@ -206,7 +210,8 @@ CREATE TABLE `kullanicilar` (
   `eposta`        VARCHAR(190) NOT NULL COLLATE utf8mb4_unicode_ci,
   `sifre`         VARCHAR(255) NOT NULL,
   `rol`           ENUM('admin','editor','uye') NOT NULL DEFAULT 'uye',
-  `durum`         ENUM('aktif','pasif','askida') NOT NULL DEFAULT 'aktif',
+  -- "onay_bekliyor": kayıt formundan açılmış, e-postası henüz doğrulanmamış.
+  `durum`         ENUM('aktif','pasif','askida','onay_bekliyor') NOT NULL DEFAULT 'aktif',
   `tema`          ENUM('acik','koyu') NOT NULL DEFAULT 'acik',
   `avatar`        VARCHAR(191) NOT NULL DEFAULT '',
   `telefon`       VARCHAR(30)  NOT NULL DEFAULT '',
@@ -263,7 +268,9 @@ CREATE TABLE `login_attempts` (
   `attempted_at` DATETIME     NOT NULL,
 
   PRIMARY KEY (`id`),
-  KEY `idx_attempts_lookup` (`identifier`, `attempted_at`)
+  KEY `idx_attempts_lookup` (`identifier`, `attempted_at`),
+  -- IP geneli yavaşlatma "bu IP'den kaç farklı kimlik denendi" diye sorar.
+  KEY `idx_attempts_ip`     (`ip`, `attempted_at`)
 ) ENGINE=InnoDB
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_unicode_ci;
@@ -438,6 +445,12 @@ COLLATE=utf8mb4_turkish_ci;
 --  Bu dosyaya yeni bir tablo/sütun eklediğinizde onu getiren
 --  migration'ın adını da buraya ekleyin.
 --
+--  Bu dosyanın OLUŞTURMADIĞI tabloları getiren migration'lar
+--  (onbellek, isler, api_anahtarlari) listede yok: elle kurulumda
+--  "php cy migrate" onları çalıştırır. Çekirdek migration'lar
+--  baseline() ile kendilerini yine temel partiye yazar (bkz.
+--  App\Core\Database\Migration::baseline).
+--
 --  Tablonun tanımı App\Core\Database\Migrator::ensureTable() ile
 --  birebir aynıdır.
 -- ===============================================================
@@ -460,4 +473,6 @@ INSERT INTO `migrasyonlar` (`dosya`, `parti`) VALUES
 ('2026_08_10_080000_pwa_ayarlari',          0),
 ('2026_08_30_010000_surum_ayarini_kaldir',  0),
 ('2026_10_06_010000_oturum_surumu',         0),
-('2026_10_06_020000_mail_kuyrugu_kilidi',   0);
+('2026_10_06_020000_mail_kuyrugu_kilidi',   0),
+('2026_10_06_030000_giris_denemeleri_ip_indeksi', 0),
+('2026_10_06_040000_eposta_dogrulama',      0);

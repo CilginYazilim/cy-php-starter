@@ -81,7 +81,7 @@ final class Env
         // "export DB_PASS=..." biçimini de kabul ediyoruz.
         $key = trim(preg_replace('/^export\s+/i', '', trim($key)) ?? '');
 
-        if ($key === '' || preg_match('/^[A-Za-z_][A-Za-z0-9_.]*$/', $key) !== 1) {
+        if ($key === '' || preg_match('/^[A-Za-z_][A-Za-z0-9_.]*\z/', $key) !== 1) {
             return null;
         }
 
@@ -247,7 +247,7 @@ final class Env
      */
     public static function quote(string $value): string
     {
-        if ($value !== '' && preg_match('#^[A-Za-z0-9_.:/@+,-]+$#', $value) === 1) {
+        if ($value !== '' && preg_match('#^[A-Za-z0-9_.:/@+,-]+\z#', $value) === 1) {
             return $value;
         }
 

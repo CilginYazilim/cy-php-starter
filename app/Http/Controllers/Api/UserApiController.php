@@ -69,7 +69,7 @@ final class UserApiController extends Controller
 
         $roleBadge = '<span class="cy-role cy-role--' . e(Role::variant($user->rol)) . '">' . e($user->roleLabel()) . '</span>';
 
-        $statusMap = ['aktif' => 'is-active', 'pasif' => 'is-passive', 'askida' => 'is-hold'];
+        $statusMap = ['aktif' => 'is-active', 'pasif' => 'is-passive', 'askida' => 'is-hold', 'onay_bekliyor' => 'is-hold'];
         $statusClass = $statusMap[$user->durum] ?? 'is-passive';
 
         if (Auth::can('users.status') && !$isSelf) {
@@ -183,7 +183,7 @@ final class UserApiController extends Controller
         $status = $isEdit ? $target->durum : 'aktif';
 
         if (Auth::can('users.status') && array_key_exists('durum', $_POST)) {
-            $validator->in('durum', ['aktif', 'pasif', 'askida'], 'Durum');
+            $validator->in('durum', User::STATUSES, 'Durum');
 
             if (!isset($validator->errors()['durum'])) {
                 $status = (string) $validator->validated()['durum'];
@@ -250,6 +250,18 @@ final class UserApiController extends Controller
 
             if ($newAvatar !== null && $target->avatar !== '') {
                 Uploader::delete($target->avatar);
+            }
+
+            /* Yönetici KENDİ parolasını buradan değiştirdiyse oturum sürümü
+             * arttı; eskiden kendi oturumu da kapanıyordu. Bu cihaz yeni
+             * sürümle açık tutulur (bkz. Auth::refreshCurrentDevice). */
+            if (!empty($payload['sifre']) && Auth::isSelf($target->id)) {
+                Auth::refreshCurrentDevice($target->id);
+
+                Response::success('Bilgileriniz ve parolanız güncellendi. Diğer cihazlardaki oturumlarınız kapatıldı.', [
+                    'id'     => $target->id,
+                    'yenile' => true,
+                ]);
             }
 
             Response::success('Kullanıcı başarıyla güncellendi.', ['id' => $target->id]);

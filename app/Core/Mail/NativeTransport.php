@@ -84,7 +84,7 @@ final class NativeTransport implements Transport
         $address = trim($address);
 
         if ($address === ''
-            || preg_match('/^[A-Za-z0-9._%+=-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/', $address) !== 1
+            || preg_match('/^[A-Za-z0-9._%+=-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+\z/', $address) !== 1
             || str_starts_with($address, '-')
             || filter_var($address, FILTER_VALIDATE_EMAIL) === false) {
             return '';

@@ -101,4 +101,52 @@ final class Database
     {
         self::$connection = null;
     }
+
+    /**
+     * Kilitlenme (deadlock, 1213) ya da kilit bekleme zaman aşımı
+     * (1205) olursa işlemi kısa bir beklemeyle YENİDEN dener.
+     *
+     * InnoDB bu iki hatada işlemi kendisi geri alır ve "tekrar dene"
+     * der; hata bir programlama yanlışı değil, eşzamanlılığın olağan
+     * sonucudur. Eskiden kuyruk işçileri bu hatayla çöküyor, gönderilmiş
+     * bir mektup bile "başarısız (Deadlock)" diye işaretlenebiliyordu.
+     *
+     * @template T
+     * @param callable():T $operation
+     * @return T
+     */
+    public static function retry(callable $operation, int $attempts = 3): mixed
+    {
+        for ($i = 1; ; $i++) {
+            try {
+                return $operation();
+            } catch (PDOException $e) {
+                if ($i >= $attempts || !self::isTransient($e)) {
+                    throw $e;
+                }
+
+                usleep(random_int(20_000, 120_000) * $i);
+            }
+        }
+    }
+
+    /** Yeniden denenebilir bir hata mı? (1213 deadlock, 1205 kilit zaman aşımı) */
+    public static function isTransient(\Throwable $e): bool
+    {
+        if (!$e instanceof PDOException) {
+            return false;
+        }
+
+        $code = (int) ($e->errorInfo[1] ?? 0);
+
+        return in_array($code, [1213, 1205], true)
+            || in_array((string) $e->getCode(), ['40001'], true);
+    }
+
+    /** "Bilinmeyen sütun" hatası mı? (migration çalıştırılmamış) */
+    public static function isMissingColumn(\Throwable $e): bool
+    {
+        return $e instanceof PDOException
+            && ((int) ($e->errorInfo[1] ?? 0) === 1054 || (string) $e->getCode() === '42S22');
+    }
 }

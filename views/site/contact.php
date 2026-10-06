@@ -12,6 +12,7 @@
  */
 
 use App\Core\Setting;
+use App\Core\Signer;
 use App\Http\Controllers\Site\HomeController;
 
 $formOpen = Setting::bool('sistem_iletisim_formu', true);
@@ -156,8 +157,9 @@ $baslik   = $sayfa?->baslik ?? 'İletişim';
                                            data-lpignore="true" data-1p-ignore data-form-type="other">
                                 </div>
 
-                                <?php /* Form ne zaman üretildi? Botlar formu anında gönderir. */ ?>
-                                <input type="hidden" name="cy_zaman" value="<?= (int) time() ?>">
+                                <?php /* Form ne zaman üretildi? Botlar formu anında gönderir.
+                                         Damga imzalıdır; uydurulamaz, silinirse mesaj elenir. */ ?>
+                                <input type="hidden" name="cy_zaman" value="<?= e(Signer::stamp('iletisim')) ?>">
 
                                 <div class="row g-3">
                                     <div class="col-12 col-md-6">

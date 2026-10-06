@@ -307,7 +307,7 @@ final class SettingsController extends Controller
                     : 'Harita bağlantısı http:// ya da https:// ile başlayan bir adres olmalıdır.';
 
             case 'iletisim_whatsapp':
-                return preg_match('/^[+0-9 ()-]{0,30}$/', $value) === 1
+                return preg_match('/^[+0-9 ()-]{0,30}\z/', $value) === 1
                     ? null
                     : 'WhatsApp numarası yalnızca rakam, boşluk, +, - ve parantez içerebilir.';
 
@@ -319,17 +319,17 @@ final class SettingsController extends Controller
             case 'seo_og_gorsel':
                 return $value === ''
                     || self::isHttpUrl($value)
-                    || (preg_match('#^[A-Za-z0-9/_.-]+$#', $value) === 1 && !str_contains($value, '..'))
+                    || (preg_match('#^[A-Za-z0-9/_.-]+\z#', $value) === 1 && !str_contains($value, '..'))
                     ? null
                     : 'Paylaşım görseli upload/ altındaki bir dosya adı ya da https:// ile başlayan bir adres olmalıdır.';
 
             case 'seo_google_dogrulama':
-                return preg_match('/^[A-Za-z0-9_-]{0,100}$/', $value) === 1
+                return preg_match('/^[A-Za-z0-9_-]{0,100}\z/', $value) === 1
                     ? null
                     : 'Yalnızca doğrulama kodunu yazın (etiketin tamamını değil).';
 
             case 'mail_host':
-                return $value === '' || preg_match('/^[A-Za-z0-9.-]{1,253}$/', $value) === 1
+                return $value === '' || preg_match('/^[A-Za-z0-9.-]{1,253}\z/', $value) === 1
                     ? null
                     : 'SMTP sunucusu yalnızca alan adı ya da IP olmalıdır (örn. smtp.gmail.com).';
 
@@ -366,7 +366,7 @@ final class SettingsController extends Controller
                 ? null
                 : $label . ' için listedeki seçeneklerden birini seçin.',
 
-            'renk' => preg_match('/^#[0-9a-fA-F]{6}$/', $value) === 1
+            'renk' => preg_match('/^#[0-9a-fA-F]{6}\z/', $value) === 1
                 ? null
                 : $label . ' #RRGGBB biçiminde bir renk olmalıdır.',
 

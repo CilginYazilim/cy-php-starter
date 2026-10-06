@@ -43,7 +43,9 @@ $router = new Router();
  * ------------------------------------------------------------------ */
 $router->get('',            HomeController::class,    'index', ['installed']);
 $router->get('manifest.webmanifest', PwaController::class, 'manifest', ['installed']);
-$router->get('sitemap.xml', SeoController::class, 'sitemap', ['installed']);
+// Bakımda site haritası 503 + Retry-After döner; arama motorları bunu
+// "geçici" diye anlar ve dizini silmez. robots.txt açık kalır.
+$router->get('sitemap.xml', SeoController::class, 'sitemap', ['installed', 'bakim']);
 $router->get('robots.txt',  SeoController::class, 'robots',  ['installed']);
 
 $router->get('cevrimdisi',          PwaController::class, 'offline',  ['installed']);
@@ -63,6 +65,9 @@ $router->post('giris',  AuthController::class, 'login',     ['installed', 'guest
 // panele girebilmelidir. Yeni kayıt ise kapanır.
 $router->get('kayit',   AuthController::class, 'showRegister', ['installed', 'bakim', 'guest']);
 $router->post('kayit',  AuthController::class, 'register',     ['installed', 'bakim', 'guest', 'csrf']);
+
+// E-postadaki doğrulama bağlantısı. Oturum açmaz; yalnızca hesabı etkinleştirir.
+$router->get('kayit/dogrula', AuthController::class, 'verify', ['installed']);
 
 // Çıkış POST ile yapılır: bir <img> etiketinin oturumunuzu kapatmasını
 // engellemek için (CSRF koruması).
@@ -107,6 +112,9 @@ $router->post('panel/ayarlar/{grup}',    SettingsController::class, 'update',   
 $router->get('panel/sistem', SystemController::class, 'index', ['installed', 'auth', 'can:system.view']);
 $router->post('panel/sistem/kuyruk/tekrar',  SystemController::class, 'queueRetry', ['installed', 'auth', 'csrf', 'can:system.manage']);
 $router->post('panel/sistem/kuyruk/temizle', SystemController::class, 'queuePurge', ['installed', 'auth', 'csrf', 'can:system.manage']);
+
+// SSH erişimi olmayan hostlarda bekleyen migration'lar buradan çalıştırılır.
+$router->post('panel/sistem/migrate', SystemController::class, 'migrate', ['installed', 'auth', 'csrf', 'can:system.manage']);
 
 $router->get('panel/hesabim',              ProfileController::class, 'index',        ['installed', 'auth', 'can:profile.view']);
 $router->post('panel/hesabim/guncelle',    ProfileController::class, 'update',       ['installed', 'auth', 'csrf', 'can:profile.update']);

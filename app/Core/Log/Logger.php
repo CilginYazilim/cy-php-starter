@@ -190,7 +190,13 @@ final class Logger
             return 'cli';
         }
 
-        $parts = ['ip=' . (string) ($_SERVER['REMOTE_ADDR'] ?? '-')];
+        try {
+            $ip = \App\Core\Ip::client();
+        } catch (\Throwable) {
+            $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '-');
+        }
+
+        $parts = ['ip=' . $ip];
 
         $path = is_string($_GET['r'] ?? null) ? $_GET['r'] : '';
         $parts[] = 'yol=' . ($path !== '' ? self::singleLine(mb_substr($path, 0, 120)) : '/');

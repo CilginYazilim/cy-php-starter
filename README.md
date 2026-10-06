@@ -6,7 +6,7 @@
 
 **Kurulum sihirbazı · rol tabanlı panel · konsol · migration · kuyruk · olay · modül sistemi · REST API · PWA — hepsi hazır.**
 
-[![Sürüm](https://img.shields.io/badge/Sürüm-1.3.0-0b5cb5?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/releases)
+[![Sürüm](https://img.shields.io/badge/Sürüm-1.4.0-0b5cb5?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/releases)
 [![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://php.net)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.2-7952B3?style=flat-square&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 [![Bağımlılık](https://img.shields.io/badge/Bağımlılık-Sıfır-16a34a?style=flat-square)](#)
@@ -140,7 +140,7 @@ Events::dispatch(new UserRegistered($user));
 | Katman | İçerik |
 |---|---|
 | **Kurulum** | Adım adım sihirbaz · `.env` üretimi · tabloları **ve migration'ları** kurar · yönetici hesabı · isteğe bağlı örnek veri · tek tuşla kendini silme |
-| **Kimlik** | Giriş/kayıt/çıkış · **beni hatırla** · rol-yetki · kaba kuvvet koruması · sertleştirilmiş oturum |
+| **Kimlik** | Giriş/kayıt/çıkış · **kayıtta e-posta doğrulaması** · **beni hatırla** · güvenilen cihaz · rol-yetki · kaba kuvvet koruması · sertleştirilmiş oturum |
 | **Yönlendirme** | Temiz SEO adresleri · `{parametre}` · GET/POST/PUT/PATCH/DELETE · gruplar |
 | **Hata yönetimi** | Merkezi işleyici · ölümcül hata yakalama · geliştirici ekranı · güvenli 404/403/419/500 |
 | **Günlük** | Kanal bazlı (`app` `error` `security` `auth` `mail` `queue`) · parola maskeleme · rotasyon |
@@ -202,6 +202,12 @@ eksiksiz kurulur.
 > Şablonu ilk kez deniyorsanız işaretleyin — listeleri ve filtreleri
 > dolu görürsünüz (demo parolası `Demo1234!`). Gerçek bir projeye
 > başlıyorsanız **boş bırakın**, veritabanınız tertemiz kalır.
+
+> **Kayıt formu e-posta doğrulamasıyla gelir.** Yeni hesap, e-postadaki
+> bağlantıya tıklanana kadar giriş yapamaz; form, adresin zaten kayıtlı
+> olup olmadığını da belli etmez. E-posta ayarları (Panel → Ayarlar →
+> E-posta) yapılmadıysa kayıt formu kendiliğinden kapalı kalır. Doğrulamayı
+> **Ayarlar → Sistem → Kayıtta E-posta Doğrulaması** ile kapatabilirsiniz.
 
 > **`mod_rewrite` yoksa:** `.env` içinde `APP_PRETTY_URLS=false` yapın.
 > Uygulama `index.php?r=…` biçimine döner, başka hiçbir şey değişmez.
@@ -279,15 +285,19 @@ php cy cache:clear --expired       php cy config:cache
 php cy log:purge --list            php cy queue:work --max=30
 php cy schedule:run --list         php cy mail:test ali@ornek.com
 
-# API anahtarı
+# API anahtarı (süre verilmezse 90 gün; süresiz için açıkça --suresiz)
 php cy api:token admin "Mobil uygulama" --gun=90
 php cy api:token admin --liste     php cy api:token admin --iptal=3
 ```
 
-> **Kurulumla gelen migration'lar geri alınamaz.** Sihirbazın kurduğu
-> her şey "temel parti" (0) olarak işaretlenir; `migrate:rollback` ve
-> `migrate:fresh` yalnızca kurulumdan SONRA uyguladığınız migration'ları
-> etkiler. `php cy migrate:status` bunları `0 (kurulum)` diye gösterir.
+> **Çekirdek migration'lar geri alınamaz.** Şablonla gelen her migration
+> (sihirbazın kurdukları ve güncellemelerle gelenler) "temel parti" (0)
+> olarak işaretlenir; `migrate:rollback` ve `migrate:fresh` yalnızca
+> SİZİN eklediğiniz ve modüllerden gelen migration'ları etkiler.
+> `php cy migrate:status` bunları `0 (kurulum)` diye gösterir.
+>
+> **SSH yoksa:** bekleyen migration'lar **Panel → Sistem Bilgisi**
+> sayfasındaki düğmeyle çalıştırılır; panel her sayfada uyarır.
 
 **Cron — tek satır yeter:**
 
@@ -319,6 +329,11 @@ curl -H "Authorization: Bearer cy_…" https://siteniz.com/api/v1/ben
   Anahtar iptal edildiği an erişim biter.
 - Anahtar, sahibinin yetkilerinden fazlasına erişemez; sahibi pasife
   alınırsa anahtarı da çalışmaz.
+- Panelden anahtar üretmek **mevcut parolayı** ister; süre 30/90/180/365
+  gün seçilir. Parola değişince kullanıcının **bütün anahtarları iptal
+  edilir**; "Diğer cihazlardan çıkış" da isteğe bağlı olarak iptal eder.
+- Tarihler ISO 8601 biçimindedir (`2026-10-06T14:05:00+03:00`).
+- Bakım modunda API de `503` döner (bakımı aşma yetkisi olanın anahtarı hariç).
 - Kendi uçlarınız için örnek: `app/Http/Controllers/Api/V1Controller.php`
   ve `routes/web.php` içindeki `api/v1` grubu.
 
@@ -445,9 +460,11 @@ Kırılma noktaları iki yüzde de aynıdır: `992px` (tablet) ve `768px`
 | CSRF | Her POST'ta token (form alanı veya `X-CSRF-Token`) |
 | Oturum çalma | `httponly` + `samesite` + `secure` + parmak izi + yenileme |
 | Oturum karışması | Kuruluma özel çerez adı, çerez yolu ve oturum klasörü (`storage/sessions`); oturum `APP_KEY`'e bağlı |
-| Parola değişikliği | Diğer cihazlardaki oturumlar ve "beni hatırla" jetonu anında geçersiz ("oturum sürümü") |
-| Kaba kuvvet | Kimlik+IP kilidi ve IP geneli kilit; süreler SQL saatiyle hesaplanır (saat dilimi farkından etkilenmez) |
-| Kullanıcı tespiti | Var olan/olmayan hesap aynı sürede ve aynı mesajla yanıtlanır |
+| Parola değişikliği | Diğer cihazlardaki oturumlar, "beni hatırla" jetonu ve **API anahtarları** anında geçersiz ("oturum sürümü"); parolayı değiştiren cihaz açık kalır |
+| Çalınan "beni hatırla" çerezi | Jeton her kullanımda KOŞULLU döndürülür; eski jeton ve parola değişiminden sonraki jeton çalışmaz |
+| Kaba kuvvet | Deneme parola doğrulanmadan ÖNCE yazılır (paralel istekler sınırı aşamaz); kimlik kilidi + IP başına **farklı kimlik** sayan, giderek artan bekleme; IPv6 /64 tek adres sayılır; güvenilen cihaz takılmaz; vekil arkasında `TRUSTED_PROXIES` |
+| Kullanıcı tespiti | Var olan/olmayan hesap aynı sürede ve aynı mesajla yanıtlanır; kayıt formu kayıtlı adreste de aynı yanıtı verir |
+| Kayıt formu kötüye kullanımı | E-posta doğrulaması (imzalı, tablosuz bağlantı) · imzalı ve zorunlu form zaman damgası · hatalı gönderimler de sayılır · kilitli sayaç |
 | Açık yönlendirme | "Girişten sonra dön" adresi yalnızca uygulama içi, beyaz listeli yol |
 | Kurulum ele geçirme | Sihirbaz `.env` / kilit dosyası varken hiçbir adımı çalıştırmaz |
 | Path traversal | Segment bazlı doğrulama + `realpath()`; görünüm adları beyaz listeden |
@@ -469,11 +486,15 @@ her sorunun nasıl çözüleceğini yazar.
 APP_ENV=production
 APP_DEBUG=false
 LOG_LEVEL=info
+APP_KEY=<64 onaltılık karakter, kuruluma özel>
+# Cloudflare / yük dengeleyici / nginx ters vekil arkasındaysa:
+TRUSTED_PROXIES=<vekil adresleri>
 
 php cy config:cache && php cy migrate
 ```
 
 - [ ] `kurulum/` klasörü silindi
+- [ ] Panelin üstünde kırmızı/turuncu uyarı yok (debug, bekleyen migration, APP_KEY)
 - [ ] HTTPS aktif
 - [ ] `storage/` ve `upload/` yazılabilir
 - [ ] `php cy mail:test` başarılı
@@ -533,12 +554,44 @@ Sürüm numarası **kodda, tek yerde** durur:
 
 ```php
 // config/app.php
-'version' => '1.3.0',
+'version' => '1.4.0',
 ```
 
 `Panel → Sistem Bilgisi` sayfası bu değeri okur. Şablonu güncellediğinizde
 numara kendiliğinden gelir; veritabanında ayrıca tutulmaz. Sürümlerin
 tam listesi: [CHANGELOG.md](CHANGELOG.md).
+
+> **GÜNCELLİYORSANIZ (1.2.x ya da 1.3.x → 1.4.0)** — sırayla:
+>
+> 1. **Yedek alın** (veritabanı + `.env`).
+> 2. Kodu çekin.
+> 3. `php cy migrate` çalıştırın — SSH yoksa **Panel → Sistem Bilgisi →
+>    Migration'ları Çalıştır**. Migration'lar çalıştırılmadan da giriş
+>    yapılabilir; panel her sayfada uyarır. Eski kurulum migration'ları
+>    bu adımda **kendiliğinden temel partiye (0) taşınır**; elle SQL
+>    gerekmez.
+> 4. `.env` dosyanızı açın ve şunları kontrol edin (eski sihirbaz bu
+>    satırları geliştirme değerleriyle yazıyordu):
+>    - `APP_ENV=production` ve `APP_DEBUG=false` olmalı (satırları SİLMEYİN,
+>      değerlerini değiştirin).
+>    - `APP_KEY` boşsa doldurun: `php -r "echo bin2hex(random_bytes(32));"`
+>    - `SESSION_NAME` boşsa doldurun (örn. `CYS_` + 10 rastgele harf/rakam);
+>      aynı alan adında başka kurulum varsa her biri farklı olmalı.
+>    - Site bir vekilin arkasındaysa `TRUSTED_PROXIES` yazın.
+>    - Eksik anahtarlar için `.env.example`'a bakın.
+> 5. `php cy config:cache` kullanıyorsanız yeniden çalıştırın.
+>
+> Kurulum kimliği artık yalnızca `APP_KEY`'den türetildiği için bütün
+> kullanıcılar **bir kez** yeniden giriş yapar.
+
+### 1.4.0 — İkinci inceleme
+
+İkinci güvenlik incelemesinin bulguları kapatıldı; ayrıntılar
+[CHANGELOG.md](CHANGELOG.md) içinde. Öne çıkanlar: boşluklu/Türkçe
+klasörde ve Redis oturumunda giriş yapılamaması, kuyruk işçilerinde
+kilitlenme, eski kurulumların korumasız kalması, migration'sız güncellemede
+500, parola değişince düşmeyen API anahtarları, hizmet engellemeye açık
+IP kilidi, kayıtta e-posta doğrulaması.
 
 ### 1.3.0 — Güvenlik ve kararlılık
 
@@ -549,8 +602,8 @@ farkında devre dışı kalan kaba kuvvet kilidi, parola değişince düşmeyen
 oturumlar, kurulumdan sonra veri silen `migrate:rollback` ve varsayılan
 olarak açık gelen hata ayıklama modu.
 
-> **Güncelliyorsanız:** kodu çektikten sonra `php cy migrate` çalıştırın
-> (2 yeni migration). Tüm kullanıcılar bir kez yeniden giriş yapar.
+> 1.3.0'a güncelliyorsanız da yukarıdaki 1.4.0 adımlarını izleyin;
+> 1.4.0 bu sürümün eksik bıraktığı güncelleme adımlarını da kapsar.
 
 ### 1.1.0
 

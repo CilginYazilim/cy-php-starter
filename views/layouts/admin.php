@@ -7,6 +7,7 @@
 
 use App\Core\Csrf;
 use App\Core\Flash;
+use App\Core\PanelNotices;
 use App\Core\Setting;
 use App\Core\Url;
 use App\Core\View;
@@ -65,6 +66,17 @@ $flashes      = Flash::pull();
             ]); ?>
 
             <main class="cy-content" id="cy-content">
+                <?php /* Yönetici uyarıları (debug açık + yerel değil, bekleyen
+                         migration, APP_KEY boş…). Bkz. App\Core\PanelNotices. */ ?>
+                <?php foreach (PanelNotices::forCurrentUser() as $uyari): ?>
+                    <div class="cy-alert cy-alert--<?= e($uyari['tur']) ?> mb-3" role="alert">
+                        <?= e($uyari['metin']) ?>
+                        <?php if ($uyari['yol'] !== ''): ?>
+                            <a href="<?= e(url($uyari['yol'])) ?>" class="ms-1 fw-semibold"><?= e($uyari['baglanti']) ?> →</a>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+
                 <?= $content ?? '' ?>
             </main>
 

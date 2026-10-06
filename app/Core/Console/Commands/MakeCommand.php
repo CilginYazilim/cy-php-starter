@@ -32,17 +32,22 @@ abstract class MakeCommand extends Command
         'sayfalar', 'migrasyonlar', 'onbellek', 'isler', 'api_anahtarlari',
     ];
 
-    /** PHP'nin sınıf adı olarak kabul etmediği ayrılmış sözcükler. */
+    /**
+     * PHP'nin sınıf adı olarak kabul etmediği ayrılmış sözcükler.
+     * ("die", "include_once" gibi dil yapıları da dahil; eskiden
+     * "make:model Die" ayrıştırılamayan bir dosya üretiyordu.)
+     */
     private const RESERVED = [
-        'abstract', 'and', 'array', 'as', 'bool', 'break', 'callable', 'case', 'catch', 'class',
-        'clone', 'const', 'continue', 'declare', 'default', 'do', 'echo', 'else', 'elseif',
-        'empty', 'enddeclare', 'endfor', 'endforeach', 'endif', 'endswitch', 'endwhile', 'enum',
-        'eval', 'exit', 'extends', 'false', 'final', 'finally', 'float', 'fn', 'for', 'foreach',
-        'function', 'global', 'goto', 'if', 'implements', 'include', 'instanceof', 'insteadof',
-        'int', 'interface', 'isset', 'iterable', 'list', 'match', 'mixed', 'namespace', 'never',
-        'new', 'null', 'object', 'or', 'parent', 'print', 'private', 'protected', 'public',
-        'readonly', 'require', 'return', 'self', 'static', 'string', 'switch', 'throw', 'trait',
-        'true', 'try', 'unset', 'use', 'var', 'void', 'while', 'xor', 'yield',
+        '__halt_compiler', 'abstract', 'and', 'array', 'as', 'bool', 'break', 'callable', 'case',
+        'catch', 'class', 'clone', 'const', 'continue', 'declare', 'default', 'die', 'do', 'echo',
+        'else', 'elseif', 'empty', 'enddeclare', 'endfor', 'endforeach', 'endif', 'endswitch',
+        'endwhile', 'enum', 'eval', 'exit', 'extends', 'false', 'final', 'finally', 'float', 'fn',
+        'for', 'foreach', 'function', 'global', 'goto', 'if', 'implements', 'include',
+        'include_once', 'instanceof', 'insteadof', 'int', 'interface', 'isset', 'iterable', 'list',
+        'match', 'mixed', 'namespace', 'never', 'new', 'null', 'object', 'or', 'parent', 'print',
+        'private', 'protected', 'public', 'readonly', 'require', 'require_once', 'return', 'self',
+        'static', 'string', 'switch', 'throw', 'trait', 'true', 'try', 'unset', 'use', 'var',
+        'void', 'while', 'xor', 'yield',
     ];
 
     /**
@@ -80,7 +85,7 @@ abstract class MakeCommand extends Command
 
         $error = match (true) {
             $class === ''                                        => 'Ad en az bir harf içermelidir.',
-            preg_match('/^[A-Za-z][A-Za-z0-9]*$/', $class) !== 1 => 'Ad bir harfle başlamalıdır ("' . $class . '" geçersiz bir PHP sınıf adı olur).',
+            preg_match('/^[A-Za-z][A-Za-z0-9]*\z/', $class) !== 1 => 'Ad bir harfle başlamalıdır ("' . $class . '" geçersiz bir PHP sınıf adı olur).',
             strlen($class) > 60                                  => 'Ad en fazla 60 karakter olabilir.',
             in_array(strtolower($class), self::RESERVED, true)   => '"' . $class . '" PHP\'de ayrılmış bir sözcük; sınıf adı olamaz.',
             default                                              => null,
@@ -156,6 +161,15 @@ abstract class MakeCommand extends Command
             $this->stub($stub)
         );
 
+        $cakisma = $this->importCollision($content);
+
+        if ($cakisma !== null) {
+            $this->out->error($cakisma);
+            $this->out->muted('  Başka bir ad seçin; dosya oluşturulmadı.');
+
+            return false;
+        }
+
         if (@file_put_contents($path, $content) === false) {
             throw new RuntimeException('Dosya yazılamadı: ' . $path);
         }
@@ -163,6 +177,35 @@ abstract class MakeCommand extends Command
         $this->out->success('Oluşturuldu: ' . \App\Core\ErrorHandler::relative($path));
 
         return true;
+    }
+
+    /**
+     * Üretilen sınıfın adı dosyanın İÇE AKTARDIĞI bir adla çakışıyor mu?
+     *
+     * Örnek: "make:controller Controller" → "final class Controller
+     * extends Controller" ve "use App\Http\Controller;" — PHP dosyayı
+     * yüklerken "name is already in use" hatası verir. Eskiden dosya
+     * yine de yazılıyordu. PHP'de sınıf adları büyük/küçük harf
+     * duyarsızdır; karşılaştırma da öyle yapılır.
+     */
+    protected function importCollision(string $content): ?string
+    {
+        if (preg_match('/^\s*(?:final\s+|abstract\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)/m', $content, $sinif) !== 1) {
+            return null;
+        }
+
+        preg_match_all('/^use\s+([A-Za-z0-9_\\\\]+)(?:\s+as\s+([A-Za-z0-9_]+))?\s*;/m', $content, $m, PREG_SET_ORDER);
+
+        foreach ($m as $use) {
+            $kisa = $use[2] ?? '';
+            $kisa = $kisa !== '' ? $kisa : substr((string) strrchr('\\' . $use[1], '\\'), 1);
+
+            if (strcasecmp($kisa, $sinif[1]) === 0) {
+                return '"' . $sinif[1] . '" adı, dosyanın kullandığı ' . $use[1] . ' sınıfıyla çakışıyor.';
+            }
+        }
+
+        return null;
     }
 
     /** Argüman verilmemişse anlaşılır bir hata bas. */

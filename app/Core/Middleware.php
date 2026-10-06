@@ -103,7 +103,7 @@ final class Middleware
 
         if ($path === ''
             || strlen($path) > 200
-            || preg_match('#^[A-Za-z0-9/_.-]+$#', $path) !== 1
+            || preg_match('#^[A-Za-z0-9/_.-]+\z#', $path) !== 1
             || str_contains($path, '//')
             || str_contains($path, '..')) {
             return '';

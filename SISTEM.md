@@ -362,12 +362,25 @@ ederdi.
 
 ### Giriş güvenliği
 
-- **Kaba kuvvet koruması** — 5 hatalı denemeden sonra 15 dakika kilit
-  (`login_attempts` tablosu, kimlik+IP başına) ve tek IP'den farklı
-  hesaplara 30 hatalı denemede IP geneli kilit. Süreler SQL'in kendi
-  saatiyle hesaplanır; MySQL ile PHP'nin saat dilimi farklı olsa da
-  kilit çalışır (bağlantının saat dilimi `Database::syncTimezone()` ile
-  PHP'ninkine eşitlenir).
+- **Kaba kuvvet koruması** (`App\Core\RateLimiter`, `login_attempts` tablosu):
+  - *Kimlik kilidi* — aynı kimliğe aynı kapsamdan 5 hatalı denemede
+    15 dakika kilit. Kapsam IP kovasıdır (IPv4 adresin kendisi, IPv6 /64
+    bloğu) ya da güvenilen cihazdır.
+  - *IP geneli yavaşlatma* — tek kovadan 30 FARKLI kimlik denenince
+    giderek artan bekleme (1, 2, 4… saniye, en fazla kilit süresi). Sert
+    kilit değildir: aynı IP'yi paylaşan yöneticiyi dışarıda bırakmaz.
+  - *Güvenilen cihaz* — başarılı girişte `APP_KEY` ile imzalı
+    `cy_cihaz_<kurulum>` çerezi yazılır (kullanıcı + cihaz + oturum
+    sürümü + bitiş). O tarayıcı IP yavaşlatmasına takılmaz, kimlik kilidi
+    ona ayrı sayılır; parola değişince geçersizdir. Parolayı ASLA atlatmaz.
+  - *Eşzamanlılık* — deneme parola doğrulanmadan ÖNCE yazılır ve yalnızca
+    kendinden önceki satırlar sayılır; başarılı girişte silinir. Aynı anda
+    gönderilen istekler sınırı birlikte aşamaz.
+  - *Vekil arkasında* — `TRUSTED_PROXIES` ile gerçek adres vekilin
+    başlığından okunur (`App\Core\Ip`); yazılmazsa bütün ziyaretçiler
+    vekilin IP'sinden geliyor görünür.
+  - Süreler SQL'in kendi saatiyle hesaplanır; MySQL ile PHP'nin saat
+    dilimi farklı olsa da kilit çalışır (`Database::syncTimezone()`).
 - **Zamanlama saldırısı önlemi** — kullanıcı bulunamasa bile PHP'nin
   varsayılan maliyetinde GEÇERLİ bir sahte özet doğrulanır; var olan ve
   olmayan hesap aynı sürede, aynı mesajla ("kalan deneme hakkı" dahil)
@@ -380,7 +393,17 @@ ederdi.
 - **Kuruluma özel oturum** — çerez adı (`SESSION_NAME`), çerez yolu
   (uygulama klasörü), oturum klasörü (`storage/sessions`) ve parmak izi
   (`APP_KEY`) kuruluma bağlıdır; aynı alan adındaki iki kurulum
-  birbirinin oturumunu kabul etmez.
+  birbirinin oturumunu kabul etmez. `APP_KEY` doluyken kurulum kimliği
+  yalnızca ondan türetilir (sürüm klasörlü dağıtımlarda oturum düşmez).
+  Çerez yolu tarayıcının gönderdiği KODLANMIŞ biçimde yazılır
+  (`Url::cookiePath`; `/my app/` → `/my%20app/`). Oturum klasörü yalnızca
+  `session.save_handler=files` iken değiştirilir (Redis/Memcached'e
+  dokunulmaz).
+- **Parola değişince** diğer cihazlardaki oturumlar, "beni hatırla"
+  jetonu ve kullanıcının **bütün API anahtarları** geçersiz olur. Bu
+  cihaz `Auth::refreshCurrentDevice()` ile açık kalır ("beni hatırla"
+  açıksa bu cihaz için yeni jeton yazılır) — yönetici kendi parolasını
+  Kullanıcılar ekranından değiştirdiğinde de.
 - **Girişten sonra dönüş** — yalnızca GET isteklerinde, isteğin kendi
   yolundan saklanır ve `Middleware::safeIntended()` ile doğrulanır;
   site dışına yönlendirme yapılamaz.
@@ -407,8 +430,11 @@ Parola ya da e-posta **çereze hiç yazılmaz**. Veritabanında yalnızca
 
 Üç ayrıntı bilinçlidir:
 
-* **Jeton her kullanımda yenilenir.** Çalınan bir çerezin ömrü, gerçek
-  kullanıcının bir sonraki ziyaretiyle sona erer.
+* **Jeton her kullanımda KOŞULLU yenilenir.** `UPDATE … WHERE
+  hatirla_token = eski AND oturum_surumu = v`; satır güncellenmezse
+  (jeton bu arada değişti ya da parola değişti) oturum açılmaz. Çalınan
+  bir çerezin ömrü, gerçek kullanıcının bir sonraki ziyaretiyle sona
+  erer; parola değişimiyle yarışıp jetonu yeniden yazamaz.
 * **Çıkış jetonu iptal eder.** Etmeseydi çıkış yapan kullanıcı bir
   sonraki istekte çerez sayesinde yeniden içeri alınırdı — ortak
   bilgisayarda tam bir açık.
@@ -421,6 +447,36 @@ Parola ya da e-posta **çereze hiç yazılmaz**. Veritabanında yalnızca
 Çerezle açılan oturum da `session_regenerate_id()` ve CSRF jetonu
 yenilemesinden geçer; yani sabitleme saldırısına karşı normal girişle
 aynı korumaya sahiptir.
+
+### Kayıt ve e-posta doğrulaması
+
+`sistem_kayit_dogrulama` açıkken (varsayılan) kayıt formundan açılan hesap
+`onay_bekliyor` durumunda başlar ve giriş yapamaz. Adrese **imzalı,
+tablosuz** bir bağlantı gider (`App\Core\Registration`):
+
+```
+kayit/dogrula?k=<kullanıcı>&s=<son kullanma>&i=HMAC(APP_KEY, kullanıcı|e-posta|son)
+```
+
+E-posta imzanın içinde olduğu için adres değişirse eski bağlantı çalışmaz.
+Bağlantı oturum AÇMAZ (mektubu ele geçiren parolayı bilmeden giremez);
+hesap etkinleşince `UserRegistered` yayınlanır, hoş geldin mektubu o
+zaman gider. Doğrulanmamış hesapla doğru parolayla giriş denenirse
+bağlantı yeniden gönderilir (aynı adrese 10 dakikada bir).
+
+- **Hesap varlığı sızmaz:** adres zaten kayıtlıysa ekran yeni kayıtla
+  AYNI yanıtı verir; adresin sahibine "bu adresle zaten hesabınız var"
+  mektubu gider (günde bir). Kullanıcı adının alınmış olduğu ise
+  söylenir (herkese görünen bir addır).
+- **Mektuplara formdan gelen metin basılmaz** (ad, kullanıcı adı) — form
+  sitenin adıyla başkalarına metin gönderen bir röle olmasın.
+- **Bot koruması:** bal küpü + İMZALI ve ZORUNLU zaman damgası
+  (`Signer::stamp`; iletişim formunda da) + her gönderimin sayıldığı
+  saatlik sınır (20) + başarılı kayıt sınırı (5). Sayaçlar
+  `Throttle::attempt` ile kilitli dosyada tutulur; paralel istekler
+  sınırı aşamaz.
+- E-posta ayarları yapılmamışsa kayıt formu kendiliğinden kapanır
+  (`Registration::isOpen`); yönetici panelde uyarı görür.
 
 ### Yetkiler
 
@@ -579,13 +635,33 @@ Yardımcılar: `execute()`, `tableExists()`, `columnExists()`,
 Tek `php cy migrate` çağrısındaki tüm dosyalar aynı parti numarasını
 alır; `migrate:rollback` üç dosyalık bir dağıtımı tek komutla geri sarar.
 
-**Parti 0 — temel parti.** Kurulumla gelen her şey bu partidedir:
-sihirbazın çalıştırdığı migration'lar ve `kurulum/database.sql`'in
-şemada zaten bulunduğunu işaretlediği migration'lar. `migrate:rollback`
-ve `migrate:fresh` parti 0'a **asla** dokunmaz; `migrate:status` onları
-`0 (kurulum)` diye gösterir. `database.sql`'e yeni bir tablo/sütun
-eklediğinizde, onu getiren migration'ın adını dosyanın sonundaki
-`migrasyonlar` listesine de ekleyin.
+**Parti 0 — temel parti.** Şablonla gelen her şey bu partidedir:
+sihirbazın çalıştırdığı migration'lar, `kurulum/database.sql`'in şemada
+zaten bulunduğunu işaretlediği migration'lar ve güncellemelerle gelen
+**çekirdek** migration'lar. `migrate:rollback` ve `migrate:fresh` parti
+0'a **asla** dokunmaz; `migrate:status` onları `0 (kurulum)` diye
+gösterir.
+
+Çekirdek bir migration bunu kendisi söyler:
+
+```php
+public function baseline(): bool { return true; }   // yalnızca şablonun kendi migration'larında
+```
+
+Migrator bu migration'ı hangi komutla çalıştırılırsa çalıştırılsın
+temel partiye yazar. Kendi migration'larınızda bunu **eklemeyin** —
+geri alınabilmeleri gerekir. 1.4.0'dan önce sıradan partilere yazılmış
+çekirdek kayıtları `2026_10_06_090000_cekirdek_temel_parti` taşır.
+
+`database.sql`'e yeni bir tablo/sütun eklediğinizde, onu getiren
+migration'ın adını dosyanın sonundaki `migrasyonlar` listesine de ekleyin.
+
+**SSH yoksa:** bekleyen migration'lar Panel → Sistem Bilgisi sayfasından
+çalıştırılır (`SystemController::migrate`, komut satırıyla aynı Migrator).
+Kod güncellenip migration unutulursa giriş yine çalışır
+(`UserRepository` eksik `oturum_surumu` sütununda eski sütun listesine
+düşer) ve panel her sayfada "migration bekliyor" uyarısı gösterir
+(`App\Core\PanelNotices`).
 
 Kapalı bir modülün migration'ları da geri alınabilir: Migrator dosyayı
 açık olmayan modüllerin klasöründe de arar (`Modules::migrator()`).
@@ -805,8 +881,16 @@ final class RaporUret extends Job
 > denenir; iki kez çalıştığında iki fatura kesmemelidir.
 
 **Atomik ayırma:** iki işçi aynı işi almasın diye önce `UPDATE` ile
-kilitlenir; `rowCount()` 1 dönen işçi işi kapmıştır. Çöken bir işçinin
-elinde kalan işler `queue.timeout` sonunda serbest bırakılır.
+kilitlenir; `rowCount()` 1 dönen işçi işi kapmıştır (kaybeden sıradaki
+adaya geçer). Çöken bir işçinin elinde kalan işler `queue.timeout`
+sonunda serbest bırakılır; hakkı bitmişse başarısız sayılır.
+
+**Kilitlenmeye (deadlock) dayanıklı:** takılı işlerin temizliği süreç
+içinde en fazla dakikada bir çalışır ve önce numaraları okuyup sonra
+birincil anahtarla günceller; ayırma ve silme, InnoDB'nin "yeniden dene"
+dediği 1213/1205 hatalarında `Database::retry()` ile yeniden denenir.
+Tamamlanan bir işin kaydı silinirken hata olsa bile iş yeniden
+çalıştırılmaz.
 
 **Yeniden deneme:** katlanarak artan bekleme (60, 120, 240…),
 `tries()` kadar. Tükenince `durum='basarisiz'` ve `failed()` çağrılır.
@@ -870,6 +954,17 @@ sunucusu kapalı olsa bile hata görmez.
 sonra parti parti gönderilir. 500 kişiye tek istekte göndermek PHP'nin
 zaman aşımına takılır.
 
+**Kuyruk işçileri aynı anda çalışabilir** (panel, cron, `mail:work`):
+
+- Her mektup gönderimden HEMEN ÖNCE, tek tek ayrılır
+  (`MailRepository::claimNext`, `kuyrukta` → `gonderiliyor`). İşçi
+  çökerse yalnızca o an elindeki mektup takılır.
+- 15 dakika `gonderiliyor`da kalan mektup deneme+1 ile kuyruğa döner;
+  3. takılmada başarısız sayılır (ulaşıp ulaşmadığı bilinmediği için).
+- Gönderim başarılıysa durum yazılırken veritabanı hatası olsa bile
+  mektup asla "başarısız" sayılmaz — yeniden kuyruğa alınıp ikinci kopya
+  gitmesin.
+
 **Bildirimler** `Notifier` içinde toplanır; denetleyiciler mektup
 kurmaz, olay yayınlar.
 
@@ -932,18 +1027,28 @@ echo $sonuc['token'];   // yalnızca burada!
 ```
 
 ```bash
-php cy api:token admin "Mobil uygulama" --gun=90
+php cy api:token admin "Mobil uygulama" --gun=90    # süre yoksa 90 gün; süresiz: --suresiz
 ```
 
-ve **Panel → Hesabım → API Anahtarları** (üret / listele / iptal et).
+ve **Panel → Hesabım → API Anahtarları** (üret / listele / iptal et;
+üretmek mevcut parolayı ister, süre 30/90/180/365 gün).
 Çalışan örnek uçlar: `app/Http/Controllers/Api/V1Controller.php`
-(`api/v1/ben`, `api/v1/kullanicilar`, `api/v1/sayfalar`).
+(`api/v1/ben`, `api/v1/kullanicilar`, `api/v1/sayfalar`). Tarihler
+ISO 8601 biçimindedir.
+
+**Anahtarlar ne zaman düşer?** İptal edilince, süresi dolunca, sahibi
+pasife alınınca, sahibinin **parolası değişince** (bütün anahtarları) ve
+"Diğer cihazlardan çıkış"ta "API anahtarlarımı da iptal et" kutusu
+işaretliyse. **Bakım modunda** API `503` döner; bakımı aşma yetkisi olan
+kullanıcının anahtarı çalışmaya devam eder.
 
 ### Hız sınırı
 
 Anahtar (ya da anonim istekte IP) başına, pencere başına istek sayısı.
-Sayaç **önbellekte** tutulur — veritabanına yazmak, korumaya
-çalıştığınız yükün ta kendisini üretirdi.
+Sayaç veritabanında DEĞİL, `Throttle`'ın kilitli dosyasında
+(`storage/cache/hiz`) tutulur: veritabanına yazmak korumaya çalıştığınız
+yükün ta kendisini üretirdi; kilit sayesinde aynı anda gelen istekler
+sınırı birlikte aşamaz ve önbellek sürücüsü kapalıyken de çalışır.
 
 Yanıt başlıkları: `X-RateLimit-Limit`, `X-RateLimit-Remaining`,
 aşımda `Retry-After`.
@@ -1288,14 +1393,18 @@ kendiliğinden güncellenir — dosya düzenlemek gerekmez.
 | CSRF | Her POST'ta token (form alanı **veya** `X-CSRF-Token` başlığı) |
 | Oturum çalma | `httponly` + `samesite` + `secure`, parmak izi, periyodik yenileme |
 | Oturum sabitleme | Girişte `session_regenerate_id(true)` |
-| "Beni hatırla" çalınması | Çerezde ham jeton, veritabanında yalnızca SHA-256 özeti; `HttpOnly`; her kullanımda jeton yenilenir; çıkışta iptal |
+| "Beni hatırla" çalınması | Çerezde ham jeton, veritabanında yalnızca SHA-256 özeti; `HttpOnly`; her kullanımda jeton KOŞULLU yenilenir (eski jeton ve parola değişiminden sonraki jeton çalışmaz); çıkışta iptal |
 | Zengin metinle XSS | `Html::sanitize()` izin verilenler listesi — etiket, öznitelik ve adres şeması denetimi |
-| Kaba kuvvet | Kimlik+IP kilidi + IP geneli kilit; süreler SQL saatiyle |
-| Kullanıcı sayımı | Aynı maliyette sahte özet, aynı mesaj ve aynı "kalan hak" kuralı |
+| Kaba kuvvet | Deneme doğrulamadan önce yazılır; kimlik kilidi + IP başına farklı kimlik sayan, giderek artan bekleme; IPv6 /64; güvenilen cihaz çerezi; `TRUSTED_PROXIES`; süreler SQL saatiyle |
+| Kullanıcı sayımı | Aynı maliyette sahte özet, aynı mesaj ve aynı "kalan hak" kuralı; kayıt formu kayıtlı adreste de aynı yanıtı verir |
 | Açık yönlendirme | Dönüş adresi yalnızca uygulama içi yol (`Middleware::safeIntended`) |
 | Kurulum ele geçirme | `.env` / `storage/installed.lock` varken sihirbaz hiçbir adımı çalıştırmaz |
-| Parola sonrası oturum | Oturum sürümü + "beni hatırla" jetonu silme |
-| Oturum karışması | Kuruluma özel çerez adı/yolu, `storage/sessions`, `APP_KEY` parmak izi |
+| Yarım kalan kurulum | Dolu veritabanında yabancı anahtar ön kontrolü; silinecek tablolar adıyla listelenir |
+| Parola sonrası oturum | Oturum sürümü + "beni hatırla" jetonu silme + API anahtarlarının iptali; bu cihaz açık kalır |
+| Oturum karışması | Kuruluma özel çerez adı/yolu (kodlanmış), `storage/sessions` (yalnızca dosya sürücüsünde), `APP_KEY` parmak izi |
+| Yöntem sahteleme | `_method` yalnızca POST gövdesinden; POST yalnızca PUT/PATCH/DELETE olabilir |
+| Satır sonu kaçırma | Doğrulama düzenli ifadeleri `\z` ile biter (`$` sondaki `\n`'i kabul ederdi) |
+| Debug açık yayın | Panel her sayfada uyarır (yerel olmayan alan adında) |
 | Path traversal | Segment bazlı doğrulama + `realpath()`; görünüm adları beyaz listeden |
 | Kötücül yükleme | 9 katmanlı savunma (bkz. §10) + piksel/bellek sınırı |
 | Dosya ifşası | `app/`, `config/`, `storage/`, `views/`, `.env`, `.git/`, `cy`, `tests/` web'e kapalı |
@@ -1303,8 +1412,8 @@ kendiliğinden güncellenir — dosya düzenlemek gerekmez.
 | Clickjacking | `X-Frame-Options: DENY` |
 | MIME sniffing | `X-Content-Type-Options: nosniff` |
 | Bilgi sızması | Yayında yığın izi/dosya yolu gösterilmez |
-| Spam | Bal küpü + zaman kontrolü + oturum/IP hız sınırı (iletişim ve kayıt formu); otomatik yanıt ziyaretçi metnini içermez, aynı adrese günde bir |
-| API kötüye kullanımı | Bearer + hash'lenmiş anahtar + hız sınırı |
+| Spam | Bal küpü + İMZALI ve zorunlu zaman damgası + kilitli sayaçlı hız sınırı (iletişim ve kayıt formu; hatalı gönderimler de sayılır); kayıtta e-posta doğrulaması; mektuplar formdan gelen metni içermez |
+| API kötüye kullanımı | Bearer + hash'lenmiş anahtar + kilitli sayaçlı hız sınırı; üretmek parola ister; bakımda 503 |
 
 ### İçerik Güvenliği Politikası ve dış servisler
 

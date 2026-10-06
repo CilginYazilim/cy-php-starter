@@ -93,6 +93,11 @@ storage/sessions/*
 #  girerse yeni bir klonda kurulum hiç başlamaz.
 /storage/installed.lock
 
+# --- Yedek imza anahtarı ------------------------------------------
+#  APP_KEY boşken App\Core\Signer'ın ürettiği anahtar. Kuruluma özel ve
+#  GİZLİDİR; depoya girerse imzalı bağlantılar ve çerezler taklit edilebilir.
+/storage/app.key
+
 # --- Bağımlılık klasörleri ------------------------------------------
 /vendor/
 /node_modules/

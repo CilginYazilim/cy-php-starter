@@ -217,6 +217,15 @@ final class Router
      * HEAD, gövdesiz GET demektir. HTML formları yalnızca GET/POST
      * gönderebildiği için POST içindeki "_method" alanı da dikkate
      * alınır — böylece bir formdan DELETE isteği yapılabilir.
+     *
+     * İKİ KISIT:
+     *   · Alan YALNIZCA POST GÖVDESİNDEN okunur. Eskiden sorgu
+     *     dizesinden de okunuyordu: "POST /giris?_method=GET" isteği GET
+     *     gibi işleniyordu; bağlantıya eklenen bir parametre isteğin
+     *     yöntemini değiştirebiliyordu.
+     *   · POST yalnızca PUT, PATCH ya da DELETE'e dönüşebilir. POST'u
+     *     GET'e çevirmek CSRF denetimi gibi "veri değiştiren yöntem"
+     *     kontrollerini atlatmanın yoluydu.
      */
     private function resolveVerb(Request $request): string
     {
@@ -227,9 +236,10 @@ final class Router
         }
 
         if ($verb === 'POST') {
-            $spoofed = strtoupper(trim($request->string('_method')));
+            $raw     = $_POST['_method'] ?? '';
+            $spoofed = is_string($raw) ? strtoupper(trim($raw)) : '';
 
-            if ($spoofed !== '' && in_array($spoofed, self::VERBS, true)) {
+            if (in_array($spoofed, ['PUT', 'PATCH', 'DELETE'], true)) {
                 return $spoofed;
             }
         }

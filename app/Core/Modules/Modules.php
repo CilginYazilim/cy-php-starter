@@ -73,7 +73,7 @@ final class Modules
             $name = basename($directory);
 
             // Klasör adı sınıf adı olacak: yalnızca güvenli adlar.
-            if (preg_match('/^[A-Za-z][A-Za-z0-9_]*$/', $name) !== 1) {
+            if (preg_match('/^[A-Za-z][A-Za-z0-9_]*\z/', $name) !== 1) {
                 continue;
             }
 

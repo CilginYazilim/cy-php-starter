@@ -231,6 +231,15 @@ jQuery(function ($) {
         .done(function (response) {
             userModal.hide();
             CY.notify(response.description, 'success');
+
+            /* Yönetici KENDİ parolasını değiştirdiyse sunucu oturumu
+             * yeniledi ve CSRF anahtarı değişti; sayfadaki eski anahtarla
+             * sonraki istekler reddedilirdi. Sayfayı tazeliyoruz. */
+            if (response.yenile) {
+                window.setTimeout(function () { window.location.reload(); }, 900);
+                return;
+            }
+
             reload(false);
         })
         .fail(function (xhr) {
@@ -257,7 +266,8 @@ jQuery(function ($) {
             var roleClass = data.rol === 'admin' ? 'admin' : (data.rol === 'editor' ? 'editor' : 'member');
             $('#detail_role').attr('class', 'cy-role cy-role--' + roleClass).text(data.rol_etiket);
 
-            var statusClass = data.durum === 'aktif' ? 'is-active' : (data.durum === 'askida' ? 'is-hold' : 'is-passive');
+            var statusClass = data.durum === 'aktif' ? 'is-active'
+                : ((data.durum === 'askida' || data.durum === 'onay_bekliyor') ? 'is-hold' : 'is-passive');
             $('#detail_status').attr('class', 'cy-status ' + statusClass).text(data.durum_etiket);
 
             if (data.avatar_url) {

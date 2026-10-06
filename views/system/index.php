@@ -17,6 +17,7 @@
  */
 
 $ozet           = $ozet ?? [];
+$bekleyenMigrationlar = $bekleyenMigrationlar ?? [];
 $checks         = $checks ?? [];
 $ayarChecks     = $ayarChecks ?? [];
 $moduller       = $moduller ?? [];
@@ -41,6 +42,35 @@ $ayarSorunlu = array_filter($ayarChecks, static fn (array $c): bool => !$c['ok']
         </div>
     <?php endforeach; ?>
 </div>
+
+<?php if ($bekleyenMigrationlar !== []): ?>
+    <?php /* SSH'siz hostlar için: komut satırına gerek kalmadan çalıştırılır
+             (bkz. SystemController::migrate). */ ?>
+    <div class="cy-card mb-3" id="migration">
+        <div class="cy-card__header">
+            <h3 class="cy-section-title mb-0"><?= icon('server', 'cy-icon cy-icon--sm') ?> Bekleyen Migration'lar</h3>
+        </div>
+        <div class="cy-card__body">
+            <p class="cy-muted small">
+                Kod güncellendi ama veritabanı henüz güncellenmedi. Sunucuda
+                <code>php cy migrate</code> çalıştırabilir ya da aşağıdaki düğmeyi kullanabilirsiniz.
+                Önce veritabanının yedeğini almanız önerilir.
+            </p>
+            <ul class="small mb-3">
+                <?php foreach ($bekleyenMigrationlar as $ad): ?>
+                    <li><code><?= e((string) $ad) ?></code></li>
+                <?php endforeach; ?>
+            </ul>
+            <?php if (can('system.manage')): ?>
+                <form method="post" action="<?= e(url('panel/sistem/migrate')) ?>"
+                      data-confirm="<?= count($bekleyenMigrationlar) ?> migration çalıştırılacak. Veritabanı yedeğiniz var mı?">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn cy-btn cy-btn--primary"><?= icon('check', 'cy-icon cy-icon--sm') ?> Migration'ları Çalıştır</button>
+                </form>
+            <?php endif; ?>
+        </div>
+    </div>
+<?php endif; ?>
 
 <?php if ($sorunlu !== [] || $ayarSorunlu !== []): ?>
     <div class="cy-alert cy-alert--warning mb-3">

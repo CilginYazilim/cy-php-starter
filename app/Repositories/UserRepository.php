@@ -12,15 +12,36 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use App\Core\Database;
+use App\Core\Log\Logger;
 use App\Models\Role;
 use App\Models\User;
 use PDO;
+use PDOException;
+use PDOStatement;
 
 final class UserRepository
 {
     private const COLUMNS = 'id, ad, soyad, kullanici_adi, eposta, rol, durum, tema, avatar, telefon,
                              hakkinda, son_giris, son_giris_ip, giris_sayisi, created_at, updated_at,
                              oturum_surumu';
+
+    /**
+     * "oturum_surumu" sütunu henüz yokken kullanılan liste.
+     *
+     * Kod 1.3'e güncellenip "php cy migrate" çalıştırılmadıysa sütun
+     * yoktur ve her giriş denemesi "Unknown column" hatasıyla 500
+     * veriyordu. SSH erişimi olmayan bir hostta yönetici panele de
+     * giremediği için migration'ı çalıştıramıyordu. Sütun yoksa sürüm
+     * 0 kabul edilir; giriş çalışır, panel "bekleyen migration var"
+     * diye uyarır ve tek tıkla çalıştırır (Sistem sayfası).
+     */
+    private const LEGACY_COLUMNS = 'id, ad, soyad, kullanici_adi, eposta, rol, durum, tema, avatar, telefon,
+                                    hakkinda, son_giris, son_giris_ip, giris_sayisi, created_at, updated_at,
+                                    0 AS oturum_surumu';
+
+    /** null → bilinmiyor, false → sütun yok (migration bekliyor). */
+    private static ?bool $hasSessionVersion = null;
 
     /**
      * DataTables sütun sırasına göre sıralanabilir sütunlar.
@@ -41,12 +62,75 @@ final class UserRepository
     {
     }
 
+    /**
+     * Sütun listesini içeren bir SELECT çalıştırır. "{SUTUNLAR}" yer
+     * tutucusu kullanıcı sütunlarıyla değiştirilir; oturum_surumu
+     * sütunu yoksa (migration bekliyor) eski listeyle yeniden denenir.
+     *
+     * @param array<string,mixed> $params
+     */
+    private function select(string $sql, array $params = []): PDOStatement
+    {
+        $columns = self::$hasSessionVersion === false ? self::LEGACY_COLUMNS : self::COLUMNS;
+
+        try {
+            $stmt = $this->db->prepare(str_replace('{SUTUNLAR}', $columns, $sql));
+            $stmt->execute($params);
+
+            return $stmt;
+        } catch (PDOException $e) {
+            if (self::$hasSessionVersion === false || !Database::isMissingColumn($e) || !str_contains($e->getMessage(), 'oturum_surumu')) {
+                throw $e;
+            }
+
+            self::$hasSessionVersion = false;
+
+            Logger::warning('kullanicilar.oturum_surumu sütunu yok; bekleyen migration\'ları çalıştırın (php cy migrate ya da Panel → Sistem).', [], 'app');
+
+            $stmt = $this->db->prepare(str_replace('{SUTUNLAR}', self::LEGACY_COLUMNS, $sql));
+            $stmt->execute($params);
+
+            return $stmt;
+        }
+    }
+
+    /**
+     * Bir UPDATE'i çalıştırır; oturum_surumu sütunu yoksa onu
+     * kullanmayan yedek sorguyla.
+     *
+     * @param array<string,mixed> $params
+     */
+    private function write(string $sql, string $legacySql, array $params): PDOStatement
+    {
+        if (self::$hasSessionVersion === false) {
+            $stmt = $this->db->prepare($legacySql);
+            $stmt->execute($params);
+
+            return $stmt;
+        }
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+
+            return $stmt;
+        } catch (PDOException $e) {
+            if (!Database::isMissingColumn($e) || !str_contains($e->getMessage(), 'oturum_surumu')) {
+                throw $e;
+            }
+
+            self::$hasSessionVersion = false;
+
+            $stmt = $this->db->prepare($legacySql);
+            $stmt->execute($params);
+
+            return $stmt;
+        }
+    }
+
     public function find(int $id): ?User
     {
-        $stmt = $this->db->prepare('SELECT ' . self::COLUMNS . ' FROM kullanicilar WHERE id = :id LIMIT 1');
-        $stmt->execute([':id' => $id]);
-
-        $row = $stmt->fetch();
+        $row = $this->select('SELECT {SUTUNLAR} FROM kullanicilar WHERE id = :id LIMIT 1', [':id' => $id])->fetch();
 
         return $row ? User::fromRow($row) : null;
     }
@@ -61,10 +145,7 @@ final class UserRepository
      */
     public function findWithPassword(int $id): ?User
     {
-        $stmt = $this->db->prepare('SELECT ' . self::COLUMNS . ', sifre FROM kullanicilar WHERE id = :id LIMIT 1');
-        $stmt->execute([':id' => $id]);
-
-        $row = $stmt->fetch();
+        $row = $this->select('SELECT {SUTUNLAR}, sifre FROM kullanicilar WHERE id = :id LIMIT 1', [':id' => $id])->fetch();
 
         return $row ? User::fromRow($row) : null;
     }
@@ -72,13 +153,22 @@ final class UserRepository
     /** Giriş için: e-posta VEYA kullanıcı adıyla arar, parola özetini de çeker. */
     public function findForLogin(string $identifier): ?User
     {
-        $stmt = $this->db->prepare(
-            'SELECT ' . self::COLUMNS . ', sifre FROM kullanicilar
-              WHERE eposta = :id OR kullanici_adi = :id2 LIMIT 1'
-        );
-        $stmt->execute([':id' => $identifier, ':id2' => $identifier]);
+        $row = $this->select(
+            'SELECT {SUTUNLAR}, sifre FROM kullanicilar
+              WHERE eposta = :id OR kullanici_adi = :id2 LIMIT 1',
+            [':id' => $identifier, ':id2' => $identifier]
+        )->fetch();
 
-        $row = $stmt->fetch();
+        return $row ? User::fromRow($row) : null;
+    }
+
+    /** E-posta adresine göre (kayıt ve doğrulama akışı için). */
+    public function findByEmail(string $email): ?User
+    {
+        $row = $this->select(
+            'SELECT {SUTUNLAR} FROM kullanicilar WHERE eposta = :eposta LIMIT 1',
+            [':eposta' => mb_strtolower(trim($email))]
+        )->fetch();
 
         return $row ? User::fromRow($row) : null;
     }
@@ -119,15 +209,12 @@ final class UserRepository
         $length = (int) ($options['length'] ?? 10);
         $limit  = $length <= 0 ? 500 : min($length, 500);
 
-        $sql = 'SELECT ' . self::COLUMNS . ' FROM kullanicilar'
+        $sql = 'SELECT {SUTUNLAR} FROM kullanicilar'
              . $where
              . sprintf(' ORDER BY `%s` %s', $orderBy, $orderDir)
              . sprintf(' LIMIT %d OFFSET %d', $limit, $start);
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-
-        $rows = array_map(static fn (array $row): User => User::fromRow($row), $stmt->fetchAll());
+        $rows = array_map(static fn (array $row): User => User::fromRow($row), $this->select($sql, $params)->fetchAll());
 
         return [
             'rows'     => $rows,
@@ -167,7 +254,7 @@ final class UserRepository
             $params[':rol'] = $role;
         }
 
-        if (in_array($status, ['aktif', 'pasif', 'askida'], true)) {
+        if (in_array($status, User::STATUSES, true)) {
             $conditions[]     = 'durum = :durum';
             $params[':durum'] = $status;
         }
@@ -251,7 +338,7 @@ final class UserRepository
 
         $status = (string) ($options['status'] ?? '');
 
-        if (in_array($status, ['aktif', 'pasif', 'askida'], true)) {
+        if (in_array($status, User::STATUSES, true)) {
             $conditions[] = 'durum = :durum';
             $params[':durum'] = $status;
         }
@@ -281,7 +368,7 @@ final class UserRepository
 
     private function validDate(string $value): ?string
     {
-        if ($value === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+        if ($value === '' || !preg_match('/^\d{4}-\d{2}-\d{2}\z/', $value)) {
             return null;
         }
 
@@ -344,9 +431,7 @@ final class UserRepository
     {
         $limit = max(1, min($limit, 50));
 
-        $stmt = $this->db->query(
-            'SELECT ' . self::COLUMNS . ' FROM kullanicilar ORDER BY created_at DESC, id DESC LIMIT ' . $limit
-        );
+        $stmt = $this->select('SELECT {SUTUNLAR} FROM kullanicilar ORDER BY created_at DESC, id DESC LIMIT ' . $limit);
 
         return array_map(static fn (array $row): User => User::fromRow($row), $stmt->fetchAll());
     }
@@ -400,11 +485,14 @@ final class UserRepository
          * parolayı değiştiren her yerin (profil, yönetici paneli,
          * komut satırı, ileride eklenecek "parolamı unuttum") bunu
          * hatırlamasını gerektirirdi; birinin unutması yeterdi. */
-        if (!empty($data['sifre'])) {
-            $sets[] = '`sifre` = :sifre';
+        $passwordChanged = !empty($data['sifre']);
+        $legacySets      = $sets;
+
+        if ($passwordChanged) {
+            $sets[] = $legacySets[] = '`sifre` = :sifre';
             $sets[] = '`oturum_surumu` = `oturum_surumu` + 1';
-            $sets[] = '`hatirla_token` = NULL';
-            $sets[] = '`hatirla_bitis` = NULL';
+            $sets[] = $legacySets[] = '`hatirla_token` = NULL';
+            $sets[] = $legacySets[] = '`hatirla_bitis` = NULL';
             $params[':sifre'] = password_hash((string) $data['sifre'], PASSWORD_DEFAULT);
         }
 
@@ -412,9 +500,21 @@ final class UserRepository
             return false;
         }
 
-        $stmt = $this->db->prepare('UPDATE kullanicilar SET ' . implode(', ', $sets) . ' WHERE id = :id');
+        $this->write(
+            'UPDATE kullanicilar SET ' . implode(', ', $sets) . ' WHERE id = :id',
+            'UPDATE kullanicilar SET ' . implode(', ', $legacySets) . ' WHERE id = :id',
+            $params
+        );
 
-        return $stmt->execute($params);
+        /* API ANAHTARLARI DA İPTAL EDİLİR: parolasını "hesabım ele
+         * geçirildi" şüphesiyle değiştiren kullanıcının çalınmış bir
+         * anahtarla erişimi sürmemeli. Tablo henüz yoksa (migration
+         * bekliyor) sessizce geçilir. */
+        if ($passwordChanged) {
+            $this->revokeApiTokens($id);
+        }
+
+        return true;
     }
 
     /**
@@ -423,12 +523,37 @@ final class UserRepository
      */
     public function bumpSessionVersion(int $id): void
     {
-        $stmt = $this->db->prepare(
+        $this->write(
             'UPDATE kullanicilar
                 SET oturum_surumu = oturum_surumu + 1, hatirla_token = NULL, hatirla_bitis = NULL
-              WHERE id = :id'
+              WHERE id = :id',
+            'UPDATE kullanicilar SET hatirla_token = NULL, hatirla_bitis = NULL WHERE id = :id',
+            [':id' => $id]
+        );
+    }
+
+    /** @return int Silinen anahtar sayısı */
+    public function revokeApiTokens(int $id): int
+    {
+        try {
+            $stmt = $this->db->prepare('DELETE FROM api_anahtarlari WHERE kullanici_id = :id');
+            $stmt->execute([':id' => $id]);
+
+            return $stmt->rowCount();
+        } catch (PDOException) {
+            return 0;
+        }
+    }
+
+    /** Hesabı etkinleştirir (e-posta doğrulandı). Yalnızca onay bekleyen hesap. */
+    public function activatePending(int $id): bool
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE kullanicilar SET durum = 'aktif' WHERE id = :id AND durum = 'onay_bekliyor'"
         );
         $stmt->execute([':id' => $id]);
+
+        return $stmt->rowCount() === 1;
     }
 
     /**
@@ -469,6 +594,44 @@ final class UserRepository
         $stmt->execute([':token' => $hash, ':gun' => max(1, $days), ':id' => $id]);
     }
 
+    /**
+     * Jetonu ATOMİK olarak döndürür: yalnızca veritabanındaki jeton hâlâ
+     * $oldHash ise, oturum sürümü değişmediyse ve süresi dolmadıysa.
+     *
+     * NEDEN? Eskiden önce okunup sonra koşulsuz yazılıyordu. Çalınmış
+     * çerezle sürekli istek atan saldırgan, kullanıcı parolasını
+     * değiştirdiği anda araya girebiliyordu: okuma parola değişiminden
+     * ÖNCE, yazma SONRA gerçekleşince parola değişikliğinin sildiği
+     * jetonun yerine saldırganınki yazılıyordu (yerelde 120 denemenin
+     * 6'sında oturumu korudu). Koşullu UPDATE'te bu mümkün değildir:
+     * jeton değiştiyse ya da sürüm arttıysa satır güncellenmez.
+     *
+     * @return bool true → döndürüldü; false → yarışı kaybettik, giriş YOK
+     */
+    public function rotateRememberToken(int $id, string $oldHash, string $newHash, int $sessionVersion, int $days): bool
+    {
+        $params = [
+            ':yeni'  => $newHash,
+            ':gun'   => max(1, $days),
+            ':id'    => $id,
+            ':eski'  => $oldHash,
+        ];
+
+        $where = 'WHERE id = :id AND hatirla_token = :eski
+                    AND hatirla_bitis IS NOT NULL AND hatirla_bitis > NOW()
+                    AND durum = \'aktif\'';
+        $set = 'UPDATE kullanicilar
+                   SET hatirla_token = :yeni, hatirla_bitis = (NOW() + INTERVAL :gun DAY) ';
+
+        $stmt = $this->write(
+            $set . $where . ' AND oturum_surumu = ' . $sessionVersion,
+            $set . $where,
+            $params
+        );
+
+        return $stmt->rowCount() === 1;
+    }
+
     public function clearRememberToken(int $id): void
     {
         $stmt = $this->db->prepare(
@@ -486,18 +649,16 @@ final class UserRepository
      */
     public function findByRememberToken(string $hash): ?User
     {
-        $stmt = $this->db->prepare(
-            'SELECT ' . self::COLUMNS . '
+        $row = $this->select(
+            'SELECT {SUTUNLAR}
                FROM kullanicilar
               WHERE hatirla_token = :token
                 AND hatirla_bitis IS NOT NULL
                 AND hatirla_bitis > NOW()
                 AND durum = \'aktif\'
-              LIMIT 1'
-        );
-        $stmt->execute([':token' => $hash]);
-
-        $row = $stmt->fetch();
+              LIMIT 1',
+            [':token' => $hash]
+        )->fetch();
 
         return $row ? User::fromRow($row) : null;
     }

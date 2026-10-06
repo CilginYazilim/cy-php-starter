@@ -214,8 +214,10 @@ final class Migrator
                 $onEach($name);
             }
 
-            $this->runOne($name, 'up');
-            $this->markCompleted($name, $batch);
+            $migration = $this->runOne($name, 'up');
+
+            // Çekirdek migration'lar her zaman temel partiye yazılır (bkz. Migration::baseline).
+            $this->markCompleted($name, $migration->baseline() ? self::BASELINE : $batch);
 
             $done[] = $name;
         }
@@ -299,7 +301,7 @@ final class Migrator
      *
      * @param 'up'|'down' $direction
      */
-    private function runOne(string $name, string $direction): void
+    private function runOne(string $name, string $direction): Migration
     {
         $migration = $this->resolve($name);
 
@@ -336,6 +338,8 @@ final class Migrator
                 $e
             );
         }
+
+        return $migration;
     }
 
     /** Dosyayı yükler ve döndürdüğü nesneyi doğrular. */

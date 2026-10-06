@@ -116,11 +116,14 @@ final class Request
             && (int) $file['error'] !== UPLOAD_ERR_NO_FILE;
     }
 
+    /**
+     * İstemcinin adresi. Site bir vekilin (Cloudflare, yük dengeleyici)
+     * arkasındaysa .env'deki TRUSTED_PROXIES ile gerçek adres okunur
+     * (bkz. App\Core\Ip).
+     */
     public function ip(): string
     {
-        $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
-
-        return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
+        return Ip::client();
     }
 
     public function userAgent(): string

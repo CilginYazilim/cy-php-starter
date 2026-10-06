@@ -131,6 +131,11 @@ $roles = $roles ?? [];
                                         <label class="cy-choice-group__pill cy-status is-hold" for="durum_askida">
                                             <span class="cy-status__dot"></span>Askıda
                                         </label>
+
+                                        <input type="radio" class="cy-choice-group__input" name="durum" id="durum_onay_bekliyor" value="onay_bekliyor">
+                                        <label class="cy-choice-group__pill cy-status is-hold" for="durum_onay_bekliyor">
+                                            <span class="cy-status__dot"></span>Onay bekliyor
+                                        </label>
                                     </div>
                                     <div class="invalid-feedback d-block" data-error-for="durum"></div>
                                 </div>

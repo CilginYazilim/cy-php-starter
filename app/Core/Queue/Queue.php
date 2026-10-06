@@ -42,6 +42,9 @@ final class Queue
 
     private static ?PDO $db = null;
 
+    /** Takılı işler en son ne zaman serbest bırakıldı (süreç içinde). */
+    private static int $releasedAt = 0;
+
     private static function db(): PDO
     {
         return self::$db ??= Database::connection();
@@ -108,9 +111,16 @@ final class Queue
      */
     public static function runNext(string $queue = ''): bool
     {
-        self::releaseStuck();
+        /* Takılı işler süreç içinde en fazla dakikada bir serbest
+         * bırakılır. Eskiden HER işten önce bir aralık UPDATE'i
+         * çalışıyordu; aynı anda çalışan işçilerin ayırma sorgularıyla
+         * çakışıp kilitlenme (deadlock, 1213) üretiyordu. */
+        if (self::$releasedAt <= time() - 60) {
+            self::$releasedAt = time();
+            self::releaseStuck();
+        }
 
-        $row = self::reserve($queue);
+        $row = Database::retry(static fn (): ?array => self::reserve($queue));
 
         if ($row === null) {
             return false;
@@ -122,14 +132,25 @@ final class Queue
             $job = self::rebuild($row);
 
             $job->handle();
-
-            self::db()->prepare('DELETE FROM `' . self::table() . '` WHERE id = :id')
-                ->execute([':id' => $id]);
-
-            Logger::info('İş tamamlandı', ['is' => $id, 'sinif' => $row['sinif']], 'queue');
         } catch (Throwable $e) {
-            self::handleFailure($row, $e);
+            Database::retry(static fn () => self::handleFailure($row, $e));
+
+            return true;
         }
+
+        /* İŞ BİTTİ. Kaydı silerken bir kilitlenme olursa yeniden
+         * denenir; yine de silinemezse iş "başarısız" SAYILMAZ (zaten
+         * çalıştı). Eskiden silme handle() ile aynı try içindeydi:
+         * bir deadlock, tamamlanmış işi yeniden kuyruğa koyuyordu. */
+        try {
+            Database::retry(static fn () => self::db()
+                ->prepare('DELETE FROM `' . self::table() . '` WHERE id = :id')
+                ->execute([':id' => $id]));
+        } catch (Throwable $e) {
+            Logger::critical('İş tamamlandı ama kuyruktan silinemedi: ' . $e->getMessage(), ['is' => $id], 'queue');
+        }
+
+        Logger::info('İş tamamlandı', ['is' => $id, 'sinif' => $row['sinif']], 'queue');
 
         return true;
     }
@@ -143,13 +164,14 @@ final class Queue
     {
         $filter = $queue !== '' ? ' AND kuyruk = :kuyruk' : '';
 
-        /* Önce sıradaki işin numarasını buluruz, sonra SADECE hâlâ
-         * bekliyorsa kendimize ayırırız. İkinci sorgunun rowCount'u
-         * 1 değilse başka bir işçi bizden önce davranmıştır. */
+        /* Önce sıradaki işlerin numaralarını buluruz, sonra SADECE hâlâ
+         * bekliyorsa kendimize ayırırız. UPDATE'in rowCount'u 1 değilse
+         * başka bir işçi bizden önce davranmıştır; sıradakine geçeriz
+         * (eskiden "iş yok" deyip dönülüyordu). */
         $find = self::db()->prepare(
             'SELECT id FROM `' . self::table() . '`
               WHERE durum = :durum AND hazir_at <= NOW()' . $filter . '
-              ORDER BY id ASC LIMIT 1'
+              ORDER BY id ASC LIMIT 5'
         );
 
         $params = [':durum' => self::BEKLIYOR];
@@ -159,29 +181,30 @@ final class Queue
         }
 
         $find->execute($params);
-        $id = $find->fetchColumn();
-
-        if ($id === false) {
-            return null;
-        }
+        $ids = $find->fetchAll(PDO::FETCH_COLUMN);
 
         $claim = self::db()->prepare(
             'UPDATE `' . self::table() . '`
                 SET durum = :yeni, ayrildi_at = NOW(), deneme = deneme + 1
               WHERE id = :id AND durum = :eski'
         );
-        $claim->execute([':yeni' => self::CALISIYOR, ':id' => $id, ':eski' => self::BEKLIYOR]);
 
-        if ($claim->rowCount() !== 1) {
-            return null; // başka işçi kaptı
+        foreach ($ids as $id) {
+            $claim->execute([':yeni' => self::CALISIYOR, ':id' => $id, ':eski' => self::BEKLIYOR]);
+
+            if ($claim->rowCount() !== 1) {
+                continue; // başka işçi kaptı
+            }
+
+            $read = self::db()->prepare('SELECT * FROM `' . self::table() . '` WHERE id = :id');
+            $read->execute([':id' => $id]);
+
+            $row = $read->fetch();
+
+            return $row === false ? null : $row;
         }
 
-        $read = self::db()->prepare('SELECT * FROM `' . self::table() . '` WHERE id = :id');
-        $read->execute([':id' => $id]);
-
-        $row = $read->fetch();
-
-        return $row === false ? null : $row;
+        return null;
     }
 
     /** @param array<string,mixed> $row */
@@ -270,41 +293,58 @@ final class Queue
     {
         $timeout = max(30, (int) Config::get('queue.timeout', 300));
 
-        $failed = self::db()->prepare(
-            'UPDATE `' . self::table() . '`
-                SET durum = :basarisiz, ayrildi_at = NULL,
-                    hata = :hata
+        /* KİLİTLENMEYİ ÖNLEMEK İÇİN önce numaralar okunur, sonra her
+         * satır BİRİNCİL ANAHTARLA güncellenir. Durum + tarih koşullu
+         * aralık UPDATE'leri, aynı anda çalışan işçilerin ayırma
+         * sorgularıyla çakışıp deadlock (1213) üretiyordu. */
+        $find = self::db()->prepare(
+            'SELECT id FROM `' . self::table() . '`
               WHERE durum = :calisiyor
                 AND ayrildi_at IS NOT NULL
                 AND ayrildi_at < (NOW() - INTERVAL :saniye SECOND)
-                AND deneme >= max_deneme'
+              ORDER BY id ASC
+              LIMIT 200'
         );
+        $find->bindValue(':calisiyor', self::CALISIYOR);
+        $find->bindValue(':saniye', $timeout, PDO::PARAM_INT);
+        $find->execute();
 
-        $failed->bindValue(':basarisiz', self::BASARISIZ);
-        $failed->bindValue(':hata', 'İşçi zaman aşımına uğradı ve deneme hakkı bitti (çökme ya da sonsuz döngü olabilir).');
-        $failed->bindValue(':calisiyor', self::CALISIYOR);
-        $failed->bindValue(':saniye', $timeout, PDO::PARAM_INT);
-        $failed->execute();
+        $ids = $find->fetchAll(PDO::FETCH_COLUMN);
 
-        if ($failed->rowCount() > 0) {
-            Logger::error('Zaman aşımına uğrayan işler başarısız sayıldı', ['adet' => $failed->rowCount()], 'queue');
+        if ($ids === []) {
+            return 0;
         }
 
-        $statement = self::db()->prepare(
+        $update = self::db()->prepare(
             'UPDATE `' . self::table() . '`
-                SET durum = :bekliyor, ayrildi_at = NULL
-              WHERE durum = :calisiyor
-                AND ayrildi_at IS NOT NULL
-                AND ayrildi_at < (NOW() - INTERVAL :saniye SECOND)
-                AND deneme < max_deneme'
+                SET durum = IF(deneme >= max_deneme, :basarisiz, :bekliyor),
+                    hata  = IF(deneme >= max_deneme, :hata, hata),
+                    ayrildi_at = NULL
+              WHERE id = :id AND durum = :calisiyor
+                AND ayrildi_at < (NOW() - INTERVAL :saniye SECOND)'
         );
 
-        $statement->bindValue(':bekliyor', self::BEKLIYOR);
-        $statement->bindValue(':calisiyor', self::CALISIYOR);
-        $statement->bindValue(':saniye', $timeout, PDO::PARAM_INT);
-        $statement->execute();
+        $serbest = 0;
 
-        return $statement->rowCount();
+        foreach ($ids as $id) {
+            $serbest += (int) Database::retry(static function () use ($update, $id, $timeout): int {
+                $update->bindValue(':basarisiz', self::BASARISIZ);
+                $update->bindValue(':bekliyor', self::BEKLIYOR);
+                $update->bindValue(':hata', 'İşçi zaman aşımına uğradı ve deneme hakkı bitti (çökme ya da sonsuz döngü olabilir).');
+                $update->bindValue(':id', (int) $id, PDO::PARAM_INT);
+                $update->bindValue(':calisiyor', self::CALISIYOR);
+                $update->bindValue(':saniye', $timeout, PDO::PARAM_INT);
+                $update->execute();
+
+                return $update->rowCount();
+            });
+        }
+
+        if ($serbest > 0) {
+            Logger::warning('Zaman aşımına uğrayan işler serbest bırakıldı (hakkı biten başarısız sayıldı)', ['adet' => $serbest], 'queue');
+        }
+
+        return $serbest;
     }
 
     /* =================================================================

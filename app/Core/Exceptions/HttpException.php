@@ -81,11 +81,16 @@ final class HttpException extends RuntimeException
         return new self(419, 'Güvenlik doğrulaması başarısız oldu. Lütfen sayfayı yenileyip tekrar deneyin.', $context);
     }
 
-    public static function tooManyRequests(int $retryAfter = 0): self
+    /**
+     * 429 – Hız sınırı. Yanıta "Retry-After" başlığı eklenir (bkz.
+     * retryAfter); JSON ya da HTML olması isteğe göre ErrorHandler'da
+     * belirlenir.
+     */
+    public static function tooManyRequests(int $retryAfter = 0, string $message = ''): self
     {
         return new self(
             429,
-            'Çok fazla istek gönderdiniz. Lütfen biraz bekleyin.',
+            $message !== '' ? $message : 'Çok fazla istek gönderdiniz. Lütfen biraz bekleyin.',
             $retryAfter > 0 ? ['tekrar_dene' => $retryAfter] : []
         );
     }
@@ -180,6 +185,26 @@ final class HttpException extends RuntimeException
             // eskiden hepsi "500 – Bir şeyler ters gitti" diyordu.
             default                                   => 'errors/genel',
         };
+    }
+
+    /**
+     * 405 için "Allow" başlığının değeri ("GET, HEAD, POST"); başka
+     * durumlarda boş. GET'e izin veren adres HEAD'e de izin verir
+     * (Router HEAD'i GET gibi işler).
+     */
+    public function allow(): string
+    {
+        if ($this->status !== 405 || empty($this->context['izinli'])) {
+            return '';
+        }
+
+        $yontemler = explode(',', (string) $this->context['izinli']);
+
+        if (in_array('GET', $yontemler, true) && !in_array('HEAD', $yontemler, true)) {
+            array_splice($yontemler, array_search('GET', $yontemler, true) + 1, 0, ['HEAD']);
+        }
+
+        return implode(', ', $yontemler);
     }
 
     /** Retry-After başlığı gerekiyor mu? (429 ve 503 için, saniye) */

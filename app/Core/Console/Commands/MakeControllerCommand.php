@@ -36,6 +36,15 @@ final class MakeControllerCommand extends MakeCommand
         $base = $this->className('php cy make:controller <ad>');
         $base = preg_replace('/Controller$/', '', $base) ?? $base;
 
+        /* "Controller" yazılırsa sonek kırpılınca ad kalmaz; eskiden
+         * çekirdekteki temel sınıfla çakışan "Controller" adlı bir dosya
+         * üretiliyordu. */
+        if ($base === '') {
+            $this->out->error('Ad yalnızca "Controller" olamaz; örn. "Urun" yazın → UrunController.');
+
+            return self::HATA;
+        }
+
         if ($this->input->hasOption('api')) {
             $class     = $base . 'ApiController';
             $namespace = 'App\Http\Controllers\Api';

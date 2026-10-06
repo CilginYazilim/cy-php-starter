@@ -27,11 +27,17 @@ define('CY_START', microtime(true));
 /* bootstrap.php .env yoksa da çalışır; veritabanına hiç bağlanmayız. */
 require CY_BASE . '/app/bootstrap.php';
 
+use App\Core\Config;
+use App\Core\Console\Commands\MakeControllerCommand;
+use App\Core\Console\Input;
 use App\Core\Env;
 use App\Core\Exceptions\HttpException;
+use App\Core\Ip;
 use App\Core\Mail\NativeTransport;
 use App\Core\Middleware;
 use App\Core\Request;
+use App\Core\Signer;
+use App\Core\Throttle;
 use App\Core\Url;
 use App\Core\View;
 use App\Models\Role;
@@ -164,6 +170,149 @@ echo "\nRoller\n";
 dogrula('üye bakım modunu atlayamaz', !Role::can(Role::MEMBER, 'maintenance.bypass'));
 dogrula('editör bakım modunu atlayabilir', Role::can(Role::EDITOR, 'maintenance.bypass'));
 dogrula('yönetici her şeyi yapabilir', Role::can(Role::ADMIN, 'maintenance.bypass'));
+
+/* ---------------------------------------------------------------- */
+echo "\nSatır sonu çapaları (\$ yerine \\z)\n";
+
+dogrula('safeIntended sondaki satır sonunu reddeder', Middleware::safeIntended("panel\n") === '');
+dogrula('Env::quote sondaki satır sonlu değeri tırnaklar ve korur', Env::parseValue(Env::quote("abc\n")) === "abc\n" && Env::quote("abc\n") !== "abc\n");
+dogrula('View::resolve satır sonlu adı reddeder', firlatir(static fn () => View::resolve("home\n")));
+
+/* ---------------------------------------------------------------- */
+echo "\nIP adresleri (TRUSTED_PROXIES, IPv6 kovası)\n";
+
+dogrula('IPv4 aralık içinde', Ip::inRange('10.1.2.3', '10.0.0.0/8'));
+dogrula('IPv4 aralık dışında', !Ip::inRange('11.0.0.1', '10.0.0.0/8'));
+dogrula('IPv6 aralık içinde', Ip::inRange('2001:db8::1', '2001:db8::/32'));
+dogrula('IPv4 ile IPv6 karışmaz', !Ip::inRange('10.0.0.1', '::/0'));
+dogrula('IPv6 /64 kovasına indirgenir', Ip::bucket('2001:db8:1:2:3:4:5:6') === '2001:db8:1:2::/64', Ip::bucket('2001:db8:1:2:3:4:5:6'));
+dogrula('aynı /64 içindeki iki adres aynı kova', Ip::bucket('2001:db8:1:2::1') === Ip::bucket('2001:db8:1:2:ffff::9'));
+dogrula('IPv4 kovası adresin kendisi', Ip::bucket('192.0.2.7') === '192.0.2.7');
+dogrula('IPv4\'e eşlenmiş IPv6 düz IPv4 olur', Ip::normalize('::ffff:1.2.3.4') === '1.2.3.4');
+
+$sunucu = $_SERVER;
+Config::set('security.trusted_proxies', ['10.0.0.0/8']);
+Config::set('security.proxy_header', 'X-Forwarded-For');
+
+$_SERVER['REMOTE_ADDR']          = '10.0.0.5';
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '6.6.6.6, 1.2.3.4, 10.0.0.7';
+Ip::forget();
+dogrula('vekilden gelen istekte gerçek adres zincirin SAĞINDAN okunur', Ip::client() === '1.2.3.4', Ip::client());
+
+$_SERVER['REMOTE_ADDR'] = '203.0.113.9';
+Ip::forget();
+dogrula('vekil olmayan adresin X-Forwarded-For başlığına güvenilmez', Ip::client() === '203.0.113.9');
+
+Config::set('security.trusted_proxies', []);
+$_SERVER = $sunucu;
+Ip::forget();
+
+/* ---------------------------------------------------------------- */
+echo "\nİmza ve form zaman damgası\n";
+
+Signer::useKey('birim-testi-anahtari');
+$damga = Signer::stamp('kayit');
+dogrula('taze damga geçerli (yaşı 0)', Signer::stampAge('kayit', $damga) === 0);
+dogrula('başka form için üretilmiş damga geçersiz', Signer::stampAge('iletisim', $damga) === null);
+dogrula('değiştirilmiş zaman geçersiz', Signer::stampAge('kayit', (string) (time() - 3600) . substr($damga, strpos($damga, '.'))) === null);
+dogrula('eksik damga geçersiz', Signer::stampAge('kayit', '') === null);
+dogrula('imza doğrulaması', Signer::check('x', Signer::sign('x')) && !Signer::check('y', Signer::sign('x')));
+Signer::useKey(null);
+
+/* ---------------------------------------------------------------- */
+echo "\nÇerez yolu (boşluklu / Türkçe klasör)\n";
+
+$yollar = ['' => '/', '/proje' => '/proje/', '/my app' => '/my%20app/', '/ürün' => '/%C3%BCr%C3%BCn/',
+           '/a(b)' => '/a(b)/', '/a,b' => '/', '/a;b' => '/'];
+
+foreach ($yollar as $taban => $beklenen) {
+    Url::useBase($taban);
+    dogrula('taban "' . $taban . '" → çerez yolu ' . $beklenen, Url::cookiePath() === $beklenen, Url::cookiePath());
+}
+
+Url::useBase(null);
+
+/* ---------------------------------------------------------------- */
+echo "\nHız sınırı (kilitli dosya sayacı)\n";
+
+Throttle::useDirectory(sys_get_temp_dir() . '/cy-hiz-' . bin2hex(random_bytes(4)));
+$sonuclar = [];
+
+for ($i = 0; $i < 4; $i++) {
+    $sonuclar[] = Throttle::attempt('test', 3, 60);
+}
+
+dogrula('ilk üç deneme geçer, dördüncü bekletilir', $sonuclar[0] === 0 && $sonuclar[1] === 0 && $sonuclar[2] === 0 && $sonuclar[3] > 0, json_encode($sonuclar));
+dogrula('kalan hak 0', Throttle::remaining('test', 3, 60) === 0);
+dogrula('başka anahtar etkilenmez', Throttle::attempt('baska', 3, 60) === 0);
+Throttle::useDirectory(null);
+
+/* ---------------------------------------------------------------- */
+echo "\nHTTP 405 ve komut satırı seçenekleri\n";
+
+dogrula('405 yanıtı Allow başlığını taşır (HEAD dahil)', HttpException::methodNotAllowed('DELETE', ['GET', 'POST'])->allow() === 'GET, HEAD, POST');
+dogrula('405 dışında Allow yok', HttpException::notFound()->allow() === '');
+
+$girdi = new Input(['cy', 'api:token', 'admin', '--iptal', '--gun=90g', '--sayi=12']);
+dogrula('değersiz --iptal sayı sayılmaz', $girdi->positiveIntOption('iptal') === false);
+dogrula('--gun=90g geçersiz', $girdi->positiveIntOption('gun', 3650) === false);
+dogrula('--sayi=12 geçerli', $girdi->positiveIntOption('sayi') === 12);
+dogrula('verilmeyen seçenek null', $girdi->positiveIntOption('yok') === null);
+dogrula('--gun üst sınırı', (new Input(['cy', 'x', '--gun=99999']))->positiveIntOption('gun', 3650) === false);
+
+$make = (new ReflectionClass(MakeControllerCommand::class))->newInstanceWithoutConstructor();
+$cakisma = new ReflectionMethod(MakeControllerCommand::class, 'importCollision');
+dogrula('make: içe aktarılan adla çakışan sınıf yakalanır', $cakisma->invoke($make, "<?php\nuse App\\Http\\Controller;\nfinal class Controller extends Controller {}") !== null);
+dogrula('make: çakışmayan sınıf geçer', $cakisma->invoke($make, "<?php\nuse App\\Http\\Controller;\nfinal class UrunController extends Controller {}") === null);
+
+/* ---------------------------------------------------------------- */
+echo "\nEXIF yönleri (8 değerin hepsi)\n";
+
+if (function_exists('imagecreatetruecolor')) {
+    $w = 3;
+    $h = 2;
+    $kaynak = static function () use ($w, $h): GdImage {
+        $img = imagecreatetruecolor($w, $h);
+
+        for ($x = 0; $x < $w; $x++) {
+            for ($y = 0; $y < $h; $y++) {
+                imagesetpixel($img, $x, $y, ($x + 1) * 40 + ($y + 1) * 1000);
+            }
+        }
+
+        return $img;
+    };
+    $renk = static fn (int $x, int $y): int => ($x + 1) * 40 + ($y + 1) * 1000;
+
+    // Beklenen: yeni(x,y) = eski(f(x,y)); döndürmelerde boyutlar yer değiştirir.
+    $donusum = [
+        2 => [$w, $h, static fn ($x, $y) => [$w - 1 - $x, $y]],
+        3 => [$w, $h, static fn ($x, $y) => [$w - 1 - $x, $h - 1 - $y]],
+        4 => [$w, $h, static fn ($x, $y) => [$x, $h - 1 - $y]],
+        5 => [$h, $w, static fn ($x, $y) => [$y, $x]],
+        6 => [$h, $w, static fn ($x, $y) => [$y, $h - 1 - $x]],
+        7 => [$h, $w, static fn ($x, $y) => [$w - 1 - $y, $h - 1 - $x]],
+        8 => [$h, $w, static fn ($x, $y) => [$w - 1 - $y, $x]],
+    ];
+
+    $orient = new ReflectionMethod(App\Core\Uploader::class, 'orient');
+
+    foreach ($donusum as $deger => [$yw, $yh, $f]) {
+        $sonuc = $orient->invoke(null, $kaynak(), $deger);
+        $dogru = imagesx($sonuc) === $yw && imagesy($sonuc) === $yh;
+
+        for ($x = 0; $dogru && $x < $yw; $x++) {
+            for ($y = 0; $dogru && $y < $yh; $y++) {
+                [$ex, $ey] = $f($x, $y);
+                $dogru = (imagecolorat($sonuc, $x, $y) & 0xFFFFFF) === $renk($ex, $ey);
+            }
+        }
+
+        dogrula('Orientation=' . $deger . ' doğru uygulanır', $dogru);
+    }
+} else {
+    echo "  (GD yok; atlandı)\n";
+}
 
 /* ---------------------------------------------------------------- */
 printf("\n%d geçti · %d kaldı\n\n", $gecti, $kaldi);

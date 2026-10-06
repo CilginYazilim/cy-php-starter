@@ -64,6 +64,22 @@ abstract class Migration
         return false;
     }
 
+    /**
+     * Bu migration ÇEKİRDEĞİN parçası mı? true ise TEMEL PARTİ'ye (0)
+     * yazılır ve "migrate:rollback" / "migrate:fresh" ile geri alınmaz.
+     *
+     * Yalnızca şablonla gelen migration'lar true döndürür. Eskiden
+     * çekirdek migration'ı güncellemeden sonra "php cy migrate" ile
+     * çalıştırılınca sıradan bir partiye yazılıyor, ilk rollback
+     * kurulumun parçası olan bir tabloyu ya da sütunu siliyordu.
+     * Kendi migration'larınızda bunu EZMEYİN: geri alınabilmeleri
+     * gerekir.
+     */
+    public function baseline(): bool
+    {
+        return false;
+    }
+
     /* =================================================================
      *  YARDIMCILAR
      * ============================================================== */

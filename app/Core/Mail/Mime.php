@@ -147,7 +147,7 @@ final class Mime
     {
         $value = self::stripNewlines($value);
 
-        if ($value === '' || preg_match('/^[\x20-\x7E]*$/', $value) === 1) {
+        if ($value === '' || preg_match('/^[\x20-\x7E]*\z/', $value) === 1) {
             return $value;
         }
 

@@ -15,6 +15,14 @@
  *  ve çalınmış bir "beni hatırla" çerezi açık kalıyordu — parolasını
  *  "hesabım ele geçirildi" şüphesiyle değiştiren kullanıcı hiçbir şeyi
  *  düzeltmemiş oluyordu.
+ *
+ *  GÜVENİLEN CİHAZ ÇEREZİ
+ *  Başarılı girişten sonra tarayıcıya imzalı bir "bu cihaz bu hesaba
+ *  daha önce girdi" çerezi yazılır. O çerezle gelen deneme, IP geneli
+ *  yavaşlatmaya takılmaz ve kimlik kilidi o cihaza AYRI sayılır: aynı
+ *  IP'yi paylaşan (ya da aynı vekilin arkasındaki) bir saldırgan
+ *  yöneticiyi dışarıda bırakamaz. Çerez parolayı ASLA atlatmaz; yalnızca
+ *  hangi sayaca yazılacağını belirler. Parola değişince geçersizdir.
  * =====================================================================
  */
 
@@ -28,6 +36,7 @@ use App\Events\UserLoggedIn;
 use App\Events\UserLoggedOut;
 use App\Models\User;
 use App\Repositories\UserRepository;
+use Throwable;
 
 final class Auth
 {
@@ -47,6 +56,10 @@ final class Auth
      */
     private const REMEMBER_PREFIX = 'cy_remember_';
     private const REMEMBER_DAYS   = 30;
+
+    /** Güvenilen cihaz çerezi (bkz. sınıf açıklaması). */
+    private const DEVICE_PREFIX = 'cy_cihaz_';
+    private const DEVICE_DAYS   = 180;
 
     /**
      * Kullanıcı BULUNAMADIĞINDA doğrulanan sahte bcrypt özetleri.
@@ -131,7 +144,12 @@ final class Auth
     /**
      * Kimlik bilgilerini doğrular ve oturumu açar.
      *
-     * @return array{ok:bool,message:string,user:?User}
+     * Dönen dizideki "onay" anahtarı, parolası DOĞRU ama e-postası
+     * henüz doğrulanmamış hesabı taşır (denetleyici doğrulama mektubunu
+     * yeniden gönderebilsin diye). Parola yanlışsa asla doldurulmaz;
+     * hesabın durumu böylece yalnızca parolayı bilene görünür.
+     *
+     * @return array{ok:bool,message:string,user:?User,onay?:User}
      */
     public static function attempt(string $identifier, string $password, Request $request, bool $remember = false): array
     {
@@ -139,28 +157,42 @@ final class Auth
         $users   = new UserRepository($db);
         $limiter = new RateLimiter($db);
 
-        $key = mb_strtolower(trim($identifier)) . '|' . $request->ip();
+        $kimlik = mb_strtolower(trim($identifier));
+        $ip     = $request->ip();
 
-        $lockedFor = max($limiter->lockedFor($key), $limiter->ipLockedFor($request->ip()));
+        $user  = $users->findForLogin(trim($identifier));
+        $cihaz = self::trustedDevice($user);
+        $scope = $cihaz !== null ? 'cihaz:' . $cihaz : Ip::bucket($ip);
+
+        /* Deneme ÖNCE yazılır, sonra yalnızca KENDİSİNDEN ÖNCEKİ
+         * denemeler sayılır (bkz. RateLimiter). Aynı anda gönderilen
+         * yüzlerce istek artık sınırı birlikte aşamaz. */
+        $attemptId = $limiter->begin($kimlik, $scope);
+
+        $lockedFor = $limiter->lockedFor($kimlik, $scope, $attemptId);
+
+        if ($cihaz === null) {
+            $lockedFor = max($lockedFor, $limiter->ipLockedFor($scope, $attemptId));
+        }
 
         if ($lockedFor > 0) {
+            // Kilide takılan deneme sayılmaz; yoksa her deneme kilidi uzatırdı.
+            $limiter->cancel($attemptId);
+
             Logger::security('Kilitli hesaba/IP\'ye giriş denemesi', [
                 'kimlik' => mb_substr(trim($identifier), 0, 60),
-                'ip'     => $request->ip(),
+                'ip'     => $ip,
                 'kalan'  => $lockedFor,
             ]);
 
             return [
                 'ok'      => false,
-                'message' => sprintf(
-                    'Çok fazla hatalı deneme yaptınız. Lütfen %d dakika sonra tekrar deneyin.',
-                    (int) ceil($lockedFor / 60)
-                ),
+                'message' => $lockedFor < 60
+                    ? sprintf('Çok fazla hatalı deneme yapıldı. Lütfen %d saniye sonra tekrar deneyin.', $lockedFor)
+                    : sprintf('Çok fazla hatalı deneme yapıldı. Lütfen %d dakika sonra tekrar deneyin.', (int) ceil($lockedFor / 60)),
                 'user' => null,
             ];
         }
-
-        $user = $users->findForLogin(trim($identifier));
 
         /* GÜVENLİK: Kullanıcı bulunamasa bile AYNI MALİYETTE bir
          * password_verify çalıştırırız. Aksi halde yanıt SÜRESİ
@@ -174,15 +206,14 @@ final class Auth
         }
 
         if (!$passwordOk) {
-            $limiter->hit($key, $request->ip());
-
+            // Deneme satırı kalır: hatalı deneme sayıldı.
             self::logFailure($user === null ? 'bilinmeyen hesap' : 'hatalı parola', $identifier, $request);
 
             /* "Kalan deneme hakkı" iki durumda da AYNI kurala göre
              * gösterilir. Eskiden yalnızca var olan hesapta çıkıyordu;
              * mesajın görünüp görünmemesi hesabın varlığını ele
              * veriyordu. */
-            $remaining = $limiter->remaining($key);
+            $remaining = $limiter->remaining($kimlik, $scope);
             $message   = self::genericFailure();
 
             if ($remaining > 0 && $remaining <= 2) {
@@ -193,12 +224,24 @@ final class Auth
         }
 
         /** @var User $user */
+        // Parola doğru: bu deneme hatalı sayılmaz.
+        $limiter->clear($kimlik);
+
         if (!$user->isActive()) {
             Logger::security('Pasif/askıdaki hesapla giriş denemesi', [
                 'kullanici' => $user->id,
                 'durum'     => $user->durum,
-                'ip'        => $request->ip(),
+                'ip'        => $ip,
             ]);
+
+            if ($user->isPendingVerification()) {
+                return [
+                    'ok'      => false,
+                    'message' => 'Hesabınız e-posta doğrulaması bekliyor. Kayıtta gönderdiğimiz bağlantıya tıklayın.',
+                    'user'    => null,
+                    'onay'    => $user,
+                ];
+            }
 
             return [
                 'ok'      => false,
@@ -207,14 +250,12 @@ final class Auth
             ];
         }
 
-        $limiter->clear($key);
-
         if ($user->needsRehash()) {
             $users->updatePasswordHash($user->id, password_hash($password, PASSWORD_DEFAULT));
         }
 
         self::login($user);
-        $users->touchLogin($user->id, $request->ip());
+        $users->touchLogin($user->id, $ip);
 
         /* "Beni hatırla" YALNIZCA kullanıcı istediğinde. İşaretlenmemiş
          * bir girişte eski jetonu da temizliyoruz: kullanıcının
@@ -226,15 +267,17 @@ final class Auth
             self::forgetRemember($user->id);
         }
 
+        self::issueDevice($user, $cihaz);
+
         Logger::info('Giriş yapıldı', [
             'kullanici' => $user->id,
             'rol'       => $user->rol,
-            'ip'        => $request->ip(),
+            'ip'        => $ip,
         ], 'auth');
 
         /* Olay, oturum AÇILDIKTAN sonra yayınlanır: dinleyiciler
          * Auth::user() ile kullanıcıya erişebilir. */
-        Events::dispatch(new UserLoggedIn($user, $request->ip()));
+        Events::dispatch(new UserLoggedIn($user, $ip));
 
         return ['ok' => true, 'message' => 'Hoş geldiniz, ' . $user->ad . '.', 'user' => $user];
     }
@@ -302,27 +345,69 @@ final class Auth
 
     /**
      * Bu kullanıcının TÜM oturumlarını ve "beni hatırla" jetonunu
-     * geçersiz kılar; çağıran oturum açık kalır.
+     * geçersiz kılar; çağıran oturum (ve bu cihazın "beni hatırla"
+     * kaydı) açık kalır.
      *
-     * Parola değişikliğinden sonra ve "diğer cihazlardan çıkış yap"
-     * düğmesinde kullanılır.
+     * @param bool $revokeTokens true → API anahtarları da iptal edilir
+     * @return int İptal edilen API anahtarı sayısı
      */
-    public static function logoutOtherDevices(int $userId): void
+    public static function logoutOtherDevices(int $userId, bool $revokeTokens = false): int
     {
         $users = new UserRepository(Database::connection());
         $users->bumpSessionVersion($userId);
 
-        self::forgetRemember($userId);
+        $iptal = $revokeTokens ? $users->revokeApiTokens($userId) : 0;
 
-        $fresh = $users->find($userId);
+        self::refreshCurrentDevice($userId);
 
-        /* Kendi oturumumuzu yeni sürümle tazeliyoruz; kimlik de
-         * yenilenir (eski oturum kimliği çalınmış olabilir). */
-        if ($fresh !== null && self::id() === $userId) {
-            self::login($fresh);
+        Logger::info('Diğer cihazlardaki oturumlar kapatıldı', ['kullanici' => $userId, 'api_anahtari' => $iptal], 'auth');
+
+        return $iptal;
+    }
+
+    /**
+     * Oturum sürümü değiştikten sonra (parola değişimi, "diğer
+     * cihazlardan çıkış") BU cihazı açık tutar.
+     *
+     * Kullanıcı kendi parolasını değiştirdiğinde ya da diğer cihazları
+     * kapattığında kendisi de dışarı atılmamalı. Eskiden:
+     *   · yönetici kendi parolasını Kullanıcılar ekranından değiştirince
+     *     kendi oturumu da kapanıyordu,
+     *   · "diğer cihazlardan çıkış" bu cihazın "beni hatırla" kaydını
+     *     da siliyordu.
+     *
+     * Oturum yeni sürümle tazelenir (kimlik de yenilenir: eski oturum
+     * kimliği çalınmış olabilir); bu cihazda "beni hatırla" açıksa yeni
+     * bir jeton, güvenilen cihaz çereziyse yeni sürümle yeniden yazılır.
+     * Çağıran başka bir kullanıcıysa (yönetici başkasının parolasını
+     * değiştirdi) hiçbir şey yapmaz.
+     */
+    public static function refreshCurrentDevice(int $userId): void
+    {
+        /* user()'ı burada ÇAĞIRMIYORUZ: sürüm az önce arttıysa oturumu
+         * "eski sürüm" diye kapatırdı. Kimin oturumu olduğuna bakmak
+         * yeterli. */
+        $current = self::$resolved ? self::$cached?->id : Session::get(self::SESSION_KEY);
+
+        if ((int) $current !== $userId) {
+            return;
         }
 
-        Logger::info('Diğer cihazlardaki oturumlar kapatıldı', ['kullanici' => $userId], 'auth');
+        $fresh = (new UserRepository(Database::connection()))->find($userId);
+
+        if ($fresh === null) {
+            return;
+        }
+
+        $hadRemember = self::hasRememberCookie();
+
+        self::login($fresh);
+
+        if ($hadRemember) {
+            self::rememberUser($fresh);
+        }
+
+        self::issueDevice($fresh);
     }
 
     public static function logout(): void
@@ -355,9 +440,10 @@ final class Auth
      *   2. HAM jeton çereze, SHA-256 ÖZETİ veritabanına yazılır.
      *   3. Sonraki ziyarette çerezdeki jetonun özeti aranır; eşleşen
      *      ve süresi dolmamış AKTİF bir kullanıcı varsa oturum açılır.
-     *   4. Her kullanımda jeton YENİLENİR (rotation): çalınan bir
-     *      çerezin ömrü, gerçek kullanıcının bir sonraki ziyaretiyle
-     *      sona erer.
+     *   4. Her kullanımda jeton YENİLENİR (rotation) — KOŞULLU bir
+     *      UPDATE ile: jeton bu arada değiştiyse ya da parola
+     *      değiştiyse yenileme olmaz ve oturum AÇILMAZ (bkz.
+     *      UserRepository::rotateRememberToken).
      *   5. Parola değişince jeton SİLİNİR (bkz. UserRepository::update).
      *
      *  Parola ya da e-posta ÇEREZE HİÇ YAZILMAZ.
@@ -368,16 +454,22 @@ final class Auth
         return self::REMEMBER_PREFIX . substr(Session::appId(), 0, 8);
     }
 
-    private static function fromRememberCookie(): ?User
+    private static function hasRememberCookie(): bool
     {
         $ham = $_COOKIE[self::rememberCookie()] ?? '';
 
-        if (!is_string($ham) || $ham === '' || !preg_match('/^[a-f0-9]{64}$/', $ham)) {
+        return is_string($ham) && preg_match('/\A[a-f0-9]{64}\z/', $ham) === 1;
+    }
+
+    private static function fromRememberCookie(): ?User
+    {
+        if (!self::hasRememberCookie()) {
             return null;
         }
 
+        $eski  = hash('sha256', (string) $_COOKIE[self::rememberCookie()]);
         $users = new UserRepository(Database::connection());
-        $user  = $users->findByRememberToken(hash('sha256', $ham));
+        $user  = $users->findByRememberToken($eski);
 
         if ($user === null) {
             /* Geçersiz ya da süresi dolmuş çerez: tarayıcıdan silelim,
@@ -387,9 +479,20 @@ final class Auth
             return null;
         }
 
-        self::login($user);
+        $ham = bin2hex(random_bytes(32));
 
-        self::rememberUser($user);
+        if (!$users->rotateRememberToken($user->id, $eski, hash('sha256', $ham), $user->oturumSurumu, self::REMEMBER_DAYS)) {
+            /* Yarışı kaybettik: aynı çerezle gelen başka bir istek jetonu
+             * bizden önce yeniledi ya da parola tam şu an değişti.
+             * Çerezi SİLMİYORUZ (diğer isteğin yazdığı yeni çerezi ezer);
+             * yalnızca bu istekte oturum açmıyoruz. */
+            Logger::info('"Beni hatırla" jetonu yenilenemedi (eşzamanlı istek ya da parola değişimi)', ['kullanici' => $user->id], 'auth');
+
+            return null;
+        }
+
+        self::login($user);
+        self::setRememberCookie($ham);
 
         Logger::info('Oturum "beni hatırla" çereziyle açıldı', ['kullanici' => $user->id], 'auth');
 
@@ -415,19 +518,7 @@ final class Auth
 
     private static function setRememberCookie(string $value): void
     {
-        if (headers_sent()) {
-            return;
-        }
-
-        setcookie(self::rememberCookie(), $value, [
-            'expires'  => time() + self::REMEMBER_DAYS * 86400,
-            'path'     => Url::base() !== '' ? Url::base() . '/' : '/',
-            'secure'   => Session::isHttps(),
-            // JavaScript bu çereze ERİŞEMEZ: bir XSS açığı jetonu okuyup
-            // saldırgana gönderemesin.
-            'httponly' => true,
-            'samesite' => 'Lax',
-        ]);
+        self::writeCookie(self::rememberCookie(), $value, time() + self::REMEMBER_DAYS * 86400);
 
         $_COOKIE[self::rememberCookie()] = $value;
     }
@@ -436,13 +527,82 @@ final class Auth
     {
         unset($_COOKIE[self::rememberCookie()]);
 
+        self::writeCookie(self::rememberCookie(), '', time() - 3600);
+    }
+
+    /* =================================================================
+     *  GÜVENİLEN CİHAZ
+     * -----------------------------------------------------------------
+     *  Değer: <kullanıcı>.<cihaz>.<oturum sürümü>.<bitiş>.<imza>
+     *  İmza APP_KEY ile atılır (bkz. Signer). Oturum sürümü değerin
+     *  içinde olduğu için parola değişince (ya da "diğer cihazlardan
+     *  çıkış" denince) eski cihaz çerezleri kendiliğinden geçersizdir.
+     * ============================================================== */
+
+    private static function deviceCookie(): string
+    {
+        return self::DEVICE_PREFIX . substr(Session::appId(), 0, 8);
+    }
+
+    /**
+     * Çerez geçerliyse VE giriş yapılmak istenen hesaba aitse cihaz
+     * kimliği; değilse null.
+     */
+    private static function trustedDevice(?User $user): ?string
+    {
+        $raw = $_COOKIE[self::deviceCookie()] ?? '';
+
+        if ($user === null || !is_string($raw)
+            || preg_match('/\A(\d{1,10})\.([a-f0-9]{16})\.(\d{1,10})\.(\d{9,11})\.([a-f0-9]{64})\z/', $raw, $m) !== 1) {
+            return null;
+        }
+
+        [, $kullanici, $cihaz, $surum, $bitis, $imza] = $m;
+
+        try {
+            $gecerli = Signer::check('cihaz|' . $kullanici . '|' . $cihaz . '|' . $surum . '|' . $bitis, $imza);
+        } catch (Throwable) {
+            return null;
+        }
+
+        if (!$gecerli || (int) $kullanici !== $user->id || (int) $surum !== $user->oturumSurumu || (int) $bitis < time()) {
+            return null;
+        }
+
+        return $cihaz;
+    }
+
+    private static function issueDevice(User $user, ?string $cihaz = null): void
+    {
+        $cihaz ??= bin2hex(random_bytes(8));
+        $bitis   = time() + self::DEVICE_DAYS * 86400;
+        $govde   = $user->id . '|' . $cihaz . '|' . $user->oturumSurumu . '|' . $bitis;
+
+        try {
+            $imza = Signer::sign('cihaz|' . $govde);
+        } catch (Throwable $e) {
+            Logger::warning('Güvenilen cihaz çerezi yazılamadı: ' . $e->getMessage(), [], 'auth');
+
+            return;
+        }
+
+        self::writeCookie(self::deviceCookie(), str_replace('|', '.', $govde) . '.' . $imza, $bitis);
+    }
+
+    /**
+     * Çerezi uygulamanın yoluna, HttpOnly + SameSite=Lax olarak yazar.
+     * JavaScript bu çerezlere ERİŞEMEZ: bir XSS açığı onları okuyup
+     * saldırgana gönderemesin.
+     */
+    private static function writeCookie(string $name, string $value, int $expires): void
+    {
         if (headers_sent()) {
             return;
         }
 
-        setcookie(self::rememberCookie(), '', [
-            'expires'  => time() - 3600,
-            'path'     => Url::base() !== '' ? Url::base() . '/' : '/',
+        setcookie($name, $value, [
+            'expires'  => $expires,
+            'path'     => Url::cookiePath(),
             'secure'   => Session::isHttps(),
             'httponly' => true,
             'samesite' => 'Lax',

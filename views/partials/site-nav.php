@@ -22,6 +22,7 @@
  */
 
 use App\Core\Database;
+use App\Core\Registration;
 use App\Core\Setting;
 use App\Repositories\PageRepository;
 
@@ -82,7 +83,7 @@ try {
                     <li class="nav-item">
                         <a class="nav-link" href="<?= e(url('giris')) ?>">Giriş Yap</a>
                     </li>
-                    <?php if (Setting::bool('sistem_kayit_acik', false)): ?>
+                    <?php if (Registration::isOpen()): ?>
                         <li class="nav-item">
                             <a class="btn cy-btn cy-btn--primary cy-btn--sm ms-lg-2" href="<?= e(url('kayit')) ?>">Kayıt Ol</a>
                         </li>

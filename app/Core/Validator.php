@@ -48,7 +48,7 @@ final class Validator
         if ($length > $max) {
             return $this->fail($field, $label . ' en fazla ' . $max . ' karakter olabilir.');
         }
-        if (!preg_match("/^[\p{L}\p{M}\s.'-]+$/u", $value)) {
+        if (!preg_match("/^[\p{L}\p{M}\s.'-]+\z/u", $value)) {
             return $this->fail($field, $label . ' yalnızca harf, boşluk, nokta, kesme işareti ve tire içerebilir.');
         }
 
@@ -102,7 +102,7 @@ final class Validator
         if (mb_strlen($value, 'UTF-8') > 50) {
             return $this->fail($field, $label . ' en fazla 50 karakter olabilir.');
         }
-        if (!preg_match('/^[a-zA-Z0-9._]+$/', $value)) {
+        if (!preg_match('/^[a-zA-Z0-9._]+\z/', $value)) {
             return $this->fail($field, $label . ' yalnızca İngilizce harf, rakam, nokta ve alt çizgi içerebilir.');
         }
 
@@ -182,7 +182,7 @@ final class Validator
             $this->clean[$field] = '';
             return $this;
         }
-        if (!preg_match('/^[0-9+()\s-]{7,25}$/', $value)) {
+        if (!preg_match('/^[0-9+()\s-]{7,25}\z/', $value)) {
             return $this->fail($field, $label . ' geçerli bir biçimde değil.');
         }
 

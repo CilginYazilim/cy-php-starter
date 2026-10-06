@@ -11,6 +11,8 @@
  *
  *      curl -H "Authorization: Bearer cy_…" https://site.com/api/v1/ben
  *
+ *  TARİHLER ISO 8601 biçimindedir ("2026-10-06T14:05:00+03:00").
+ *
  *  NEDEN ÖRNEK UÇLAR? README API'yi "hazır" diye anlatıyordu ama
  *  "api" ara katmanını kullanan tek bir rota ya da anahtar üreten bir
  *  ekran yoktu; altyapının çalıştığını görmenin yolu yoktu. Bu dosya
@@ -68,14 +70,17 @@ final class V1Controller extends Controller
             'order_dir'    => 'asc',
         ]);
 
-        $items = array_map(static function ($user): array {
-            $row = $user->toArray();
-
-            // Dış istemciye gereken alanlar; panelin iç alanları değil.
-            return array_intersect_key($row, array_flip([
-                'id', 'ad', 'soyad', 'kullanici_adi', 'eposta', 'rol', 'durum', 'created_at',
-            ]));
-        }, $result['rows']);
+        // Dış istemciye gereken alanlar; panelin iç alanları değil.
+        $items = array_map(static fn ($user): array => [
+            'id'            => $user->id,
+            'ad'            => $user->ad,
+            'soyad'         => $user->soyad,
+            'kullanici_adi' => $user->kullaniciAdi,
+            'eposta'        => $user->eposta,
+            'rol'           => $user->rol,
+            'durum'         => $user->durum,
+            'created_at'    => self::iso($user->createdAt),
+        ], $result['rows']);
 
         ApiResponse::paginated($items, $result['filtered'], $page, $perPage);
     }
@@ -110,7 +115,29 @@ final class V1Controller extends Controller
             'slug'       => $page->slug,
             'ozet'       => $page->ozet,
             'icerik'     => $page->icerik,
-            'guncelleme' => $page->updatedAt,
+            'guncelleme' => self::iso($page->updatedAt),
         ]);
+    }
+
+    /**
+     * Veritabanı tarihini ISO 8601'e çevirir: "2026-10-06T14:05:00+03:00".
+     *
+     * API'de tarih, panelde gösterilen "06.10.2026 14:05" biçiminde
+     * dönüyordu: saat dilimi yoktu ve her istemci Türkçe biçimi elle
+     * ayrıştırmak zorundaydı. Veritabanı bağlantısının saat dilimi
+     * PHP'ninkiyle eşitlendiği için (bkz. Database::syncTimezone) değer
+     * PHP'nin saat diliminde okunur.
+     */
+    private static function iso(?string $value): ?string
+    {
+        if ($value === null || $value === '' || str_starts_with($value, '0000')) {
+            return null;
+        }
+
+        try {
+            return (new \DateTimeImmutable($value))->format(\DateTimeInterface::ATOM);
+        } catch (\Exception) {
+            return null;
+        }
     }
 }

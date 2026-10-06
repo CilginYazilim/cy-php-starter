@@ -17,6 +17,13 @@ if ($profile === null) {
 }
 
 $value = static fn (string $field, string $fallback) => old($old, $field, $fallback);
+
+/* "Mevcut parola" alanı YALNIZCA e-posta değişince görünür. Hep açık
+ * duran bir parola alanı tarayıcının otomatik doldurmasını tetikliyordu:
+ * Chrome parolayı oraya, kullanıcı adını da hemen üstteki Telefon
+ * alanına yazıyordu; "Bilgileri Kaydet" telefonu bozuyordu. */
+$epostaDegisti = isset($errors['eposta_sifre'])
+    || mb_strtolower(trim((string) ($old['eposta'] ?? $profile->eposta))) !== mb_strtolower($profile->eposta);
 ?>
 
 <?php /* SAYFA BAŞLIĞI ÜST ÇUBUKTA yazar; burada tekrar edilmez. */ ?>
@@ -69,6 +76,10 @@ $value = static fn (string $field, string $fallback) => old($old, $field, $fallb
 
             <form method="post" action="<?= e(url('panel/hesabim/guncelle')) ?>" novalidate>
                 <?= csrf_field() ?>
+                <?php /* Parola yöneticileri hangi hesabın parolası sorulduğunu bu
+                         gizli alandan anlar; yoksa kullanıcı adını sayfadaki ilk
+                         metin alanına (Telefon) yazıyorlardı. Adı yok: gönderilmez. */ ?>
+                <input type="text" autocomplete="username" value="<?= e($profile->kullaniciAdi) ?>" class="d-none" tabindex="-1" aria-hidden="true">
                 <div class="cy-card__body">
                     <div class="row g-3">
                         <div class="col-12 col-md-6">
@@ -91,6 +102,7 @@ $value = static fn (string $field, string $fallback) => old($old, $field, $fallb
                             <label class="form-label" for="eposta">E-posta <span class="text-danger">*</span></label>
                             <input type="email" name="eposta" id="eposta" maxlength="190" autocomplete="email"
                                    class="form-control<?= isset($errors['eposta']) ? ' is-invalid' : '' ?>"
+                                   data-original="<?= e($profile->eposta) ?>"
                                    value="<?= $value('eposta', $profile->eposta) ?>">
                             <?php if (isset($errors['eposta'])): ?><div class="invalid-feedback"><?= e($errors['eposta']) ?></div><?php endif; ?>
                         </div>
@@ -110,9 +122,10 @@ $value = static fn (string $field, string $fallback) => old($old, $field, $fallb
                             <?php if (isset($errors['hakkinda'])): ?><div class="invalid-feedback"><?= e($errors['hakkinda']) ?></div><?php endif; ?>
                         </div>
 
-                        <div class="col-12">
-                            <label class="form-label" for="eposta_sifre">Mevcut Parola <span class="cy-muted small">(yalnızca e-postayı değiştiriyorsanız)</span></label>
+                        <div class="col-12<?= $epostaDegisti ? '' : ' d-none' ?>" data-reveal-on-change="#eposta">
+                            <label class="form-label" for="eposta_sifre">Mevcut Parola <span class="text-danger">*</span></label>
                             <input type="password" name="eposta_sifre" id="eposta_sifre" autocomplete="current-password"
+                                   <?= $epostaDegisti ? '' : 'disabled' ?>
                                    class="form-control<?= isset($errors['eposta_sifre']) ? ' is-invalid' : '' ?>">
                             <?php if (isset($errors['eposta_sifre'])): ?>
                                 <div class="invalid-feedback"><?= e($errors['eposta_sifre']) ?></div>
@@ -165,7 +178,7 @@ $value = static fn (string $field, string $fallback) => old($old, $field, $fallb
                     </div>
                 </div>
                 <div class="cy-card__footer d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <span class="cy-muted small">Parola değişince diğer cihazlardaki oturumlarınız kapanır.</span>
+                    <span class="cy-muted small">Parola değişince diğer cihazlardaki oturumlarınız kapanır, API anahtarlarınız iptal edilir.</span>
                     <button type="submit" class="btn cy-btn cy-btn--ghost"><?= icon('lock', 'cy-icon cy-icon--sm') ?> Parolayı Güncelle</button>
                 </div>
             </form>
@@ -180,8 +193,15 @@ $value = static fn (string $field, string $fallback) => old($old, $field, $fallb
                     ve "beni hatırla" kayıtlarını kapatın.
                 </p>
                 <form method="post" action="<?= e(url('panel/hesabim/oturumlari-kapat')) ?>"
+                      class="d-flex flex-column align-items-end gap-2"
                       data-confirm="Bu cihaz dışındaki tüm oturumlarınız kapatılacak. Devam edilsin mi?">
                     <?= csrf_field() ?>
+                    <?php if (($apiTokens ?? null) !== null): ?>
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" name="api_anahtarlari" value="1" id="api_anahtarlari" checked>
+                            <label class="form-check-label small" for="api_anahtarlari">API anahtarlarımı da iptal et</label>
+                        </div>
+                    <?php endif; ?>
                     <button type="submit" class="btn cy-btn cy-btn--ghost"><?= icon('logout', 'cy-icon cy-icon--sm') ?> Diğer Cihazlardan Çıkış Yap</button>
                 </form>
             </div>
@@ -246,25 +266,32 @@ $value = static fn (string $field, string $fallback) => old($old, $field, $fallb
 
                     <form method="post" action="<?= e(url('panel/hesabim/api-anahtari')) ?>" class="row g-2 align-items-end">
                         <?= csrf_field() ?>
-                        <div class="col-12 col-md-6">
+                        <input type="text" autocomplete="username" value="<?= e($profile->kullaniciAdi) ?>" class="d-none" tabindex="-1" aria-hidden="true">
+                        <div class="col-12 col-md-4">
                             <label class="form-label" for="anahtar_adi">Anahtar adı</label>
                             <input type="text" name="anahtar_adi" id="anahtar_adi" maxlength="100" class="form-control"
-                                   placeholder="örn. Mobil uygulama" required>
+                                   autocomplete="off" placeholder="örn. Mobil uygulama" required>
                         </div>
-                        <div class="col-6 col-md-3">
+                        <div class="col-6 col-md-2">
                             <label class="form-label" for="anahtar_gun">Geçerlilik</label>
                             <select name="anahtar_gun" id="anahtar_gun" class="form-select">
                                 <option value="30">30 gün</option>
                                 <option value="90" selected>90 gün</option>
+                                <option value="180">180 gün</option>
                                 <option value="365">1 yıl</option>
-                                <option value="0">Süresiz</option>
                             </select>
                         </div>
                         <div class="col-6 col-md-3">
+                            <label class="form-label" for="anahtar_sifre">Mevcut parola</label>
+                            <input type="password" name="anahtar_sifre" id="anahtar_sifre" class="form-control"
+                                   autocomplete="current-password" required>
+                        </div>
+                        <div class="col-12 col-md-3">
                             <button type="submit" class="btn cy-btn cy-btn--primary cy-btn--block"><?= icon('plus', 'cy-icon cy-icon--sm') ?> Üret</button>
                         </div>
                     </form>
-                    <p class="cy-muted small mt-2 mb-0">Anahtar sizin yetkilerinizle çalışır; sizden fazlasına asla erişemez.</p>
+                    <p class="cy-muted small mt-2 mb-0">Anahtar sizin yetkilerinizle çalışır; sizden fazlasına asla erişemez.
+                        Parolanızı değiştirdiğinizde bütün anahtarlarınız iptal edilir.</p>
                 </div>
             </div>
         <?php endif; ?>

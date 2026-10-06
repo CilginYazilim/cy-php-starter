@@ -149,6 +149,12 @@ final class ErrorHandler
             if ($http !== null && $http->retryAfter() > 0) {
                 header('Retry-After: ' . $http->retryAfter());
             }
+
+            /* 405 yanıtı hangi yöntemlerin geçerli olduğunu "Allow"
+             * başlığıyla SÖYLEMEK ZORUNDADIR (RFC 9110 §15.5.6). */
+            if ($http !== null && $http->allow() !== '') {
+                header('Allow: ' . $http->allow());
+            }
         }
 
         if (self::wantsJson()) {

@@ -142,7 +142,7 @@ function validate_name(?string $value, string $label): array
     if ($error !== null) {
         return [$value, $error];
     }
-    if (!preg_match("/^[\p{L}\p{M}\s.'-]+$/u", $value)) {
+    if (!preg_match("/^[\p{L}\p{M}\s.'-]+\z/u", $value)) {
         return [$value, $label . ' yalnızca harf, boşluk, nokta, kesme işareti ve tire içerebilir.'];
     }
 
@@ -163,7 +163,7 @@ function validate_username(?string $value): array
     if (mb_strlen($value, 'UTF-8') > 50) {
         return [$value, 'Kullanıcı adı en fazla 50 karakter olabilir.'];
     }
-    if (!preg_match('/^[a-zA-Z0-9._]+$/', $value)) {
+    if (!preg_match('/^[a-zA-Z0-9._]+\z/', $value)) {
         return [$value, 'Kullanıcı adı yalnızca İngilizce harf, rakam, nokta ve alt çizgi içerebilir.'];
     }
 
@@ -239,7 +239,7 @@ function is_installed(): bool
  */
 function split_host(string $host): array
 {
-    if (preg_match('/^(.+):(\d{1,5})$/', $host, $m) === 1 && !str_contains($m[1], ':')) {
+    if (preg_match('/^(.+):(\d{1,5})\z/', $host, $m) === 1 && !str_contains($m[1], ':')) {
         return [$m[1], (int) $m[2]];
     }
 
@@ -271,10 +271,73 @@ function connect_without_database(string $host, string $user, string $pass): PDO
  */
 function count_tables(PDO $pdo, string $dbName): int
 {
-    $stmt = $pdo->prepare('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = :db');
+    return count(existing_tables($pdo, $dbName));
+}
+
+/** @return array<int,string> Veritabanındaki tablo adları */
+function existing_tables(PDO $pdo, string $dbName): array
+{
+    $stmt = $pdo->prepare(
+        'SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = :db ORDER BY TABLE_NAME'
+    );
     $stmt->execute([':db' => $dbName]);
 
-    return (int) $stmt->fetchColumn();
+    return array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+}
+
+/**
+ * Şemanın SİLİP yeniden oluşturduğu tablolar (database.sql'deki
+ * "DROP TABLE IF EXISTS" satırlarından okunur; liste tek yerde kalsın).
+ *
+ * @return array<int,string>
+ */
+function schema_drop_tables(string $schemaPath): array
+{
+    $sql = is_file($schemaPath) ? (string) file_get_contents($schemaPath) : '';
+
+    preg_match_all('/^\s*DROP\s+TABLE\s+IF\s+EXISTS\s+`?([A-Za-z0-9_]+)`?\s*;/mi', $sql, $m);
+
+    return array_values(array_unique($m[1]));
+}
+
+/**
+ * Silinecek tablolara BAŞKA (silinmeyecek) tablolardan verilmiş yabancı
+ * anahtarlar.
+ *
+ * NEDEN? Kendi tablonuz "kullanicilar"a yabancı anahtar veriyorsa
+ * DROP TABLE hata verir. Eskiden bu, şema yarıdayken olurdu: beş tablo
+ * silinmiş, .env yazılmamış, site ne eski ne yeni hâliyle çalışır
+ * durumda kalıyordu. Artık hiçbir şeye dokunmadan ÖNCE denetlenir.
+ *
+ * @param array<int,string> $dropTables
+ * @return array<int,string> "tablo (kısıt) → hedef" satırları
+ */
+function blocking_foreign_keys(PDO $pdo, string $dbName, array $dropTables): array
+{
+    if ($dropTables === []) {
+        return [];
+    }
+
+    $marks = implode(',', array_fill(0, count($dropTables), '?'));
+
+    $stmt = $pdo->prepare(
+        "SELECT DISTINCT TABLE_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME
+           FROM information_schema.KEY_COLUMN_USAGE
+          WHERE TABLE_SCHEMA = ?
+            AND REFERENCED_TABLE_SCHEMA = ?
+            AND REFERENCED_TABLE_NAME IN ($marks)
+            AND TABLE_NAME NOT IN ($marks)
+          ORDER BY TABLE_NAME"
+    );
+    $stmt->execute(array_merge([$dbName, $dbName], $dropTables, $dropTables));
+
+    $rows = [];
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $rows[] = $row['TABLE_NAME'] . ' (' . $row['CONSTRAINT_NAME'] . ') → ' . $row['REFERENCED_TABLE_NAME'];
+    }
+
+    return $rows;
 }
 
 /**
@@ -447,6 +510,13 @@ function write_env_file(string $path, array $values): void
     ];
 
     foreach ($values as $key => $value) {
+        // "# ..." anahtarı bir bölüm başlığıdır; değeri yazılmaz.
+        if (str_starts_with((string) $key, '#')) {
+            $lines[] = '';
+            $lines[] = (string) $key;
+            continue;
+        }
+
         $lines[] = $key . '=' . env_value((string) $value);
     }
 
@@ -680,7 +750,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && !$alreadyInstalled && 
 
             if ($db_host === '') {
                 $errors[] = 'Veritabanı sunucusu boş bırakılamaz.';
-            } elseif (preg_match('/^[A-Za-z0-9._\-\[\]:]+$/', $db_host) !== 1) {
+            } elseif (preg_match('/^[A-Za-z0-9._\-\[\]:]+\z/', $db_host) !== 1) {
                 $errors[] = 'Veritabanı sunucusu geçersiz karakter içeriyor. Örn: 127.0.0.1 ya da localhost:3307';
             }
             if ($db_name === '') {
@@ -692,25 +762,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && !$alreadyInstalled && 
                 $errors[] = 'Veritabanı kullanıcı adı boş bırakılamaz.';
             }
 
-            $mevcutTablo = 0;
+            $mevcutTablolar = [];
+            $engelleyenler  = [];
+            $silinecekler   = schema_drop_tables(__DIR__ . '/database.sql');
 
             if ($errors === []) {
                 try {
-                    $mevcutTablo = count_tables(connect_without_database($db_host, $db_user, $db_pass), $db_name);
+                    $baglanti       = connect_without_database($db_host, $db_user, $db_pass);
+                    $mevcutTablolar = existing_tables($baglanti, $db_name);
+                    $engelleyenler  = blocking_foreign_keys($baglanti, $db_name, $silinecekler);
                 } catch (PDOException $e) {
                     $errors[] = 'Veritabanı sunucusuna bağlanılamadı: ' . $e->getMessage();
                 }
             }
 
-            /* DOLU VERİTABANI KORUMASI: şema DROP TABLE içerir. */
-            if ($errors === [] && $mevcutTablo > 0 && !$db_ustune_yaz) {
+            /* YABANCI ANAHTAR ENGELİ: onay kutusu işaretli olsa bile
+             * kurulum başlamaz; aksi hâlde şema yarıda kalırdı. */
+            if ($errors === [] && $engelleyenler !== []) {
+                $errors[] = 'Bu veritabanındaki bazı tablolar, kurulumun silip yeniden oluşturacağı tablolara '
+                    . 'yabancı anahtarla bağlı. Kurulum yarıda kalmasın diye hiçbir şeye dokunulmadı. '
+                    . 'Boş bir veritabanı kullanın ya da önce şu kısıtları kaldırın: ' . implode('; ', $engelleyenler);
+            }
+
+            /* DOLU VERİTABANI KORUMASI: şema DROP TABLE içerir. Onay
+             * ekranında SİLİNECEK tablolar tek tek listelenir; "N tablo
+             * var" demek neyin kaybolacağını söylemiyordu. */
+            if ($errors === [] && $mevcutTablolar !== [] && !$db_ustune_yaz) {
                 $errors[] = sprintf(
-                    '"%s" veritabanı boş değil (%d tablo var). Kurulum aynı adlı tabloları SİLİP yeniden oluşturur. '
-                    . 'Boş bir veritabanı adı girin ya da aşağıdaki onay kutusunu işaretleyin.',
+                    '"%s" veritabanı boş değil (%d tablo var). Boş bir veritabanı adı girin ya da aşağıdaki listeyi inceleyip onay kutusunu işaretleyin.',
                     $db_name,
-                    $mevcutTablo
+                    count($mevcutTablolar)
                 );
-                $dbDoluUyarisi = true;
+                $dbDoluUyarisi = [
+                    'silinecek' => array_values(array_intersect($mevcutTablolar, $silinecekler)),
+                    'kalacak'   => array_values(array_diff($mevcutTablolar, $silinecekler)),
+                ];
             }
 
             if ($errors === []) {
@@ -856,20 +942,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$kilitli && !$alreadyInstalled && 
                         'APP_NAME'         => $site['site_adi'],
                         'APP_DESCRIPTION'  => $site['site_aciklama'],
                         'APP_URL'          => $site['site_url'],
+                        '# --- Ortam (yayında: production + false) ---' => null,
                         'APP_ENV'          => $gelistirme ? 'local' : 'production',
                         'APP_DEBUG'        => $gelistirme ? 'true' : 'false',
+                        '# --- Kuruluma özel gizli anahtar: DEĞİŞTİRMEYİN, başka kuruluma kopyalamayın ---' => null,
                         'APP_KEY'          => bin2hex(random_bytes(32)),
                         'APP_PRETTY_URLS'  => 'true',
                         'APP_TIMEZONE'     => 'Europe/Istanbul',
+                        '# --- Veritabanı ---' => null,
                         'DB_HOST'          => $dbSunucu,
                         'DB_PORT'          => (string) $dbKapi,
                         'DB_NAME'          => $db['db_name'],
                         'DB_USER'          => $db['db_user'],
                         'DB_PASS'          => $db['db_pass'],
+                        '# --- Oturum ---' => null,
                         'SESSION_NAME'     => 'CYS_' . bin2hex(random_bytes(5)),
+                        'SESSION_IDLE_TIMEOUT' => '1800',
+                        '# --- Giriş ve kayıt koruması (ayrıntı: .env.example) ---' => null,
+                        'LOGIN_MAX_ATTEMPTS'    => '5',
+                        'LOGIN_LOCKOUT'         => '900',
+                        'LOGIN_IP_MAX_ATTEMPTS' => '30',
+                        'REGISTER_MAX_PER_HOUR' => '5',
+                        'REGISTER_MAX_ATTEMPTS_PER_HOUR' => '20',
+                        '# Site Cloudflare/vekil arkasındaysa vekil adresleri (bkz. .env.example)' => null,
+                        'TRUSTED_PROXIES'       => '',
+                        '# --- Yüklemeler ---' => null,
+                        'UPLOAD_MAX_MB'     => '2',
+                        'UPLOAD_MAX_PIXELS' => '25000000',
+                        '# --- Günlük kayıtları ---' => null,
                         'LOG_ENABLED'      => 'true',
                         'LOG_LEVEL'        => $gelistirme ? 'debug' : 'info',
                         'LOG_DAYS'         => '30',
+                        '# --- Önbellek ---' => null,
                         'CACHE_DRIVER'     => 'dosya',
                         'CACHE_TTL'        => '3600',
                         'CACHE_PREFIX'     => 'cy_' . substr(bin2hex(random_bytes(3)), 0, 6),
@@ -1083,12 +1187,22 @@ $aktifIndeks     = array_search($adim, $adimAnahtarlari, true);
                             </div>
                         </div>
 
-                        <?php if (!empty($dbDoluUyarisi)): ?>
+                        <?php if (!empty($dbDoluUyarisi) && is_array($dbDoluUyarisi)): ?>
                             <div class="col-12">
+                                <?php if ($dbDoluUyarisi['silinecek'] !== []): ?>
+                                    <p class="mb-1"><strong>SİLİNİP yeniden oluşturulacak tablolar (içindeki veriler kaybolur):</strong></p>
+                                    <p class="small mb-2"><code><?= e(implode(', ', $dbDoluUyarisi['silinecek'])) ?></code></p>
+                                <?php else: ?>
+                                    <p class="small mb-2">Kurulumun sileceği adla bir tablo yok; yalnızca yeni tablolar eklenecek.</p>
+                                <?php endif; ?>
+                                <?php if ($dbDoluUyarisi['kalacak'] !== []): ?>
+                                    <p class="mb-1"><strong>Dokunulmayacak tablolar:</strong></p>
+                                    <p class="small mb-2"><code><?= e(implode(', ', $dbDoluUyarisi['kalacak'])) ?></code></p>
+                                <?php endif; ?>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="db_ustune_yaz" name="db_ustune_yaz" value="1">
                                     <label class="form-check-label" for="db_ustune_yaz">
-                                        <strong>Bu veritabanındaki şablon tablolarının silinip yeniden oluşturulmasını onaylıyorum.</strong>
+                                        <strong>Yukarıdaki tabloların silinip yeniden oluşturulmasını onaylıyorum.</strong>
                                     </label>
                                 </div>
                             </div>

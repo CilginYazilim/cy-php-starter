@@ -39,6 +39,9 @@ final class Mailer
     /** Son hatanın metni (arayüzde göstermek için). */
     private static string $lastError = '';
 
+    /** Takılı satırlar en son ne zaman serbest bırakıldı (süreç içinde). */
+    private static int $releasedAt = 0;
+
     /* =================================================================
      *  YAPILANDIRMA
      * ============================================================== */
@@ -220,17 +223,11 @@ final class Mailer
             }
 
             self::transport()->send($mail);
-
-            if ($logId !== null) {
-                self::log()?->markSent($logId);
-            }
-
-            return true;
         } catch (Throwable $e) {
             self::$lastError = $e->getMessage();
 
             if ($logId !== null) {
-                self::log()?->markFailed($logId, $e->getMessage());
+                self::markQuietly(fn (MailRepository $r) => $r->markFailed($logId, $e->getMessage()));
             }
 
             // Veritabanı kaydı panelde görünür; dosya log'u ise
@@ -246,6 +243,61 @@ final class Mailer
             }
 
             return false;
+        }
+
+        /* GÖNDERİM BAŞARILI. Durumu yazarken bir veritabanı hatası olsa
+         * bile mektup "başarısız" sayılmaz: ulaştığı kesindir. Eskiden
+         * markSent() aynı try içindeydi; bir kilitlenme (deadlock)
+         * gönderilmiş mektubu "başarısız" gösteriyor, yönetici yeniden
+         * kuyruğa alınca alıcıya ikinci kopya gidiyordu. */
+        if ($logId !== null) {
+            self::markQuietly(fn (MailRepository $r) => $r->markSent($logId));
+        }
+
+        return true;
+    }
+
+    /**
+     * Takılı satırları serbest bırakır — süreç içinde en fazla dakikada
+     * bir (uzun çalışan "php cy mail:work" da arada bir temizlesin diye).
+     */
+    private static function releaseStuckOnce(MailRepository $repository): void
+    {
+        if (self::$releasedAt > time() - 60) {
+            return;
+        }
+
+        self::$releasedAt = time();
+
+        try {
+            $adet = $repository->releaseStuck();
+
+            if ($adet > 0) {
+                Logger::warning('Yarıda kalan mektuplar yeniden kuyruğa alındı', ['adet' => $adet], 'mail');
+            }
+        } catch (Throwable $e) {
+            Logger::error('Takılı mektuplar serbest bırakılamadı: ' . $e->getMessage(), [], 'mail');
+        }
+    }
+
+    /**
+     * Kayıt durumunu yazar; kilitlenmede yeniden dener, yine olmazsa
+     * yalnızca log'a yazar (gönderimin sonucunu DEĞİŞTİRMEZ).
+     *
+     * @param callable(MailRepository):void $write
+     */
+    private static function markQuietly(callable $write): void
+    {
+        $repository = self::log();
+
+        if ($repository === null) {
+            return;
+        }
+
+        try {
+            Database::retry(static fn () => $write($repository));
+        } catch (Throwable $e) {
+            Logger::critical('Mektup kaydının durumu yazılamadı: ' . $e->getMessage(), [], 'mail');
         }
     }
 
@@ -287,7 +339,21 @@ final class Mailer
         $failed          = 0;
         self::$lastError = '';
 
-        foreach ($repository->claimPending($limit) as $row) {
+        /* Takılı kalmış satırları süreç başına BİR KEZ serbest bırakırız.
+         * Eskiden her ayırmada çalışan aralık UPDATE'i, aynı anda çalışan
+         * işçilerin ayırma sorgularıyla çakışıp kilitlenme üretiyordu. */
+        self::releaseStuckOnce($repository);
+
+        /* Satırlar TEK TEK, gönderimden hemen önce ayrılır (claimNext).
+         * İşçi çökerse yalnızca o an elindeki satır takılır. */
+        while ($sent + $failed < max(1, $limit)) {
+            $row = $repository->claimNext();
+
+            if ($row === null) {
+                break;
+            }
+
+            $id   = (int) $row['id'];
             $mail = $repository->toMailable($row);
 
             self::applyDefaults($mail);
@@ -298,16 +364,20 @@ final class Mailer
                 }
 
                 self::transport()->send($mail);
-                $repository->markSent((int) $row['id']);
-                $sent++;
             } catch (Throwable $e) {
                 // Son hatayı saklıyoruz: arayüz "3 mektup başarısız"
                 // demekle yetinmesin, SEBEBİNİ de gösterebilsin.
                 self::$lastError = $e->getMessage();
 
-                $repository->markFailed((int) $row['id'], $e->getMessage());
+                self::markQuietly(fn (MailRepository $r) => $r->markFailed($id, $e->getMessage()));
                 $failed++;
+
+                continue;
             }
+
+            // Gönderildi; durum yazılamasa bile "başarısız" sayılmaz.
+            self::markQuietly(fn (MailRepository $r) => $r->markSent($id));
+            $sent++;
         }
 
         return [

@@ -5,6 +5,7 @@
  * =====================================================================
  */
 
+use App\Core\Registration;
 use App\Core\Setting;
 
 $errors       = $errors ?? [];
@@ -73,7 +74,7 @@ $demoAccounts = $demoAccounts ?? [];
                             </button>
                         </form>
 
-                        <?php if (Setting::bool('sistem_kayit_acik', false)): ?>
+                        <?php if (Registration::isOpen()): ?>
                             <p class="text-center cy-muted mt-3 mb-0">
                                 Hesabınız yok mu? <a class="cy-link" href="<?= e(url('kayit')) ?>">Kayıt olun</a>
                             </p>

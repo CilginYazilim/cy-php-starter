@@ -19,6 +19,7 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use App\Core\Database;
 use App\Core\Mail\Mailable;
 use App\Models\MailLog;
 use PDO;
@@ -39,6 +40,12 @@ final class MailRepository
         3 => 'durum',
         4 => 'created_at',
     ];
+
+    /** "gonderiliyor"da bu kadar saniye kalan satır takılmış sayılır. */
+    public const STUCK_SECONDS = 900;
+
+    /** Takılan bir satır en fazla kaç kez kuyruğa geri döner. */
+    public const MAX_ATTEMPTS = 3;
 
     public function __construct(private PDO $db)
     {
@@ -154,7 +161,7 @@ final class MailRepository
      * Gönderilmeyi bekleyen kayıtlar (en eskiden yeniye).
      *
      * DİKKAT: Satırları KİLİTLEMEZ; yalnızca listelemek içindir.
-     * Göndermek için claimPending() kullanın.
+     * Göndermek için claimNext() kullanın.
      *
      * @return array<int,array<string,mixed>>
      */
@@ -173,71 +180,127 @@ final class MailRepository
     }
 
     /**
-     * Gönderilecek kayıtları ATOMİK olarak bu sürece ayırır.
+     * Sıradaki TEK mektubu ATOMİK olarak bu sürece ayırır; satır
+     * gönderimden HEMEN ÖNCE ayrılır.
      *
-     * Her aday satır tek bir UPDATE ile "kuyrukta" → "gonderiliyor"
-     * yapılır; rowCount() 1 dönmüyorsa satırı başka bir süreç (panel,
-     * cron ya da mail:work) bizden önce almıştır ve atlanır. Eskiden
-     * satırlar kilitlenmeden okunuyordu; üç süreç aynı anda çalışınca
-     * bir duyuru aynı kişiye birkaç kez gidiyordu.
+     * Aday satır tek bir UPDATE ile "kuyrukta" → "gonderiliyor" yapılır;
+     * rowCount() 1 dönmüyorsa satırı başka bir süreç (panel, cron ya da
+     * mail:work) bizden önce almıştır ve sıradaki adaya geçilir.
      *
-     * @return array<int,array<string,mixed>> Yalnızca BU sürecin aldığı satırlar
+     * NEDEN TEK TEK? Eskiden bir partinin tamamı (10 satır) baştan
+     * ayrılıyordu. İşçi ilk mektupta çökerse, hiç denenmemiş dokuz satır
+     * da "gonderiliyor"da kalıyor ve 15 dakika sonra BAŞARISIZ
+     * sayılıyordu. Artık çökme yalnızca o an gönderilen satırı etkiler.
+     *
+     * Ayırma, kilitlenme (1213) ya da kilit beklemesi (1205) hatasında
+     * yeniden denenir (bkz. Database::retry).
+     *
+     * @return array<string,mixed>|null Satır; kuyruk boşsa null
      */
-    public function claimPending(int $limit = 10): array
+    public function claimNext(): ?array
     {
-        $this->releaseStuck();
+        return Database::retry(function (): ?array {
+            $candidates = $this->db->query(
+                "SELECT id FROM mail_kayitlari
+                  WHERE durum = 'kuyrukta'
+                  ORDER BY id ASC
+                  LIMIT 5"
+            )->fetchAll(PDO::FETCH_COLUMN);
 
-        $claim = $this->db->prepare(
-            "UPDATE mail_kayitlari
-                SET durum = 'gonderiliyor', ayrildi_at = NOW()
-              WHERE id = :id AND durum = 'kuyrukta'"
-        );
+            $claim = $this->db->prepare(
+                "UPDATE mail_kayitlari
+                    SET durum = 'gonderiliyor', ayrildi_at = NOW()
+                  WHERE id = :id AND durum = 'kuyrukta'"
+            );
 
-        $read = $this->db->prepare('SELECT * FROM mail_kayitlari WHERE id = :id');
+            foreach ($candidates as $id) {
+                $claim->execute([':id' => (int) $id]);
 
-        $rows = [];
+                if ($claim->rowCount() !== 1) {
+                    continue; // başka süreç kaptı
+                }
 
-        foreach ($this->pending($limit) as $candidate) {
-            $claim->execute([':id' => (int) $candidate['id']]);
+                $read = $this->db->prepare('SELECT * FROM mail_kayitlari WHERE id = :id');
+                $read->execute([':id' => (int) $id]);
+                $row = $read->fetch();
 
-            if ($claim->rowCount() !== 1) {
-                continue;
+                return $row === false ? null : $row;
             }
 
-            $read->execute([':id' => (int) $candidate['id']]);
-            $row = $read->fetch();
-
-            if ($row !== false) {
-                $rows[] = $row;
-            }
-        }
-
-        return $rows;
+            return null;
+        });
     }
 
     /**
-     * "gonderiliyor"da takılı kalmış kayıtları (süreç çöktü) BAŞARISIZ
-     * olarak işaretler.
+     * "gonderiliyor"da takılı kalmış kayıtları (süreç çöktü) KUYRUĞA
+     * geri koyar; deneme hakkı bittiyse başarısız sayar.
      *
-     * NEDEN KUYRUĞA GERİ DEĞİL? Süreç SMTP'ye mektubu teslim ettikten
-     * hemen sonra, durumu yazamadan çökmüş olabilir. Satırı kuyruğa
-     * döndürmek o kişiye ikinci bir kopya göndermek demektir. Başarısız
-     * kayıt panelde görünür; yönetici gerekiyorsa tek tıkla yeniden
-     * kuyruğa alır.
+     * Eskiden 15 dakika takılan her satır doğrudan "başarısız" sayılıyordu
+     * — 1.2.1'de kuyrukta kalıp yeniden deneniyordu. Bunun bedeli, çöken
+     * işçinin elindeki hiç denenmemiş mektupların kalıcı olarak
+     * kaybolmasıydı. Şimdi her takılma bir deneme sayılır (deneme + 1);
+     * satır ancak MAX_ATTEMPTS'e ulaşınca başarısız olur. Satırlar artık
+     * tek tek ve gönderimden hemen önce ayrıldığı için (claimNext) bir
+     * takılma en fazla bir mektubu etkiler.
+     *
+     * KİLİTLENMEYİ ÖNLEMEK İÇİN önce numaralar okunur, sonra her satır
+     * BİRİNCİL ANAHTARLA güncellenir. Eskiden tek bir aralık UPDATE'i
+     * (durum + tarih koşulu) her ayırmada çalışıyordu; aynı anda çalışan
+     * işçilerin ayırma sorgularıyla çakışıp deadlock (1213) üretiyordu.
+     * Çağıran taraf da bunu süreç başına bir kez çalıştırır (bkz.
+     * Mailer::processQueue).
+     *
+     * @return int Kuyruğa dönen + başarısız sayılan satır sayısı
      */
-    public function releaseStuck(int $seconds = 900): int
+    public function releaseStuck(int $seconds = self::STUCK_SECONDS): int
     {
         $stmt = $this->db->prepare(
-            "UPDATE mail_kayitlari
-                SET durum = 'basarisiz', hata = 'Gönderim yarıda kaldı (süreç zaman aşımına uğradı). Ulaşıp ulaşmadığı bilinmiyor.'
+            "SELECT id FROM mail_kayitlari
               WHERE durum = 'gonderiliyor'
                 AND ayrildi_at IS NOT NULL
-                AND ayrildi_at < (NOW() - INTERVAL :saniye SECOND)"
+                AND ayrildi_at < (NOW() - INTERVAL :saniye SECOND)
+              ORDER BY id ASC
+              LIMIT 200"
         );
         $stmt->bindValue(':saniye', max(60, $seconds), PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->rowCount();
+        $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if ($ids === []) {
+            return 0;
+        }
+
+        /* Atamalar soldan sağa uygulanır: durum ve hata ESKİ "deneme"
+         * değerine bakar, deneme en son artırılır. Koşul tekrarlanır:
+         * okuma ile yazma arasında satır gönderilmiş olabilir. */
+        $update = $this->db->prepare(
+            "UPDATE mail_kayitlari
+                SET durum = IF(deneme + 1 >= :max1, 'basarisiz', 'kuyrukta'),
+                    hata  = IF(deneme + 1 >= :max2,
+                               'Gönderim yarıda kaldı ve deneme hakkı bitti (süreç zaman aşımına uğradı). Ulaşıp ulaşmadığı bilinmiyor.',
+                               'Önceki gönderim yarıda kaldı; yeniden kuyruğa alındı.'),
+                    ayrildi_at = NULL,
+                    deneme = deneme + 1
+              WHERE id = :id AND durum = 'gonderiliyor'
+                AND ayrildi_at < (NOW() - INTERVAL :saniye SECOND)"
+        );
+
+        $adet = 0;
+
+        foreach ($ids as $id) {
+            $adet += (int) Database::retry(function () use ($update, $id, $seconds): int {
+                $update->bindValue(':max1', self::MAX_ATTEMPTS, PDO::PARAM_INT);
+                $update->bindValue(':max2', self::MAX_ATTEMPTS, PDO::PARAM_INT);
+                $update->bindValue(':id', (int) $id, PDO::PARAM_INT);
+                $update->bindValue(':saniye', max(60, $seconds), PDO::PARAM_INT);
+                $update->execute();
+
+                return $update->rowCount();
+            });
+        }
+
+        return $adet;
     }
 
     /**
@@ -256,6 +319,25 @@ final class MailRepository
         $stmt->bindValue(':eposta', mb_strtolower($email));
         $stmt->bindValue(':tur', $type);
         $stmt->bindValue(':saat', max(1, $hours), PDO::PARAM_INT);
+        $stmt->execute();
+
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
+    /**
+     * Bu adrese son $minutes dakikada bu ŞABLONLA mektup gitti mi?
+     * (doğrulama ve "zaten kayıtlı" mektuplarının tekrarını sınırlamak için)
+     */
+    public function sentTemplateRecently(string $email, string $template, int $minutes): bool
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM mail_kayitlari
+              WHERE alici_eposta = :eposta AND sablon = :sablon
+                AND created_at >= (NOW() - INTERVAL :dakika MINUTE)"
+        );
+        $stmt->bindValue(':eposta', mb_strtolower($email));
+        $stmt->bindValue(':sablon', $template);
+        $stmt->bindValue(':dakika', max(1, $minutes), PDO::PARAM_INT);
         $stmt->execute();
 
         return (int) $stmt->fetchColumn() > 0;

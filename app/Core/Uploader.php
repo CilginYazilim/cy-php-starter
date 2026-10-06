@@ -382,8 +382,18 @@ final class Uploader
     /**
      * GD bu görseli açıp yeniden üretmeye yetecek kadar bellek var mı?
      *
-     * Kaba hesap: kaynak + hedef tuval, piksel başına ~5 bayt, üstüne
-     * %50 pay. memory_limit "-1" (sınırsız) ise kontrol atlanır.
+     * GD'nin truecolor tuvali piksel başına 4 bayt tutar (+ satır
+     * göstergeleri). Hesap: KAYNAK tuval piksel başına 5 bayt (%25 pay) +
+     * en fazla 1200×1200'lük HEDEF tuval ve onun döndürülmüş kopyası.
+     *
+     * Eskiden kaynak ve hedef ikisi de tam boy sayılıp üstüne %50 pay
+     * ekleniyordu (piksel başına 15 bayt): 128 MB bellekli bir sunucuda
+     * 12 MP'lik sıradan bir telefon fotoğrafı "çok büyük" diye
+     * reddediliyordu. Hedef tuval her zaman küçüktür ve EXIF döndürmesi
+     * artık KÜÇÜLTÜLMÜŞ görsele uygulanır (bkz. sanitize), yani tam boy
+     * ikinci bir kopya hiç oluşmaz.
+     *
+     * memory_limit "-1" (sınırsız) ise kontrol atlanır.
      */
     private static function enoughMemoryFor(int $width, int $height): bool
     {
@@ -393,7 +403,7 @@ final class Uploader
             return true;
         }
 
-        $needed = (int) ($width * $height * 5 * 2 * 1.5);
+        $needed = $width * $height * 5 + 1200 * 1200 * 4 * 2;
 
         return memory_get_usage(true) + $needed < $limit;
     }
@@ -510,27 +520,47 @@ final class Uploader
      *  GÖRSEL TEMİZLEME
      * ============================================================== */
 
-    /**
-     * JPEG'in EXIF "Orientation" etiketine göre görseli döndürür.
-     * exif eklentisi yoksa görsel olduğu gibi kalır.
-     *
-     * @param \GdImage $image
-     */
-    private static function applyExifOrientation(\GdImage $image, string $path): \GdImage
+    /** JPEG'in EXIF "Orientation" değeri (1-8); okunamazsa 1. */
+    private static function exifOrientation(string $path): int
     {
         if (!function_exists('exif_read_data')) {
-            return $image;
+            return 1;
         }
 
         $exif        = @exif_read_data($path);
         $orientation = is_array($exif) ? (int) ($exif['Orientation'] ?? 1) : 1;
 
-        $rotated = match ($orientation) {
-            3       => imagerotate($image, 180, 0),
-            6       => imagerotate($image, -90, 0),
-            8       => imagerotate($image, 90, 0),
-            default => null,
+        return $orientation >= 1 && $orientation <= 8 ? $orientation : 1;
+    }
+
+    /**
+     * EXIF "Orientation" değerine göre görseli çevirir/aynalar.
+     *
+     * Sekiz değerin hepsi uygulanır. Eskiden yalnızca döndürmeler (3, 6, 8)
+     * vardı; AYNALI değerler (2, 4, 5, 7 — ön kamera ve bazı tarayıcı
+     * uygulamaları üretir) yok sayılıyor, görsel ters ya da yan duruyordu.
+     * imagerotate() açıyı saat yönünün TERSİNE alır: -90 = saat yönünde 90°.
+     */
+    private static function orient(\GdImage $image, int $orientation): \GdImage
+    {
+        if (in_array($orientation, [2, 7], true)) {
+            imageflip($image, IMG_FLIP_HORIZONTAL);
+        } elseif (in_array($orientation, [4, 5], true)) {
+            imageflip($image, IMG_FLIP_VERTICAL);
+        }
+
+        $angle = match ($orientation) {
+            3          => 180,
+            5, 6, 7    => -90,
+            8          => 90,
+            default    => 0,
         };
+
+        if ($angle === 0) {
+            return $image;
+        }
+
+        $rotated = imagerotate($image, $angle, 0);
 
         if ($rotated instanceof \GdImage) {
             imagedestroy($image);
@@ -567,10 +597,13 @@ final class Uploader
         /* EXIF YÖNÜ. Telefonlar dikey fotoğrafı yatay piksellerle
          * kaydedip "bunu 90° çevirerek göster" etiketi ekler. Görseli
          * yeniden ürettiğimizde EXIF verisi (bilerek) atılır; yönü
-         * önceden uygulamazsak dikey çekimler yan duruyordu. */
-        if ($mime === 'image/jpeg') {
-            $source = self::applyExifOrientation($source, $path);
-        }
+         * uygulamazsak dikey çekimler yan duruyordu.
+         *
+         * Yön KÜÇÜLTMEDEN SONRA, küçük hedef tuvale uygulanır: tam boy
+         * kaynağın döndürülmüş ikinci bir kopyası belleği iki katına
+         * çıkarıyordu. Ortadan kare kırpma ve en uzun kenara göre
+         * ölçekleme döndürmeden etkilenmez; sonuç aynıdır. */
+        $orientation = $mime === 'image/jpeg' ? self::exifOrientation($path) : 1;
 
         $width  = imagesx($source);
         $height = imagesy($source);
@@ -603,6 +636,13 @@ final class Uploader
 
         imagecopyresampled($target, $source, 0, 0, $srcX, $srcY, $newWidth, $newHeight, $srcWidth, $srcHeight);
 
+        // Kaynak artık gerekmiyor; yön uygulanmadan önce bellek boşalsın.
+        imagedestroy($source);
+
+        if ($orientation !== 1) {
+            $target = self::orient($target, $orientation);
+        }
+
         match ($mime) {
             'image/jpeg' => @imagejpeg($target, $path, 85),
             'image/png'  => @imagepng($target, $path, 6),
@@ -611,7 +651,6 @@ final class Uploader
             default      => null,
         };
 
-        imagedestroy($source);
         imagedestroy($target);
     }
 }

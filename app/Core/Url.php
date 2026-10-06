@@ -53,9 +53,58 @@ final class Url
         $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? '/index.php'));
         $dir    = rtrim(str_replace('\\', '/', dirname($script)), '/');
 
-        $dir = ($dir === '' || $dir === '.') ? '' : $dir;
+        /* ÇİFT BÖLÜ TEKE İNDİRİLİR. "http://localhost//proje/giris"
+         * isteğinde SCRIPT_NAME "//proje/index.php" olur; taban da
+         * "//proje" çıkar ve sayfadaki her bağlantı "//proje/..." diye
+         * yazılırdı. Tarayıcı bunu "proje" ADLI BAŞKA BİR SİTEYE giden
+         * şemasız adres sayar: bağlantılar ve form hedefleri dışarı
+         * çıkardı. */
+        $dir = (string) preg_replace('#/{2,}#', '/', $dir);
+
+        $dir = ($dir === '' || $dir === '.' || $dir === '/') ? '' : $dir;
 
         return self::$base = self::aliasTaban($dir) ?? $dir;
+    }
+
+    /**
+     * Oturum ve "beni hatırla" çerezlerinin YOLU ("/proje/" ya da "/").
+     *
+     * Tarayıcı çerez yolunu, isteğin KODLANMIŞ yoluyla karşılaştırır:
+     * "my app" klasörü için gönderdiği yol "/my%20app/"dır. Taban ise
+     * SCRIPT_NAME'den çözülmüş hâliyle ("/my app") gelir. Eskiden bu
+     * çözülmüş hâli yazılıyordu; çerez hiç geri gelmiyor, her form
+     * CSRF hatasıyla (419) düşüyor, "beni hatırla" çerezi ise boşluk
+     * yüzünden setcookie() içinde hata verip sayfayı 500'e
+     * düşürüyordu.
+     *
+     * Her parça tarayıcının yaptığı gibi kodlanır. Tarayıcıların farklı
+     * davrandığı karakterler (virgül, noktalı virgül, tırnak, yüzde…)
+     * varsa yol "/" olur — çerez gelmeyeceğine paylaşılsın; kuruluma
+     * özel çerez adı ve oturum parmak izi zaten ayrımı sağlar.
+     */
+    public static function cookiePath(): string
+    {
+        $base = self::base();
+
+        if ($base === '') {
+            return '/';
+        }
+
+        if (preg_match('#[\x00-\x1F\x7F,;"\'<>`{}|^\[\]\\\\%]#', $base) === 1) {
+            return '/';
+        }
+
+        /* rawurlencode() bu karakterleri de kodlar, ama tarayıcılar yol
+         * içinde onları OLDUĞU GİBİ gönderir. */
+        $keep = ['%21' => '!', '%24' => '$', '%26' => '&', '%28' => '(', '%29' => ')',
+                 '%2A' => '*', '%2B' => '+', '%3D' => '=', '%3A' => ':', '%40' => '@'];
+
+        $parts = array_map(
+            static fn (string $part): string => strtr(rawurlencode($part), $keep),
+            explode('/', $base)
+        );
+
+        return implode('/', $parts) . '/';
     }
 
     /**
@@ -90,7 +139,7 @@ final class Url
         }
 
         $uri = explode('?', (string) ($_SERVER['REQUEST_URI'] ?? ''), 2)[0];
-        $uri = rawurldecode($uri);
+        $uri = (string) preg_replace('#/{2,}#', '/', rawurldecode($uri));
 
         // Olağan durum: istek zaten gerçek klasörün altından geliyor.
         if ($uri === '' || $uri === $dir || str_starts_with($uri, $dir . '/')) {
@@ -243,7 +292,7 @@ final class Url
         if ($raw === '') {
             $uri = (string) ($_SERVER['REQUEST_URI'] ?? '');
             $uri = explode('?', $uri, 2)[0];
-            $uri = rawurldecode($uri);
+            $uri = (string) preg_replace('#/{2,}#', '/', rawurldecode($uri));
 
             $base = self::base();
 

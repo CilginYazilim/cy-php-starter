@@ -127,11 +127,11 @@ final class Theme
         $value = strtolower(trim($value));
         $value = ltrim($value, '#');
 
-        if (preg_match('/^[0-9a-f]{3}$/', $value) === 1) {
+        if (preg_match('/^[0-9a-f]{3}\z/', $value) === 1) {
             $value = $value[0] . $value[0] . $value[1] . $value[1] . $value[2] . $value[2];
         }
 
-        return preg_match('/^[0-9a-f]{6}$/', $value) === 1
+        return preg_match('/^[0-9a-f]{6}\z/', $value) === 1
             ? '#' . $value
             : self::DEFAULT_BRAND;
     }

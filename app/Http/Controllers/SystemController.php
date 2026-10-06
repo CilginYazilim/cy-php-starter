@@ -49,7 +49,41 @@ final class SystemController extends Controller
             'ayarChecks' => $this->settingChecks(),
             'moduller'   => Modules::all(),
             'basarisizIsler' => $this->safe(static fn (): array => Queue::failed(20), []),
+            'bekleyenMigrationlar' => $this->safe(fn (): array => $this->migrator()->pending(), []),
         ]);
+    }
+
+    /* =================================================================
+     *  BEKLEYEN MIGRATION'LARI ÇALIŞTIR
+     * -----------------------------------------------------------------
+     *  SSH erişimi olmayan paylaşımlı hostlarda "php cy migrate"
+     *  çalıştırılamıyordu; kod güncellenip migration unutulunca giriş
+     *  bile 500 veriyordu. Yönetici artık buradan tek tıkla çalıştırır.
+     *  Komut satırındakiyle AYNI Migrator kullanılır (modüller dahil).
+     * ============================================================== */
+
+    public function migrate(Request $request): void
+    {
+        try {
+            $calisan = $this->migrator()->run();
+        } catch (Throwable $e) {
+            Logger::error('Panelden migration çalıştırılamadı: ' . $e->getMessage(), [], 'app');
+
+            Flash::error('Migration çalıştırılamadı: ' . $e->getMessage());
+            Response::redirect(url('panel/sistem'));
+        }
+
+        Logger::info('Panelden migration çalıştırıldı', ['dosyalar' => $calisan], 'app');
+
+        Flash::success($calisan === []
+            ? 'Bekleyen migration yok; veritabanı güncel.'
+            : count($calisan) . ' migration çalıştırıldı: ' . implode(', ', $calisan));
+        Response::redirect(url('panel/sistem'));
+    }
+
+    private function migrator(): \App\Core\Database\Migrator
+    {
+        return Modules::migrator($this->db, (string) Config::get('db.migrations'));
     }
 
     /* =================================================================
@@ -455,7 +489,7 @@ final class SystemController extends Controller
 
             return $bekleyen === 0
                 ? $toplam . ' migration uygulandı — güncel'
-                : $bekleyen . ' migration BEKLİYOR (php cy migrate)';
+                : $bekleyen . ' migration BEKLİYOR (php cy migrate ya da yukarıdaki düğme)';
         } catch (Throwable) {
             return 'okunamadı';
         }

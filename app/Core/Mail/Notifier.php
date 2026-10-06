@@ -145,6 +145,72 @@ final class Notifier
         return Mailer::send($mail);
     }
 
+    /**
+     * Hesap doğrulama bağlantısı (kayıt formuna yazılan adrese).
+     *
+     * Aynı adrese 10 dakikada en fazla BİR doğrulama mektubu gider:
+     * "yeniden gönder" ya da tekrar tekrar giriş denemesi, bir adresi
+     * mektup yağmuruna tutmanın yolu olmasın. Alıcı adı bile formdan
+     * gelen metin olduğu için yazılmaz.
+     */
+    public static function dogrulama(User $user, string $link, int $saat): bool
+    {
+        if (self::sentRecently($user->eposta, 'dogrulama', 10)) {
+            return false;
+        }
+
+        $siteAdi = Setting::get('site_adi', 'Site');
+
+        $mail = Mailable::make()
+            ->to($user->eposta)
+            ->subject($siteAdi . ' – E-posta adresinizi doğrulayın')
+            ->type('sistem')
+            ->forUser($user->id)
+            ->view('emails/dogrulama', [
+                'siteAdi'      => $siteAdi,
+                'dogrulamaUrl' => $link,
+                'saat'         => $saat,
+            ]);
+
+        return Mailer::send($mail);
+    }
+
+    /**
+     * Kayıt formuna KAYITLI bir adres yazıldığında adresin sahibine
+     * bilgi. Aynı adrese günde en fazla bir kez.
+     */
+    public static function zatenKayitli(User $user): bool
+    {
+        if (self::sentRecently($user->eposta, 'zaten-kayitli', 24 * 60)) {
+            return false;
+        }
+
+        $siteAdi = Setting::get('site_adi', 'Site');
+
+        $mail = Mailable::make()
+            ->to($user->eposta)
+            ->subject($siteAdi . ' – Bu adresle zaten bir hesabınız var')
+            ->type('sistem')
+            ->forUser($user->id)
+            ->view('emails/zaten-kayitli', [
+                'siteAdi'  => $siteAdi,
+                'girisUrl' => Mailer::absolute(url('giris')),
+            ]);
+
+        return Mailer::send($mail);
+    }
+
+    /** Bu adrese, bu şablonla son $dakika içinde mektup gitti mi? (veritabanı yoksa "evet") */
+    private static function sentRecently(string $email, string $template, int $dakika): bool
+    {
+        try {
+            return (new \App\Repositories\MailRepository(\App\Core\Database::connection()))
+                ->sentTemplateRecently($email, $template, $dakika);
+        } catch (\Throwable) {
+            return true;
+        }
+    }
+
     /* =================================================================
      *  SINAMA
      * ============================================================== */

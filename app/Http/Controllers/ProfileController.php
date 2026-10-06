@@ -20,6 +20,7 @@ use App\Core\Flash;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
+use App\Core\Throttle;
 use App\Core\Uploader;
 use App\Core\Validator;
 use App\Events\FileUploaded;
@@ -33,6 +34,12 @@ final class ProfileController extends Controller
 {
     /** Bir kullanıcının aynı anda sahip olabileceği en fazla API anahtarı. */
     private const MAX_TOKENS = 10;
+
+    /** Panelden seçilebilen geçerlilik süreleri (gün). */
+    public const TOKEN_DAYS = [30, 90, 180, 365];
+
+    /** Hatalı parola için ortak işaret (mesajı her form kendisi yazar). */
+    private const WRONG_PASSWORD = 'hatali';
 
     public function index(Request $request): void
     {
@@ -89,10 +96,12 @@ final class ProfileController extends Controller
         $yeniEposta = mb_strtolower((string) ($validator->validated()['eposta'] ?? ''));
 
         if ($validator->passes() && $yeniEposta !== mb_strtolower($user->eposta)) {
-            $hesap = $this->users()->findWithPassword($user->id);
+            $hata = $this->checkPassword($user->id, $request->string('eposta_sifre'));
 
-            if ($hesap === null || !$hesap->verifyPassword($request->string('eposta_sifre'))) {
-                $validator->addError('eposta_sifre', 'E-posta adresinizi değiştirmek için mevcut parolanızı doğru girin.');
+            if ($hata !== null) {
+                $validator->addError('eposta_sifre', $hata === self::WRONG_PASSWORD
+                    ? 'E-posta adresinizi değiştirmek için mevcut parolanızı doğru girin.'
+                    : $hata);
             }
         }
 
@@ -126,17 +135,13 @@ final class ProfileController extends Controller
 
         $current = $request->string('mevcut_sifre');
 
-        /* Auth::user() parola özetini TAŞIMAZ (UserRepository::find()
-         * "sifre" sütununu okumaz). Doğrulamayı onun üzerinden yapmak
-         * her denemenin "mevcut parolanız hatalı" ile bitmesine yol
-         * açar; özeti bu iş için ayrıca okuyoruz. */
-        $hesap = $this->users()->findWithPassword($user->id);
-
         $validator = new Validator($_POST);
         $validator->password('yeni_sifre', true, 'yeni_sifre_tekrar');
 
-        if ($hesap === null || !$hesap->verifyPassword($current)) {
-            $validator->addError('mevcut_sifre', 'Mevcut parolanız hatalı.');
+        $hata = $this->checkPassword($user->id, $current);
+
+        if ($hata !== null) {
+            $validator->addError('mevcut_sifre', $hata === self::WRONG_PASSWORD ? 'Mevcut parolanız hatalı.' : $hata);
         }
         if ($current !== '' && $current === $request->string('yeni_sifre')) {
             $validator->addError('yeni_sifre', 'Yeni parola, mevcut parolanızdan farklı olmalıdır.');
@@ -155,15 +160,17 @@ final class ProfileController extends Controller
          * "birileri hesabıma girmiş olabilir" şüphesidir; eskiden
          * yalnızca BU oturumun kimliği yenileniyor, diğerleri açık
          * kalıyordu. */
+        $anahtarSayisi = $this->tokenCount($user->id);
+
+        /* update() API anahtarlarını da siler (bkz. UserRepository). */
         $this->users()->update($user->id, ['sifre' => (string) $validator->validated()['yeni_sifre']]);
 
         /* Bu cihaz açık kalır: yeni sürümle yeniden oturum açılır
-         * (oturum kimliği ve CSRF jetonu da yenilenir). */
-        $guncel = $this->users()->find($user->id);
+         * (oturum kimliği ve CSRF jetonu da yenilenir); "beni hatırla"
+         * açıksa bu cihaz için yeni bir jeton yazılır. */
+        Auth::refreshCurrentDevice($user->id);
 
-        if ($guncel !== null) {
-            Auth::login($guncel);
-        } else {
+        if (!Auth::check()) {
             Session::regenerate();
             Csrf::rotate();
         }
@@ -173,7 +180,8 @@ final class ProfileController extends Controller
          * kullanıcının fark etmesinin tek yolu genelde budur. */
         Events::dispatch(new PasswordChanged($user->id, kendisi: true));
 
-        Flash::success('Parolanız güncellendi. Diğer cihazlardaki oturumlarınız kapatıldı.');
+        Flash::success('Parolanız güncellendi. Diğer cihazlardaki oturumlarınız kapatıldı'
+            . ($anahtarSayisi > 0 ? ' ve ' . $anahtarSayisi . ' API anahtarınız iptal edildi.' : '.'));
         Response::redirect(url('panel/hesabim'));
     }
 
@@ -191,10 +199,47 @@ final class ProfileController extends Controller
             Response::redirect(url('giris'));
         }
 
-        Auth::logoutOtherDevices($user->id);
+        /* API anahtarları ayrı bir onay kutusuyla iptal edilir (varsayılan
+         * işaretli). Eskiden ekranda "diğer oturumlar kapatıldı" yazarken
+         * çalınmış bir anahtar çalışmaya devam ediyordu; öte yandan bir
+         * sunucu entegrasyonunu habersizce kesmek de istenmeyebilir. */
+        $iptal = Auth::logoutOtherDevices($user->id, $request->bool('api_anahtarlari'));
 
-        Flash::success('Bu cihaz dışındaki tüm oturumlarınız ve "beni hatırla" kayıtlarınız kapatıldı.');
+        Flash::success('Bu cihaz dışındaki tüm oturumlarınız ve "beni hatırla" kayıtlarınız kapatıldı'
+            . ($iptal > 0 ? '; ' . $iptal . ' API anahtarınız iptal edildi.' : '.'));
         Response::redirect(url('panel/hesabim'));
+    }
+
+    /**
+     * Mevcut parolayı doğrular.
+     *
+     * HIZ SINIRLIDIR: açık bırakılmış bir oturumu ele geçiren kişi bu
+     * formları parola tahmin etmek için sınırsızca kullanamasın.
+     *
+     * @return string|null null → doğru; WRONG_PASSWORD → yanlış; başka metin → hız sınırı mesajı
+     */
+    private function checkPassword(int $userId, string $plain): ?string
+    {
+        $bekle = Throttle::attempt('parola-dogrula:' . $userId, 10, 900);
+
+        if ($bekle > 0) {
+            return sprintf('Çok fazla parola denemesi yaptınız. Lütfen %d dakika sonra tekrar deneyin.', (int) ceil($bekle / 60));
+        }
+
+        /* Auth::user() parola özetini TAŞIMAZ (UserRepository::find()
+         * "sifre" sütununu okumaz); özeti bu iş için ayrıca okuyoruz. */
+        $hesap = $this->users()->findWithPassword($userId);
+
+        return $hesap !== null && $plain !== '' && $hesap->verifyPassword($plain) ? null : self::WRONG_PASSWORD;
+    }
+
+    private function tokenCount(int $userId): int
+    {
+        try {
+            return ApiToken::countForUser($userId);
+        } catch (Throwable) {
+            return 0;
+        }
     }
 
     /* =================================================================
@@ -210,10 +255,29 @@ final class ProfileController extends Controller
         }
 
         $ad  = trim($request->input('anahtar_adi'));
-        $gun = $request->int('anahtar_gun', 0, 3650) ?? 0;
+        $gun = $request->int('anahtar_gun');
 
         if ($ad === '' || mb_strlen($ad) > 100) {
             Flash::error('Anahtara 1-100 karakterlik bir ad verin (örn. "Mobil uygulama").');
+            Response::redirect(url('panel/hesabim'));
+        }
+
+        /* Süre yalnızca listeden seçilir. Eskiden 0-3650 arası her sayı
+         * kabul ediliyor, aralık dışındaki bir değer (99999) sessizce
+         * SÜRESİZ anahtara dönüşüyordu. Süresiz anahtar panelden
+         * üretilemez; gerekiyorsa sunucuda "php cy api:token --suresiz". */
+        if (!in_array($gun, self::TOKEN_DAYS, true)) {
+            Flash::error('Geçerlilik süresi olarak listedeki seçeneklerden birini seçin.');
+            Response::redirect(url('panel/hesabim'));
+        }
+
+        /* Anahtar üretmek MEVCUT PAROLAYI ister: açık bırakılmış bir
+         * oturumu ele geçiren kişi kendine uzun ömürlü, oturumdan
+         * bağımsız bir erişim yolu açamasın. */
+        $hata = $this->checkPassword($user->id, $request->string('anahtar_sifre'));
+
+        if ($hata !== null) {
+            Flash::error($hata === self::WRONG_PASSWORD ? 'API anahtarı üretmek için mevcut parolanızı doğru girin.' : $hata);
             Response::redirect(url('panel/hesabim'));
         }
 
@@ -223,7 +287,15 @@ final class ProfileController extends Controller
                 Response::redirect(url('panel/hesabim'));
             }
 
-            $sonuc = ApiToken::create($user->id, $ad, $gun > 0 ? $gun : null);
+            $sonuc = ApiToken::create($user->id, $ad, $gun);
+
+            /* Sayım ile ekleme arasında aynı anda gelen başka bir istek
+             * de eklemiş olabilir; sınır aşıldıysa yeni anahtar geri alınır. */
+            if (ApiToken::countForUser($user->id) > self::MAX_TOKENS) {
+                ApiToken::revokeOwned($user->id, $sonuc['id']);
+                Flash::error('En fazla ' . self::MAX_TOKENS . ' anahtarınız olabilir. Kullanmadığınız bir anahtarı iptal edin.');
+                Response::redirect(url('panel/hesabim'));
+            }
         } catch (\PDOException) {
             Flash::error('API anahtarı tablosu bulunamadı. Sunucuda "php cy migrate" çalıştırın.');
             Response::redirect(url('panel/hesabim'));

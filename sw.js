@@ -15,42 +15,77 @@
  *  yavaş açılmaktan çok daha kötüdür. Kullanıcı silinmiş bir kaydı
  *  ya da eski bir bakiyeyi görmemelidir.
  *
- *  KİŞİSEL SAYFALAR ÖNBELLEĞE GİRMEZ. Eski sürüm panel sayfalarını da
- *  önbelleğe yazıyordu: kullanıcı çıkış yaptıktan sonra aynı cihazı
- *  kullanan biri, ağ yokken /panel adresini açıp yönetici ekranının
- *  HTML'ini görebiliyordu. Artık iki kilit var:
+ *  KİŞİSEL SAYFALAR ÖNBELLEĞE GİRMEZ. Üç kilit var:
  *    1. Yol kontrolü: panel/, giris, kayit, cikis hiç önbelleğe alınmaz.
  *    2. Sunucu işareti: giriş yapmış kullanıcıya üretilen HER yanıt
  *       "X-CY-Onbellek: hayir" başlığı taşır (bkz. index.php); bu
  *       başlığı gören yanıt da önbelleğe yazılmaz.
+ *    3. Kurulum anında önceden alınan sayfalar ÇEREZSİZ istenir. Eskiden
+ *       ana sayfa kullanıcının çereziyle alınıyordu: servis çalışanı
+ *       giriş yapılmışken kurulduysa önbelleğe GİRİŞLİ ana sayfa
+ *       yazılıyor, çıkıştan sonra çevrimdışıyken o görünüyordu.
+ *    Ayrıca çıkış isteği (POST cikis) geçerken sayfa önbelleği silinir.
  *
- *  SÜRÜM DEĞİŞİNCE ESKİ ÖNBELLEKLER SİLİNİR: "cy-v2"ye geçiş, eski
- *  sürümün önbelleğe yazmış olabileceği panel sayfalarını da temizler.
+ *  ÖNBELLEK ADLARI KURULUMA ÖZELDİR. Ad, servis çalışanının kapsamını
+ *  (uygulamanın yolu) içerir: aynı alan adındaki /demo1 ve /demo2
+ *  birbirinin önbelleğini okumaz, sürüm değişince yalnızca KENDİ eski
+ *  önbelleğini siler.
  *
  *  GET DIŞINDAKİ İSTEKLERE ASLA DOKUNMAYIZ: bir formu ya da API
  *  çağrısını önbellekten yanıtlamak veri kaybına yol açar.
  * ================================================================== */
 
-const SURUM   = 'cy-v2';
-const STATIK  = SURUM + '-statik';
-const SAYFA   = SURUM + '-sayfa';
+const SURUM = 'cy-v3';
 
 /* Servis çalışanının kapsamı (uygulamanın taban yolu, sonu "/"). */
 const KAPSAM = new URL('./', self.location).pathname;
 
+/* "cy-v3|/proje/|statik" — sürüm + kapsam + tür. */
+const ON_EK  = SURUM + '|' + KAPSAM + '|';
+const STATIK = ON_EK + 'statik';
+const SAYFA  = ON_EK + 'sayfa';
+
 /* Kurulumda önbelleğe alınacak asgari sayfalar. Her biri AYRI eklenir:
- * cache.addAll() tek bir dosya 404 verdiğinde hepsini reddederdi. */
+ * tek bir dosya 404 verdiğinde hepsi reddedilmesin. */
 const ONCEDEN = ['./', './cevrimdisi'];
 
 /* Önbelleğe ASLA girmeyecek rota önekleri (kapsama göre). */
 const OZEL = ['panel', 'giris', 'kayit', 'cikis'];
 
+/** Bu önbellek adı BU kurulumun eski bir sürümüne mi ait? */
+function eskiSurumumuz(ad) {
+    if (ad.startsWith(ON_EK)) {
+        return false;
+    }
+
+    // Yeni biçim: "cy-vN|<kapsam>|tür" — yalnızca kendi kapsamımız.
+    if (/^cy-v\d+\|/.test(ad)) {
+        return ad.split('|')[1] === KAPSAM;
+    }
+
+    // 1.3 ve öncesinin kapsamsız adları ("cy-v2-sayfa"): bir kez temizlenir.
+    return /^cy-v[12]-/.test(ad);
+}
+
+/** Yanıt kişisel mi? (giriş yapmış kullanıcıya üretilmiş) */
+function kisiselMi(yanit) {
+    return yanit.headers.get('X-CY-Onbellek') === 'hayir';
+}
+
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(STATIK)
-            .then((cache) => Promise.all(
-                ONCEDEN.map((adres) => cache.add(adres).catch(() => undefined))
-            ))
+            .then((cache) => Promise.all(ONCEDEN.map((adres) =>
+                fetch(new Request(adres, { credentials: 'omit' }))
+                    .then((yanit) => {
+                        if (yanit.ok && !kisiselMi(yanit)) {
+                            return cache.put(adres, yanit);
+                        }
+
+                        return undefined;
+                    })
+                    .catch(() => undefined)
+            )))
             .then(() => self.skipWaiting())
     );
 });
@@ -59,9 +94,7 @@ self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys()
             .then((adlar) => Promise.all(
-                adlar
-                    .filter((ad) => ad.startsWith('cy-') && !ad.startsWith(SURUM))
-                    .map((ad) => caches.delete(ad))   // eski sürümleri temizle
+                adlar.filter(eskiSurumumuz).map((ad) => caches.delete(ad))
             ))
             .then(() => self.clients.claim())
     );
@@ -90,19 +123,28 @@ function ozelMi(url) {
 }
 
 function cevrimdisiSayfa() {
-    return caches.match('./cevrimdisi').then((sayfa) => sayfa || caches.match('./'));
+    return caches.open(STATIK)
+        .then((cache) => cache.match('./cevrimdisi').then((sayfa) => sayfa || cache.match('./')));
 }
 
 self.addEventListener('fetch', (event) => {
     const istek = event.request;
-
-    // Yalnızca GET; POST/PUT/DELETE asla önbelleğe girmez.
-    if (istek.method !== 'GET') { return; }
-
-    const url = new URL(istek.url);
+    const url   = new URL(istek.url);
 
     // Başka bir alan adına giden istekleri karıştırmayız.
     if (url.origin !== self.location.origin) { return; }
+
+    // Yalnızca GET; POST/PUT/DELETE asla önbelleğe girmez.
+    if (istek.method !== 'GET') {
+        /* Çıkışta bu cihazdaki sayfa önbelleği silinir: ortak bir
+         * bilgisayarda sonraki kişi çevrimdışı modda önceki oturumdan
+         * kalan hiçbir sayfayı görmesin. İsteğin kendisine dokunmayız. */
+        if (rotaYolu(url) === 'cikis') {
+            event.waitUntil(caches.delete(SAYFA));
+        }
+
+        return;
+    }
 
     // API ve kurulum sihirbazı her zaman ağdan gelir.
     if (url.pathname.includes('/api/') || url.pathname.includes('/kurulum')) { return; }
@@ -122,14 +164,13 @@ self.addEventListener('fetch', (event) => {
         // ÖNCE ÖNBELLEK: sürüm damgalı adresler (?v=…) zaten
         // değiştiğinde yeni bir adres üretir, bayatlama olmaz.
         event.respondWith(
-            caches.match(istek).then((bulunan) => bulunan || fetch(istek).then((yanit) => {
+            caches.open(STATIK).then((cache) => cache.match(istek).then((bulunan) => bulunan || fetch(istek).then((yanit) => {
                 if (yanit && yanit.status === 200) {
-                    const kopya = yanit.clone();
-                    caches.open(STATIK).then((cache) => cache.put(istek, kopya));
+                    cache.put(istek, yanit.clone());
                 }
 
                 return yanit;
-            }))
+            })))
         );
 
         return;
@@ -139,15 +180,15 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
         fetch(istek)
             .then((yanit) => {
-                const kisisel = yanit.headers.get('X-CY-Onbellek') === 'hayir';
-
-                if (yanit && yanit.status === 200 && yanit.type === 'basic' && !kisisel) {
+                if (yanit && yanit.status === 200 && yanit.type === 'basic' && !kisiselMi(yanit)) {
                     const kopya = yanit.clone();
                     caches.open(SAYFA).then((cache) => cache.put(istek, kopya));
                 }
 
                 return yanit;
             })
-            .catch(() => caches.match(istek).then((bulunan) => bulunan || cevrimdisiSayfa()))
+            .catch(() => caches.open(SAYFA)
+                .then((cache) => cache.match(istek))
+                .then((bulunan) => bulunan || cevrimdisiSayfa()))
     );
 });

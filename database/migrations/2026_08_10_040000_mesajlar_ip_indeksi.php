@@ -18,6 +18,12 @@ declare(strict_types=1);
 
 return new class extends App\Core\Database\Migration
 {
+    /** Çekirdek migration: temel partiye (0) yazılır, geri alınmaz (bkz. Migration::baseline). */
+    public function baseline(): bool
+    {
+        return true;
+    }
+
     public function up(): void
     {
         if ($this->indexExists('mesajlar', 'idx_mesajlar_ip')) {

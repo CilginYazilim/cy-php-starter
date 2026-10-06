@@ -15,11 +15,13 @@ namespace App\Http\Controllers\Site;
 
 use App\Core\Auth;
 use App\Core\Events\Events;
+use App\Core\Exceptions\HttpException;
 use App\Core\Log\Logger;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
 use App\Core\Setting;
+use App\Core\Signer;
 use App\Core\Validator;
 use App\Events\ContactMessageReceived;
 use App\Http\Controller;
@@ -84,13 +86,17 @@ final class ContactController extends Controller
         /* --- ÇOK HIZLI GÖNDERİM ---
          * Form üretildikten sonraki ilk 3 saniyede gelen gönderim
          * insan işi değildir. Bal küpünden daha güvenilir bir
-         * ölçüttür çünkü otomatik doldurmadan etkilenmez. */
-        $formZamani = (int) $request->string('cy_zaman', '0');
+         * ölçüttür çünkü otomatik doldurmadan etkilenmez.
+         *
+         * Damga İMZALIDIR ve ZORUNLUDUR (bkz. Signer::stamp). Eskiden
+         * düz bir sayıydı: bot "1 saat önce" yazabiliyor ya da alanı hiç
+         * göndermeyerek kontrolü tamamen atlayabiliyordu. */
+        $yas = Signer::stampAge('iletisim', $request->string('cy_zaman'));
 
-        if ($formZamani > 0 && (time() - $formZamani) < 3) {
-            Logger::security('İletişim formu: insanüstü hızda gönderim, mesaj elendi', [
-                'ip'    => $request->ip(),
-                'sure'  => time() - $formZamani,
+        if ($yas === null || $yas < 3) {
+            Logger::security('İletişim formu: zaman damgası yok/geçersiz ya da insanüstü hız, mesaj elendi', [
+                'ip'   => $request->ip(),
+                'sure' => $yas,
             ]);
 
             Response::success('Mesajınız alındı. Teşekkür ederiz.');
@@ -107,7 +113,8 @@ final class ContactController extends Controller
 
         if ($lastSent > 0 && (time() - $lastSent) < $cooldown) {
             $remaining = $cooldown - (time() - $lastSent);
-            Response::error('Çok hızlı gönderiyorsunuz. Lütfen ' . $remaining . ' saniye bekleyin.', 429);
+
+            throw HttpException::tooManyRequests($remaining, 'Çok hızlı gönderiyorsunuz. Lütfen ' . $remaining . ' saniye bekleyin.');
         }
 
         if ($this->messages()->countFromIp($request->ip(), 3600) >= 5) {
@@ -116,7 +123,7 @@ final class ContactController extends Controller
                 'tarayici' => $request->userAgent(),
             ]);
 
-            Response::error('Bu adresten çok fazla mesaj gönderildi. Lütfen bir süre sonra tekrar deneyin.', 429);
+            throw HttpException::tooManyRequests(3600, 'Bu adresten çok fazla mesaj gönderildi. Lütfen bir süre sonra tekrar deneyin.');
         }
 
         $validator = new Validator($_POST);

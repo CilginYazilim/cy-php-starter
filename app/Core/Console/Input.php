@@ -33,6 +33,9 @@ final class Input
     /** @var array<string,string> */
     private array $options = [];
 
+    /** @var array<string,true> Değersiz yazılmış seçenekler (--iptal gibi) */
+    private array $flags = [];
+
     private string $command = '';
 
     /** @param array<int,string> $argv Ham $argv (ilk eleman betik adıdır) */
@@ -49,6 +52,7 @@ final class Input
 
             if (str_starts_with($token, '-') && strlen($token) > 1) {
                 $this->options[substr($token, 1)] = '1';
+                $this->flags[substr($token, 1)]   = true;
                 continue;
             }
 
@@ -76,6 +80,7 @@ final class Input
         }
 
         $this->options[$token] = '1';
+        $this->flags[$token]   = true;
     }
 
     public function command(): string
@@ -111,6 +116,39 @@ final class Input
     public function hasOption(string $key): bool
     {
         return array_key_exists($key, $this->options);
+    }
+
+    /**
+     * Seçenek "--ad=değer" biçiminde, DEĞERİYLE mi yazıldı?
+     *
+     * Değersiz bir bayrak içeride "1" olarak saklanır; "--iptal" ile
+     * "--iptal=1" bu metot olmadan ayırt edilemiyordu ve numara
+     * verilmeden yazılan "--iptal" 1 numaralı anahtarı siliyordu.
+     */
+    public function hasValue(string $key): bool
+    {
+        return array_key_exists($key, $this->options) && !isset($this->flags[$key]);
+    }
+
+    /**
+     * Pozitif tam sayı seçeneği; verilmemişse null, geçersizse false.
+     * "90g", "1.5", "-3", "abc" ve değersiz bayrak geçersizdir.
+     */
+    public function positiveIntOption(string $key, int $max = PHP_INT_MAX): int|false|null
+    {
+        if (!$this->hasOption($key)) {
+            return null;
+        }
+
+        if (!$this->hasValue($key)) {
+            return false;
+        }
+
+        $value = filter_var(trim($this->options[$key]), FILTER_VALIDATE_INT, [
+            'options' => ['min_range' => 1, 'max_range' => $max],
+        ]);
+
+        return $value === false ? false : $value;
     }
 
     /** @return array<string,string> */

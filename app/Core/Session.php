@@ -33,10 +33,13 @@ final class Session
 
         /* ÇEREZ YOLU UYGULAMANIN KLASÖRÜDÜR. "/" olsaydı aynı alan
          * adındaki /demo1 ve /demo2 kurulumları birbirinin çerezini
-         * alırdı. Kökte çalışan bir kurulumda yol yine "/" olur. */
+         * alırdı. Kökte çalışan bir kurulumda yol yine "/" olur.
+         * Klasör adında boşluk ya da Türkçe karakter varsa yol
+         * tarayıcının gönderdiği KODLANMIŞ biçimde yazılır (bkz.
+         * Url::cookiePath). */
         session_set_cookie_params([
             'lifetime' => 0,
-            'path'     => Url::base() !== '' ? Url::base() . '/' : '/',
+            'path'     => Url::cookiePath(),
             'domain'   => '',
             'secure'   => self::isHttps(),
             'httponly' => true,
@@ -60,7 +63,7 @@ final class Session
     {
         $name = (string) Config::get('session.name', '');
 
-        if ($name !== '' && preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/', $name) === 1) {
+        if ($name !== '' && preg_match('/\A[A-Za-z][A-Za-z0-9_]{0,63}\z/', $name) === 1) {
             return $name;
         }
 
@@ -68,18 +71,30 @@ final class Session
     }
 
     /**
-     * Bu kurulumun kimliği: proje klasörü + APP_KEY.
+     * Bu kurulumun kimliği.
      *
      * Oturuma yazılır ve her istekte karşılaştırılır. Aynı sunucuda
      * oturum dosyalarını paylaşan iki kurulumdan birinin çerez değeri
      * diğerine kopyalansa bile oturum KABUL EDİLMEZ — "bir demoda
      * yönetici olan diğerinde de yönetici sayılır" açığını kapatır.
+     *
+     * APP_KEY DOLUYSA KİMLİK YALNIZCA ONDAN TÜRETİLİR. Eskiden klasör
+     * yolu da katılıyordu; Deployer/Capistrano gibi her sürümü yeni bir
+     * klasöre açan (releases/42 → current) araçlarda yol her dağıtımda
+     * değiştiği için bütün kullanıcılar her dağıtımda çıkış yapıyordu.
+     * APP_KEY boşsa (eski kurulum) ayırt edici olarak yine yol kullanılır.
      */
     public static function appId(): string
     {
+        $key = trim((string) Config::get('app.key', ''));
+
+        if ($key !== '') {
+            return hash('sha256', 'cy-kurulum|' . $key);
+        }
+
         $base = defined('CY_BASE') ? CY_BASE : __DIR__;
 
-        return hash('sha256', $base . '|' . (string) Config::get('app.key', ''));
+        return hash('sha256', $base . '|');
     }
 
     /**
@@ -91,12 +106,18 @@ final class Session
      * kurulumun oturum dosyasının bizim çerez adımızla okunabilmesi
      * demektir. Klasör yazılamıyorsa sessizce PHP varsayılanına
      * düşülür — oturumun hiç açılmaması daha kötü olurdu.
+     *
+     * YALNIZCA DOSYA SÜRÜCÜSÜNDE. Sunucu oturumları Redis ya da
+     * Memcached'de tutuyorsa (session.save_handler=redis) kayıt yolu
+     * "tcp://127.0.0.1:6379" gibi bir adrestir. Eskiden buna bakmadan
+     * klasör yolu yazılıyordu; sürücü klasörü sunucu adresi sanıp
+     * bağlanamıyor, kimse giriş yapamıyordu.
      */
     private static function useOwnStorage(): void
     {
         $path = (string) Config::get('session.path', '');
 
-        if ($path === '') {
+        if ($path === '' || ini_get('session.save_handler') !== 'files') {
             return;
         }
 

@@ -6,6 +6,7 @@
  */
 
 use App\Core\Setting;
+use App\Core\Signer;
 
 $errors = $errors ?? [];
 $old    = $old ?? [];
@@ -26,15 +27,16 @@ $old    = $old ?? [];
                         <?= csrf_field() ?>
 
                         <?php /* Otomatik kayıt koruması (bkz. AuthController::register):
-                                 görünmeyen alan insanlarca doldurulmaz, zaman damgası
-                                 formun ne kadar hızlı gönderildiğini ölçer. */ ?>
+                                 görünmeyen alan insanlarca doldurulmaz, İMZALI zaman
+                                 damgası formun ne kadar hızlı gönderildiğini ölçer
+                                 (bot onu uyduramaz, silerse kayıt elenir). */ ?>
                         <div class="cy-hp" aria-hidden="true">
                             <label for="cy_kontrol">Bu alanı boş bırakın</label>
                             <input type="text" name="cy_kontrol" id="cy_kontrol" value=""
                                    tabindex="-1" autocomplete="off"
                                    data-lpignore="true" data-1p-ignore data-form-type="other">
                         </div>
-                        <input type="hidden" name="cy_zaman" value="<?= (int) time() ?>">
+                        <input type="hidden" name="cy_zaman" value="<?= e(Signer::stamp('kayit')) ?>">
 
                         <div class="row g-3">
                             <div class="col-12 col-md-6">

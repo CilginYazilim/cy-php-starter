@@ -7,8 +7,9 @@
  *  şablonun tüm veritabanı sözlüğü Türkçedir. Nesne özellik adları da
  *  tutarlılık için aynı isimleri kullanır.
  *
- *  DURUM: 'aktif' | 'pasif' | 'askida'
- *  Yalnızca 'aktif' olan hesap giriş yapabilir.
+ *  DURUM: 'aktif' | 'pasif' | 'askida' | 'onay_bekliyor'
+ *  Yalnızca 'aktif' olan hesap giriş yapabilir. 'onay_bekliyor', kayıt
+ *  formundan açılmış ve e-posta adresi henüz doğrulanmamış hesaptır.
  * =====================================================================
  */
 
@@ -21,6 +22,9 @@ use DateTimeImmutable;
 
 final class User
 {
+    /** Geçerli durum değerleri (süzgeçler ve doğrulama bu listeyi kullanır). */
+    public const STATUSES = ['aktif', 'pasif', 'askida', 'onay_bekliyor'];
+
     public function __construct(
         public readonly int    $id,
         public readonly string $ad,
@@ -99,6 +103,7 @@ final class User
             'aktif'  => 'Aktif',
             'pasif'  => 'Pasif',
             'askida' => 'Askıda',
+            'onay_bekliyor' => 'E-posta onayı bekliyor',
             default  => $this->durum,
         };
     }
@@ -106,6 +111,11 @@ final class User
     public function isActive(): bool
     {
         return $this->durum === 'aktif';
+    }
+
+    public function isPendingVerification(): bool
+    {
+        return $this->durum === 'onay_bekliyor';
     }
 
     /** "dark" | "light" — HTML'deki data-cy-theme özniteliğinde doğrudan kullanılır. */

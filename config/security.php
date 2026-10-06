@@ -24,6 +24,24 @@ return [
     /* Kayıt formu: bir IP'den saatte en fazla kaç yeni hesap? */
     'register_max_per_hour' => Env::int('REGISTER_MAX_PER_HOUR', 5),
 
+    /* Kayıt formu: bir IP'den saatte en fazla kaç GÖNDERİM (başarılı
+     * ya da başarısız)? Hatalı denemeler de sayılır; aksi hâlde form
+     * "bu kullanıcı adı alınmış mı" diye sınırsızca sorgulanabilirdi. */
+    'register_max_attempts_per_hour' => Env::int('REGISTER_MAX_ATTEMPTS_PER_HOUR', 20),
+
+    /* -----------------------------------------------------------------
+     *  GÜVENİLEN VEKİLLER (bkz. app/Core/Ip.php)
+     * -----------------------------------------------------------------
+     *  Site Cloudflare / yük dengeleyici / ters vekil arkasındaysa
+     *  vekillerin adreslerini yazın; gerçek ziyaretçi adresi vekilin
+     *  başlığından okunur. Boşsa REMOTE_ADDR kullanılır.
+     *
+     *      TRUSTED_PROXIES=10.0.0.0/8,2001:db8::/32
+     *      TRUSTED_PROXY_HEADER=CF-Connecting-IP
+     * -------------------------------------------------------------- */
+    'trusted_proxies' => Env::list('TRUSTED_PROXIES'),
+    'proxy_header'    => Env::get('TRUSTED_PROXY_HEADER', 'X-Forwarded-For'),
+
     'password_min' => 8,
 
     /* -----------------------------------------------------------------

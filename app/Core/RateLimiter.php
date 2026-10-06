@@ -5,6 +5,34 @@
  * ---------------------------------------------------------------------
  *  Sayaç VERİTABANINDA tutulur (oturumda değil); aksi halde saldırgan
  *  çerezini silerek sayacı sıfırlayabilirdi.
+ *
+ *  İKİ KİLİT
+ *
+ *   1. KİMLİK KİLİDİ — aynı e-posta/kullanıcı adına, aynı KAPSAMDAN
+ *      (IP kovası ya da güvenilen cihaz) 5 hatalı denemede 15 dakika.
+ *
+ *   2. IP GENELİ YAVAŞLATMA — tek bir IP kovasından FARKLI kimliklere
+ *      yapılan hatalı denemeler (parola püskürtme). Sınır aşılınca sert
+ *      kilit yerine GİDEREK ARTAN bir bekleme uygulanır: 1, 2, 4, 8…
+ *      saniye, en fazla kilit süresi kadar. Eskiden 30 ham hata IP'yi
+ *      15 dakika kilitliyordu; rastgele 30 kullanıcı adı deneyen biri,
+ *      aynı IP'yi paylaşan yöneticiyi (ya da vekil arkasında BÜTÜN
+ *      siteyi) doğru parolayla bile dışarıda bırakabiliyordu.
+ *
+ *  KAPSAM ("ip" sütunu)
+ *   · IPv4 adresin kendisi, IPv6 /64 bloğu (bkz. Ip::bucket). Aksi
+ *     hâlde IPv6 kullanıcısı her denemede adres değiştirip kilidi
+ *     aşabiliyordu.
+ *   · Daha önce bu hesaba başarıyla girmiş bir tarayıcı (güvenilen
+ *     cihaz çerezi) "cihaz:<kimlik>" kapsamında sayılır: IP'sindeki
+ *     saldırgan onu kilitleyemez (bkz. Auth::attempt).
+ *
+ *  DENEME, PAROLA DOĞRULANMADAN ÖNCE YAZILIR (begin). Eskiden önce
+ *  sayılıp sonra yazılıyordu; aynı anda gönderilen 50 istek sayacı
+ *  hep 0 görüp sınırı aşıyordu. Şimdi her istek önce kendi satırını
+ *  ekler, sonra YALNIZCA KENDİSİNDEN ÖNCEKİ satırları sayar: aynı
+ *  anda gelen isteklerden en fazla "sınır" kadarı geçebilir. Başarılı
+ *  girişte satır silinir (finish).
  * =====================================================================
  */
 
@@ -20,28 +48,57 @@ final class RateLimiter
     {
     }
 
-    public function lockedFor(string $key): int
+    /**
+     * Denemeyi kayda geçirir. Parola doğrulanmadan ÖNCE çağrılır.
+     *
+     * @param string $identifier Girilen e-posta/kullanıcı adı (özeti yazılır)
+     * @param string $scope      IP kovası ya da "cihaz:..." (bkz. sınıf açıklaması)
+     * @return int Kaydın numarası (lockedFor/cancel için)
+     */
+    public function begin(string $identifier, string $scope): int
+    {
+        $stmt = $this->db->prepare(
+            'INSERT INTO login_attempts (identifier, ip, attempted_at) VALUES (:kimlik, :kapsam, NOW())'
+        );
+        $stmt->execute([':kimlik' => $this->hash($identifier), ':kapsam' => $scope]);
+
+        if (random_int(1, 20) === 1) {
+            $this->prune();
+        }
+
+        return (int) $this->db->lastInsertId();
+    }
+
+    /**
+     * Kimlik kilidi: bu denemeden ÖNCEKİ hatalı denemelere göre kalan
+     * süre (saniye). 0 → kilit yok.
+     */
+    public function lockedFor(string $identifier, string $scope, int $beforeId = PHP_INT_MAX): int
     {
         $max    = (int) Config::get('security.login_max_attempts', 5);
         $window = (int) Config::get('security.login_window', 900);
         $lock   = (int) Config::get('security.login_lockout', 900);
 
-        [$kimlik, $ip] = $this->split($key);
+        if ($max <= 0) {
+            return 0;
+        }
 
-        /* KALAN SÜRE SQL'DE HESAPLANIR. Eskiden MAX(attempted_at)
-         * PHP'ye çekilip strtotime() ile okunuyordu; kayıt MySQL'in
-         * NOW() değeriyle yazıldığı için iki saat dilimi farklıysa
-         * (MySQL UTC, PHP +03:00) kilit süresi baştan "geçmiş"
-         * görünüyor ve kilit HİÇ devreye girmiyordu. Karşılaştırmanın
-         * iki tarafı da artık aynı saatten gelir. */
+        /* KALAN SÜRE SQL'DE HESAPLANIR: kayıt MySQL'in NOW() değeriyle
+         * yazılır; PHP saatiyle karşılaştırmak iki saat dilimi farklı
+         * olduğunda kilidi baştan "geçmiş" gösteriyordu. */
         $stmt = $this->db->prepare(
             'SELECT COUNT(*) AS adet,
                     TIMESTAMPDIFF(SECOND, NOW(), MAX(attempted_at) + INTERVAL :lock SECOND) AS kalan
                FROM login_attempts
-              WHERE identifier = :key AND ip = :ip
+              WHERE identifier = :kimlik AND ip = :kapsam AND id < :once
                 AND attempted_at >= (NOW() - INTERVAL :window SECOND)'
         );
-        $stmt->execute([':key' => $kimlik, ':ip' => $ip, ':window' => $window, ':lock' => $lock]);
+        $stmt->bindValue(':kimlik', $this->hash($identifier));
+        $stmt->bindValue(':kapsam', $scope);
+        $stmt->bindValue(':once', $beforeId, PDO::PARAM_INT);
+        $stmt->bindValue(':window', $window, PDO::PARAM_INT);
+        $stmt->bindValue(':lock', $lock, PDO::PARAM_INT);
+        $stmt->execute();
 
         $row = $stmt->fetch() ?: [];
 
@@ -53,14 +110,16 @@ final class RateLimiter
     }
 
     /**
-     * IP GENELİNDE kilit: tek bir adresten FARKLI hesaplara yapılan
-     * çok sayıda başarısız deneme (parola püskürtme / credential
-     * stuffing). Hesap başına sayaç bunu yakalayamaz — saldırgan her
-     * hesabı yalnızca birkaç kez dener.
+     * IP GENELİ YAVAŞLATMA: kovadan FARKLI kimliklere yapılan hatalı
+     * deneme sayısı sınırı aştıysa, son denemeden bu yana beklenmesi
+     * gereken süre (saniye). 0 → bekleme yok.
      *
-     * @return int Kalan kilit süresi (saniye); 0 → kilit yok
+     * Ham hata sayısı değil FARKLI KİMLİK sayısı ölçülür: kendi
+     * parolasını beş kez yanlış yazan kullanıcı bunu tetiklemez (onu
+     * kimlik kilidi durdurur); yalnızca çok sayıda hesabı yoklayan biri
+     * tetikler.
      */
-    public function ipLockedFor(string $ip): int
+    public function ipLockedFor(string $scope, int $beforeId = PHP_INT_MAX): int
     {
         $max    = (int) Config::get('security.login_ip_max_attempts', 30);
         $window = (int) Config::get('security.login_window', 900);
@@ -71,58 +130,59 @@ final class RateLimiter
         }
 
         $stmt = $this->db->prepare(
-            'SELECT COUNT(*) AS adet,
-                    TIMESTAMPDIFF(SECOND, NOW(), MAX(attempted_at) + INTERVAL :lock SECOND) AS kalan
+            'SELECT COUNT(DISTINCT identifier) AS farkli,
+                    TIMESTAMPDIFF(SECOND, MAX(attempted_at), NOW()) AS gecen
                FROM login_attempts
-              WHERE ip = :ip
+              WHERE ip = :kapsam AND id < :once
                 AND attempted_at >= (NOW() - INTERVAL :window SECOND)'
         );
-        $stmt->execute([':ip' => $ip, ':window' => $window, ':lock' => $lock]);
+        $stmt->bindValue(':kapsam', $scope);
+        $stmt->bindValue(':once', $beforeId, PDO::PARAM_INT);
+        $stmt->bindValue(':window', $window, PDO::PARAM_INT);
+        $stmt->execute();
 
-        $row = $stmt->fetch() ?: [];
+        $row    = $stmt->fetch() ?: [];
+        $farkli = (int) ($row['farkli'] ?? 0);
 
-        if ((int) ($row['adet'] ?? 0) < $max) {
+        if ($farkli < $max) {
             return 0;
         }
 
-        return max(0, (int) ($row['kalan'] ?? 0));
+        // Sınırdaki ilk aşım 1 sn, sonra her farklı kimlikte iki katı.
+        $bekle = (int) min($lock, 2 ** min(20, $farkli - $max));
+
+        return max(0, $bekle - (int) ($row['gecen'] ?? 0));
     }
 
-    public function hit(string $key, string $ip): void
+    /** Denemeyi kayıttan siler (başarılı giriş ya da kilide takılan deneme). */
+    public function cancel(int $attemptId): void
     {
-        [$kimlik] = $this->split($key);
-
-        $stmt = $this->db->prepare(
-            'INSERT INTO login_attempts (identifier, ip, attempted_at) VALUES (:key, :ip, NOW())'
-        );
-        $stmt->execute([':key' => $kimlik, ':ip' => $ip]);
-
-        if (random_int(1, 20) === 1) {
-            $this->prune();
-        }
+        $stmt = $this->db->prepare('DELETE FROM login_attempts WHERE id = :id');
+        $stmt->execute([':id' => $attemptId]);
     }
 
-    public function clear(string $key): void
+    /** Bu kimliğin bütün denemelerini siler (başarılı giriş). */
+    public function clear(string $identifier): void
     {
-        [$kimlik] = $this->split($key);
-
-        $stmt = $this->db->prepare('DELETE FROM login_attempts WHERE identifier = :key');
-        $stmt->execute([':key' => $kimlik]);
+        $stmt = $this->db->prepare('DELETE FROM login_attempts WHERE identifier = :kimlik');
+        $stmt->execute([':kimlik' => $this->hash($identifier)]);
     }
 
-    public function remaining(string $key): int
+    /** Kilide kadar kalan hak. */
+    public function remaining(string $identifier, string $scope): int
     {
         $max    = (int) Config::get('security.login_max_attempts', 5);
         $window = (int) Config::get('security.login_window', 900);
 
-        [$kimlik, $ip] = $this->split($key);
-
         $stmt = $this->db->prepare(
             'SELECT COUNT(*) FROM login_attempts
-              WHERE identifier = :key AND ip = :ip
+              WHERE identifier = :kimlik AND ip = :kapsam
                 AND attempted_at >= (NOW() - INTERVAL :window SECOND)'
         );
-        $stmt->execute([':key' => $kimlik, ':ip' => $ip, ':window' => $window]);
+        $stmt->bindValue(':kimlik', $this->hash($identifier));
+        $stmt->bindValue(':kapsam', $scope);
+        $stmt->bindValue(':window', $window, PDO::PARAM_INT);
+        $stmt->execute();
 
         return max(0, $max - (int) $stmt->fetchColumn());
     }
@@ -161,29 +221,11 @@ final class RateLimiter
     }
 
     /**
-     * "kimlik|ip" biçimindeki sayaç anahtarını iki parçaya ayırır ve
-     * kimlik kısmının ÖZETİNİ döndürür.
-     *
-     * NEDEN İKİ SÜTUN? Kilit hem kimliğe hem IP'ye bağlıdır (bir
-     * saldırganın tek bir IP'den deneyerek kurbanın hesabını herkese
-     * kapatması istenmez). Eskiden ikisi birleştirilip TEK bir özet
-     * olarak yazılıyordu; bu, "bu kullanıcıya ait son başarısız
-     * denemeler" sorusunu cevaplanamaz hale getiriyordu — kullanıcı
-     * kaydında IP yazmıyor, dolayısıyla özet asla tutmuyordu ve
-     * recentFailures() her zaman 0 dönüyordu.
-     *
-     * @return array{0:string,1:string} [kimlik özeti, ham ip]
+     * Kimliğin ÖZETİ. Düz metin saklanmaz: veritabanı sızsa bile "kime
+     * saldırıldı" bilgisi sızmaz.
      */
-    private function split(string $key): array
+    private function hash(string $identifier): string
     {
-        $parts = explode('|', $key);
-        $ip    = count($parts) > 1 ? (string) array_pop($parts) : '';
-
-        return [$this->hash(implode('|', $parts)), $ip];
-    }
-
-    private function hash(string $key): string
-    {
-        return hash('sha256', mb_strtolower(trim($key)));
+        return hash('sha256', mb_strtolower(trim($identifier)));
     }
 }

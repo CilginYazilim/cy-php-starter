@@ -59,14 +59,14 @@ final class View
         if (str_contains($view, '::')) {
             [$module, $path] = explode('::', $view, 2);
 
-            if (preg_match('/^[A-Za-z0-9_]+$/', $module) !== 1) {
+            if (preg_match('/^[A-Za-z0-9_]+\z/', $module) !== 1) {
                 throw new RuntimeException('Geçersiz modül adı: ' . $view);
             }
         }
 
         $path = trim($path, '/');
 
-        if (preg_match('#^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$#', $path) !== 1) {
+        if (preg_match('#^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*\z#', $path) !== 1) {
             throw new RuntimeException('Geçersiz görünüm adı: ' . $view);
         }
 

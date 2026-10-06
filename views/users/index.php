@@ -97,6 +97,7 @@ $ist   = $istatistik ?? ['toplam' => 0, 'aktif' => 0, 'pasif' => 0, 'yonetici' =
                 <option value="aktif">Aktif</option>
                 <option value="pasif">Pasif</option>
                 <option value="askida">Askıda</option>
+                <option value="onay_bekliyor">E-posta onayı bekliyor</option>
             </select>
 
             <div class="cy-toolbar__daterange" role="group" aria-label="Kayıt tarihine göre filtrele">

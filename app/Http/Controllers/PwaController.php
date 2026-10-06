@@ -89,7 +89,7 @@ final class PwaController extends Controller
     {
         $deger = Setting::get($anahtar, $varsayilan);
 
-        return preg_match('/^#[0-9a-fA-F]{6}$/', $deger) === 1 ? $deger : $varsayilan;
+        return preg_match('/^#[0-9a-fA-F]{6}\z/', $deger) === 1 ? $deger : $varsayilan;
     }
 
     /** Ağ yokken servis çalışanının gösterdiği sayfa. */
