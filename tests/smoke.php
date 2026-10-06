@@ -455,6 +455,315 @@ test('Geçerli Bearer anahtarı Apache\'den PHP\'ye ulaşıyor, çerez üretmiyo
 });
 
 /* =====================================================================
+ *  8) MOBİL API (oturum aç → kullan → kapat)
+ * ---------------------------------------------------------------------
+ *  --kullanici/--parola verilmişse ya da örnek veri kuruluysa çalışır.
+ *  Açtığı oturumu sonunda kapatır; veriye dokunmaz.
+ * ================================================================== */
+echo "\nMobil API\n";
+
+/** Mobil giriş için kullanılacak hesap: önce komut satırı, yoksa demo üye. */
+function mobil_hesap(array $opts): ?array
+{
+    if (isset($opts['kullanici'], $opts['parola'])) {
+        return [$opts['kullanici'], $opts['parola']];
+    }
+
+    return DEMO_VAR ? ['mehmet.uye', DEMO_PAROLA] : null;
+}
+
+const DEMO_PAROLA = 'Demo1234!';
+define('DEMO_VAR', (static function () use ($base): bool {
+    $r = (new Istemci($base))->istek('api/v1/oturum', 'POST', ['kullanici' => 'mehmet.uye', 'parola' => DEMO_PAROLA, 'cihaz' => 'smoke-algilama']);
+    $j = json_decode($r['govde'], true);
+
+    if ($r['kod'] !== 201 || !isset($j['data']['token'])) {
+        return false;
+    }
+
+    (new Istemci($base))->istek('api/v1/oturum', 'DELETE', [], ['Authorization: Bearer ' . $j['data']['token']]);
+
+    return true;
+})());
+
+test('POST api/v1/oturum yanlış parolada 401 döner', function () use ($base): bool|string {
+    $r = (new Istemci($base))->istek('api/v1/oturum', 'POST', ['kullanici' => 'yok_' . bin2hex(random_bytes(3)), 'parola' => 'yanlis123']);
+
+    return $r['kod'] === 401 ? true : 'HTTP ' . $r['kod'];
+});
+
+test('Mobil oturum: giriş → ben → dosyalar → çıkış → 401', function () use ($base, $opts): bool|string|null {
+    $hesap = mobil_hesap($opts);
+
+    if ($hesap === null) {
+        return null;
+    }
+
+    $r = (new Istemci($base))->istek('api/v1/oturum', 'POST', ['kullanici' => $hesap[0], 'parola' => $hesap[1], 'cihaz' => 'Duman testi']);
+    $j = json_decode($r['govde'], true);
+    $t = (string) ($j['data']['token'] ?? '');
+
+    if ($r['kod'] !== 201 || $t === '') {
+        return 'Giriş: HTTP ' . $r['kod'] . ' ' . substr($r['govde'], 0, 120);
+    }
+
+    $bearer = ['Authorization: Bearer ' . $t];
+    $ben    = (new Istemci($base))->istek('api/v1/ben', 'GET', [], $bearer);
+
+    if ($ben['kod'] !== 200 || stripos($ben['basliklar'], 'Set-Cookie:') !== false) {
+        return 'ben: HTTP ' . $ben['kod'] . ' (Bearer isteği çerez almamalı)';
+    }
+
+    $dosya = (new Istemci($base))->istek('api/v1/dosyalar', 'GET', [], $bearer);
+
+    if ($dosya['kod'] !== 200) {
+        return 'dosyalar: HTTP ' . $dosya['kod'];
+    }
+
+    $oturumlar = json_decode((new Istemci($base))->istek('api/v1/oturumlar', 'GET', [], $bearer)['govde'], true);
+    $buCihaz   = array_filter((array) ($oturumlar['data'] ?? []), static fn ($o) => ($o['bu_cihaz'] ?? false) === true);
+
+    if (count($buCihaz) !== 1) {
+        return 'oturumlar: bu cihaz işaretli değil';
+    }
+
+    $cikis = (new Istemci($base))->istek('api/v1/oturum', 'DELETE', [], $bearer);
+    $sonra = (new Istemci($base))->istek('api/v1/ben', 'GET', [], $bearer);
+
+    return $cikis['kod'] === 200 && $sonra['kod'] === 401 ? true : 'Çıkış: ' . $cikis['kod'] . ', sonrası: ' . $sonra['kod'];
+});
+
+test('Örnek dosyalar anahtarsız verilmiyor, yol dışına çıkılamıyor', function () use ($base): bool|string {
+    $a = (new Istemci($base))->istek('api/v1/dosyalar/hosgeldiniz.txt');
+    $b = (new Istemci($base))->istek('api/v1/dosyalar/..%2F..%2F.env');
+
+    return $a['kod'] === 401 && in_array($b['kod'], [400, 401, 403, 404], true) ? true : 'HTTP ' . $a['kod'] . ' / ' . $b['kod'];
+});
+
+/* =====================================================================
+ *  9) ROL MATRİSİ (örnek veriyle kurulmuş sitede, demo hesaplarla)
+ * ---------------------------------------------------------------------
+ *  Demo modu AÇIK ya da KAPALI çalışır; CI ikisini de dener. Veri
+ *  değiştiren uçlar yalnızca geçersiz kayıtla çağrılır, yani hiçbir
+ *  şey değişmez: amaç "kapı kimi geçiriyor" sorusudur.
+ * ================================================================== */
+echo "\nRol matrisi (demo hesaplar)\n";
+
+/** @return array<string,Istemci>|null Rol → oturum açmış istemci */
+function rol_istemcileri(string $base): ?array
+{
+    static $hazir = null;
+
+    if ($hazir !== null || !DEMO_VAR) {
+        return $hazir;
+    }
+
+    $hazir = [];
+
+    foreach (['yonetici' => 'ali.yonetici', 'editor' => 'elif.editor', 'uye' => 'mehmet.uye'] as $rol => $ad) {
+        $c = new Istemci($base);
+        $r = $c->giris($ad, DEMO_PAROLA);
+
+        if (!str_contains($r['konum'], 'panel')) {
+            $hazir = null;
+
+            return null;
+        }
+
+        $hazir[$rol] = $c;
+    }
+
+    return $hazir;
+}
+
+function meta_jeton(Istemci $c): string
+{
+    return preg_match('/name="csrf-token" content="([a-f0-9]+)"/', $c->istek('panel')['govde'], $m) ? $m[1] : '';
+}
+
+$demoModu = str_contains((new Istemci($base))->istek('giris')['govde'], 'data-demo-modu="1"');
+echo '  (site demo modunda: ' . ($demoModu ? 'EVET' : 'HAYIR') . ")\n";
+
+$sayfaMatrisi = [
+    'panel'               => [200, 200, 200],
+    'panel/kullanicilar'  => [200, 403, 403],
+    'panel/mesajlar'      => [200, 200, 403],
+    'panel/eposta'        => [200, 200, 403],
+    'panel/sayfalar'      => [200, 200, 403],
+    'panel/sayfalar/yeni' => [200, 200, 403],
+    'panel/ayarlar/genel' => [200, 403, 403],
+    'panel/sistem'        => [200, 403, 403],
+    'panel/hesabim'       => [200, 200, 200],
+    'panel/ornek'         => [200, 200, 200],
+];
+
+foreach ($sayfaMatrisi as $yol => $beklenen) {
+    test("GET /$yol → yönetici " . $beklenen[0] . ', editör ' . $beklenen[1] . ', üye ' . $beklenen[2] . ', misafir girişe', function () use ($base, $yol, $beklenen): bool|string|null {
+        $roller = rol_istemcileri($base);
+
+        if ($roller === null) {
+            return null;
+        }
+
+        $gercek = [];
+
+        foreach (['yonetici', 'editor', 'uye'] as $i => $rol) {
+            $kod = $roller[$rol]->istek($yol)['kod'];
+
+            // Modül kapalıysa /panel/ornek herkese 404'tür; o satır atlanır.
+            if ($yol === 'panel/ornek' && $kod === 404) {
+                return null;
+            }
+
+            $gercek[] = $kod;
+        }
+
+        $misafir = (new Istemci($base))->istek($yol);
+
+        if ($gercek !== $beklenen) {
+            return 'Alınan: ' . implode(' / ', $gercek);
+        }
+
+        return $misafir['kod'] === 302 && str_contains($misafir['konum'], 'giris') ? true : 'Misafir: HTTP ' . $misafir['kod'];
+    });
+}
+
+$islemMatrisi = [
+    'api/kullanicilar/list' => [200, 403, 403],
+    'api/mesajlar/list'     => [200, 200, 403],
+    'api/eposta/list'       => [200, 200, 403],
+];
+
+foreach ($islemMatrisi as $yol => $beklenen) {
+    test("POST $yol (CSRF ile) → " . implode(' / ', $beklenen), function () use ($base, $yol, $beklenen): bool|string|null {
+        $roller = rol_istemcileri($base);
+
+        if ($roller === null) {
+            return null;
+        }
+
+        $gercek = [];
+
+        foreach (['yonetici', 'editor', 'uye'] as $rol) {
+            $c        = $roller[$rol];
+            $gercek[] = $c->istek($yol, 'POST', ['draw' => 1, 'start' => 0, 'length' => 5], [
+                'X-CSRF-Token: ' . meta_jeton($c),
+                'X-Requested-With: XMLHttpRequest',
+            ])['kod'];
+        }
+
+        return $gercek === $beklenen ? true : 'Alınan: ' . implode(' / ', $gercek);
+    });
+}
+
+test('Jetonsuz POST reddedilir (419/403)', function () use ($base): bool|string|null {
+    $roller = rol_istemcileri($base);
+
+    if ($roller === null) {
+        return null;
+    }
+
+    $kod = $roller['yonetici']->istek('api/kullanicilar/list', 'POST', ['draw' => 1], ['X-Requested-With: XMLHttpRequest'])['kod'];
+
+    return in_array($kod, [403, 419], true) ? true : 'HTTP ' . $kod;
+});
+
+test('Editörün yetkisiz işlemi "yetki" ile reddedilir, demo mesajıyla değil', function () use ($base): bool|string|null {
+    $roller = rol_istemcileri($base);
+
+    if ($roller === null) {
+        return null;
+    }
+
+    $c = $roller['editor'];
+    $r = $c->istek('api/kullanicilar/status', 'POST', ['id' => 0, 'durum' => 'pasif'], [
+        'X-CSRF-Token: ' . meta_jeton($c), 'X-Requested-With: XMLHttpRequest',
+    ]);
+
+    if ($r['kod'] !== 403) {
+        return 'HTTP ' . $r['kod'];
+    }
+
+    return str_contains($r['govde'], 'Demo') ? 'Demo kilidi yetkiden önce çalışıyor' : true;
+});
+
+test('Yöneticinin işlemi: demo açıkken demo kilidi, kapalıyken kapıdan geçer', function () use ($base, $demoModu): bool|string|null {
+    $roller = rol_istemcileri($base);
+
+    if ($roller === null) {
+        return null;
+    }
+
+    // Geçersiz kayıt (id=0): demo kapalıyken bile hiçbir şey değişmez.
+    $c = $roller['yonetici'];
+    $r = $c->istek('api/kullanicilar/status', 'POST', ['id' => 0, 'durum' => 'pasif'], [
+        'X-CSRF-Token: ' . meta_jeton($c), 'X-Requested-With: XMLHttpRequest',
+    ]);
+
+    if ($demoModu) {
+        return $r['kod'] === 403 && str_contains($r['govde'], 'Demo') ? true : 'Demo kilidi bekleniyordu, HTTP ' . $r['kod'];
+    }
+
+    return $r['kod'] !== 403 && $r['kod'] < 500 ? true : 'Yönetici reddedildi ya da hata: HTTP ' . $r['kod'];
+});
+
+test('Pasif, askıdaki ve onay bekleyen hesaplar giriş yapamıyor', function () use ($base): bool|string|null {
+    if (!DEMO_VAR) {
+        return null;
+    }
+
+    foreach (['ayse.pasif', 'can.askida', 'zeynep.onay'] as $ad) {
+        $r = (new Istemci($base))->giris($ad, DEMO_PAROLA);
+
+        if (str_contains($r['konum'], 'panel')) {
+            return "$ad panele girdi";
+        }
+    }
+
+    return true;
+});
+
+test('Örnek Modül: üye başkasının kaydını düzenleyemez ve silemez', function () use ($base): bool|string|null {
+    $roller = rol_istemcileri($base);
+
+    if ($roller === null) {
+        return null;
+    }
+
+    $hepsi = preg_match_all('#panel/ornek/duzenle/(\d+)#', $roller['yonetici']->istek('panel/ornek')['govde'], $m) ? array_unique($m[1]) : [];
+    $kendi = preg_match_all('#panel/ornek/duzenle/(\d+)#', $roller['uye']->istek('panel/ornek')['govde'], $k) ? array_unique($k[1]) : [];
+    $baska = array_values(array_diff($hepsi, $kendi));
+
+    if ($baska === []) {
+        return null;   // modül kapalı ya da kayıt yok
+    }
+
+    $uye = $roller['uye'];
+    $duz = $uye->istek('panel/ornek/duzenle/' . $baska[0])['kod'];
+    $sil = $uye->istek('panel/ornek/sil/' . $baska[0], 'POST', ['csrf_token' => meta_jeton($uye)])['kod'];
+
+    return in_array($duz, [403, 404], true) && in_array($sil, [403, 404], true) ? true : "düzenle $duz, sil $sil";
+});
+
+test('Kayıt formu e-posta gönderilemiyorsa kapalı (girişe yönlendirir)', function () use ($base): bool|string|null {
+    $roller = rol_istemcileri($base);
+
+    if ($roller === null) {
+        return null;
+    }
+
+    $panel = $roller['yonetici']->istek('panel')['govde'];
+
+    if (!str_contains($panel, 'Üye kaydı kapalı') && !str_contains($panel, 'Doğrulama mektupları gönderilmiyor')) {
+        return null;   // site e-posta gönderebiliyor: form açık olabilir
+    }
+
+    $r = (new Istemci($base))->istek('kayit');
+
+    return $r['kod'] === 302 && str_contains($r['konum'], 'giris') ? true : 'HTTP ' . $r['kod'];
+});
+
+/* =====================================================================
  *  SONUÇ
  * ================================================================== */
 printf(

@@ -159,12 +159,39 @@ final class Router
 
         $this->dynamic[] = [
             'verb'    => $verb,
+            'path'    => $path,
             'regex'   => '#^' . $regex . '$#',
             'params'  => $params,
             'handler' => $handler,
         ];
 
         return $this;
+    }
+
+    /**
+     * Kayıtlı bütün rotalar: yöntem, yol ve ara katmanlar.
+     *
+     * Rol matrisi testi (tests/unit.php) bunu okur: yeni bir rota eklenip
+     * tests/rol-matrisi.php'ye yazılmazsa test kırılır; yetkisi yanlışlıkla
+     * gevşetilen bir rota da öyle.
+     *
+     * @return array<int,array{verb:string,path:string,middleware:array<int,string>,controller:string,action:string}>
+     */
+    public function table(): array
+    {
+        $satirlar = [];
+
+        foreach ($this->static as $anahtar => [$controller, $action, $middleware]) {
+            [$verb, $path] = explode(' ', $anahtar, 2);
+            $satirlar[]    = ['verb' => $verb, 'path' => $path, 'middleware' => $middleware, 'controller' => $controller, 'action' => $action];
+        }
+
+        foreach ($this->dynamic as $rota) {
+            [$controller, $action, $middleware] = $rota['handler'];
+            $satirlar[] = ['verb' => $rota['verb'], 'path' => $rota['path'], 'middleware' => $middleware, 'controller' => $controller, 'action' => $action];
+        }
+
+        return $satirlar;
     }
 
     public function fallback(\Closure $handler): self

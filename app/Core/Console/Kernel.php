@@ -41,6 +41,7 @@ use App\Core\Console\Commands\MigrateStatusCommand;
 use App\Core\Console\Commands\QueueStatusCommand;
 use App\Core\Console\Commands\QueueWorkCommand;
 use App\Core\Console\Commands\ScheduleRunCommand;
+use App\Core\Console\Commands\ServeCommand;
 use Throwable;
 
 final class Kernel
@@ -71,6 +72,8 @@ final class Kernel
         QueueWorkCommand::class,
         QueueStatusCommand::class,
         ScheduleRunCommand::class,
+
+        ServeCommand::class,
 
         MailWorkCommand::class,
         MailTestCommand::class,

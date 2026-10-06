@@ -564,6 +564,9 @@ $xss = [
     'koşullu yorum'                  => '<!--[if IE]><script>alert(1)</script><![endif]-->',
     'vbscript şeması'                => '<a href="vbscript:msgbox(1)">x</a>',
     'olay öznitelikli div'           => '<div onclick="alert(1)" onmouseover="alert(1)">x</div>',
+    'style etiketi'                  => '<style>body{background:url(javascript:alert(1))}</style><p>x</p>',
+    'svg içinde xlink'               => '<svg><a xlink:href="javascript:alert(1)"><text>x</text></a></svg>',
+    'object/embed'                   => '<object data="x.swf"></object><embed src="x.swf">',
 ];
 foreach ($xss as $ad => $girdi) {
     $cikti = App\Core\Html::sanitize($girdi);
@@ -642,6 +645,95 @@ dogrula('Rota parametresi nokta içerebilir, ".." içeremez',
     Url::current() === 'api/v1/dosyalar/rapor.pdf'
     && (function (): bool { $_SERVER['REQUEST_URI'] = '/api/v1/dosyalar/../.env'; Url::forgetCurrent(); return Url::current() === ''; })());
 Url::forgetCurrent();
+
+/* ---------------------------------------------------------------- */
+echo "\nRol matrisi (her rota → kim erişebilir, tests/rol-matrisi.php)\n";
+
+if (in_array('sqlite', PDO::getAvailableDrivers(), true)) {
+    require_once CY_BASE . '/tests/rol-matrisi-hesap.php';
+
+    $bellek = new PDO('sqlite::memory:');
+    $bellek->exec('CREATE TABLE ayarlar (anahtar TEXT, deger TEXT)');
+    $bellek->exec("INSERT INTO ayarlar VALUES ('aktif_moduller', '[\"Ornek\"]')");
+    App\Core\Setting::load($bellek);
+    Modules::forget();
+    Modules::boot();
+
+    $rotaTablosu = (static function (): App\Core\Router {
+        $router = require CY_BASE . '/routes/web.php';
+        Modules::loadRoutes($router);
+
+        return $router;
+    })()->table();
+
+    $beklenen = require CY_BASE . '/tests/rol-matrisi.php';
+    $gercek   = [];
+
+    foreach ($rotaTablosu as $rota) {
+        $gercek[$rota['verb'] . ' ' . $rota['path']] = cy_rota_erisimi($rota['middleware']);
+    }
+
+    $eksik  = array_keys(array_diff_key($gercek, $beklenen));
+    $fazla  = array_keys(array_diff_key($beklenen, $gercek));
+    $farkli = [];
+
+    foreach (array_intersect_key($gercek, $beklenen) as $anahtar => $erisim) {
+        if ($erisim !== $beklenen[$anahtar]) {
+            $farkli[] = $anahtar . ' (beklenen ' . $beklenen[$anahtar] . ', gerçek ' . $erisim . ')';
+        }
+    }
+
+    dogrula('Her rota matriste yazılı (' . count($gercek) . ' rota)', $eksik === [], 'Matrise ekleyin: ' . implode(', ', $eksik));
+    dogrula('Matriste silinmiş rota kalmadı', $fazla === [], 'Matristen çıkarın: ' . implode(', ', $fazla));
+    dogrula('Her rotanın erişimi matrisle aynı', $farkli === [], implode('; ', $farkli));
+
+    $panelGirissiz = $postCsrfsiz = $apiGirissiz = [];
+
+    foreach ($rotaTablosu as $rota) {
+        $mw = $rota['middleware'];
+
+        if (str_starts_with($rota['path'], 'panel') && !in_array('auth', $mw, true)) {
+            $panelGirissiz[] = $rota['path'];
+        }
+
+        // Oturum çereziyle çalışan her veri değiştiren uç CSRF ister (API anahtarıyla gelenler hariç).
+        if ($rota['verb'] === 'POST' && !str_starts_with($rota['path'], 'api/v1') && !in_array('csrf', $mw, true)) {
+            $postCsrfsiz[] = $rota['path'];
+        }
+
+        if (str_starts_with($rota['path'], 'api/') && !str_starts_with($rota['path'], 'api/v1')
+            && !in_array('auth', $mw, true) && $rota['path'] !== 'api/iletisim/gonder') {
+            $apiGirissiz[] = $rota['path'];
+        }
+    }
+
+    dogrula('Bütün panel rotaları giriş ister', $panelGirissiz === [], implode(', ', $panelGirissiz));
+    dogrula('Oturumla çalışan bütün POST rotaları CSRF korumalı', $postCsrfsiz === [], implode(', ', $postCsrfsiz));
+    dogrula('Panelin iç API uçları giriş ister (iletişim formu hariç)', $apiGirissiz === [], implode(', ', $apiGirissiz));
+    dogrula('Üye yönetim ekranlarına erişemez', !str_contains($gercek['GET panel/kullanicilar'] ?? 'U', 'U') && !str_contains($gercek['GET panel/ayarlar'] ?? 'U', 'U') && !str_contains($gercek['GET panel/sistem'] ?? 'U', 'U'));
+    dogrula('Editör kullanıcıları, ayarları ve sistemi yönetemez', !str_contains($gercek['POST api/kullanicilar/save'] ?? 'E', 'E') && !str_contains($gercek['POST panel/ayarlar/{grup}'] ?? 'E', 'E') && !str_contains($gercek['POST panel/sistem/migrate'] ?? 'E', 'E'));
+
+    App\Core\Setting::flush();
+    Modules::forget();
+} else {
+    echo "  (pdo_sqlite yok; rol matrisi atlandı)\n";
+}
+
+/* ---------------------------------------------------------------- */
+echo "
+Test sayısı
+";
+
+/* Ana sayfa "{test} birim testi" der (config/app.php → test_sayisi). Test
+ * eklenip sayı güncellenmezse bu test kırılır; sayı hep doğru kalır. */
+$toplamTest = $gecti + $kaldi + 1;
+
+// Kurulum klasörü silinmiş ya da pdo_sqlite yoksa bazı bölümler atlanır; sayı ancak tam koşuda anlamlıdır.
+if (is_file(CY_BASE . '/kurulum/database.sql') && in_array('sqlite', PDO::getAvailableDrivers(), true)) {
+    dogrula('config/app.php test_sayisi gerçek sayıyla aynı (' . $toplamTest . ')', (int) Config::get('app.test_sayisi') === $toplamTest, 'config/app.php içinde test_sayisi => ' . $toplamTest . ' yazın');
+} else {
+    echo "  (kurulum/ klasörü ya da pdo_sqlite yok; bazı bölümler atlandı, sayı denetlenmedi)\n";
+}
 
 /* ---------------------------------------------------------------- */
 printf("\n%d geçti · %d kaldı\n\n", $gecti, $kaldi);
