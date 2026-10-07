@@ -773,6 +773,31 @@ if ($sema !== '') {
 }
 
 /* ---------------------------------------------------------------- */
+echo "\nGüvenlik bildirimleri ve panel uyarıları (1.6.1)\n";
+
+$epostaOlayi = new App\Events\EmailChanged(7, 'eski.adres@ornek.com', 'yeni.adres@ornek.com', App\Events\EmailChanged::YONETICI);
+$olayGunlugu = json_encode($epostaOlayi->toArray(), JSON_UNESCAPED_UNICODE);
+dogrula('EmailChanged günlüğe tam adres yazmaz (maskeli)', !str_contains($olayGunlugu, 'eski.adres@') && !str_contains($olayGunlugu, 'yeni.adres@') && str_contains($olayGunlugu, 'e***@ornek.com'));
+
+$olayTablosu = (string) file_get_contents(CY_BASE . '/routes/events.php');
+dogrula('E-posta değişikliği ve hesap silme dinleyicileri kayıtlı',
+    str_contains($olayTablosu, 'Events::listen(EmailChanged::class, EpostaDegistiBildir::class)')
+    && str_contains($olayTablosu, 'Events::listen(AccountDeletionScheduled::class, HesapSilmeBildir::class)'));
+dogrula('Yeni mektup şablonları var', is_file(CY_BASE . '/views/emails/eposta-degisti.php') && is_file(CY_BASE . '/views/emails/hesap-silinecek.php'));
+
+/* Bildirim bağlantısı sorgu ve çapa taşıyabilir; "güzel adres" kapalıyken
+ * ikisi de r= parametresinin içine kodlanıp bozuluyordu. */
+$bildirim = ['yol' => 'panel/eposta?sekme=gecmis&durum=basarisiz'];
+$guzelAdres = Config::get('app.pretty_urls', true);
+Config::set('app.pretty_urls', true);
+$acik = App\Core\PanelNotices::href($bildirim) . ' ' . App\Core\PanelNotices::href(['yol' => 'panel/sistem#kurulum']);
+Config::set('app.pretty_urls', false);
+$kapali = App\Core\PanelNotices::href($bildirim) . ' ' . App\Core\PanelNotices::href(['yol' => 'panel/sistem#kurulum']);
+Config::set('app.pretty_urls', $guzelAdres);
+dogrula('Bildirim bağlantısı: güzel adreste sorgu ve çapa korunur', str_contains($acik, '/panel/eposta?sekme=gecmis&durum=basarisiz') && str_contains($acik, '/panel/sistem#kurulum'));
+dogrula('Bildirim bağlantısı: index.php?r= kipinde de bozulmaz', str_contains($kapali, 'index.php?r=panel/eposta&sekme=gecmis&durum=basarisiz') && str_contains($kapali, 'index.php?r=panel/sistem#kurulum'), $kapali);
+
+/* ---------------------------------------------------------------- */
 echo "\nKaba kuvvet sayacı\n";
 
 /* MySQL'de lastInsertId() SON sorguya bakar: denemeyi yazdıktan sonra

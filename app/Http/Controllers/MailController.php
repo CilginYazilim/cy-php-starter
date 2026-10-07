@@ -48,6 +48,9 @@ final class MailController extends Controller
             'sayilar'    => $this->audienceCounts(),
             'prefill'    => $prefill,
             'canSend'    => Auth::can('mail.send'),
+            // ?sekme=gecmis&durum=basarisiz — panel bildiriminin bağlantısı (bkz. PanelNotices).
+            'sekme'      => $request->string('sekme') === 'gecmis' ? 'gecmis' : '',
+            'durum'      => in_array($request->string('durum'), ['gonderildi', 'kuyrukta', 'basarisiz'], true) ? $request->string('durum') : '',
             'gonderen'   => trim(($config['gonderenAd'] !== '' ? $config['gonderenAd'] . ' ' : '') . '<' . $config['gonderen'] . '>'),
             'yapilandi'  => Mailer::canDeliver(),
         ]);

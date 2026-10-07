@@ -68,8 +68,16 @@ final class PanelNotices
          * örnek veride bir YÖNETİCİ hesabı da var. */
         if (!Demo::enabled() && !self::isLocalRequest() && Demo::existing(Database::connection()) !== []) {
             $notices[] = self::notice('ornek-hesaplar', 'danger', 'Örnek hesaplar duruyor',
-                'Parolaları herkesçe bilinen ("' . Demo::PAROLA . '") hesapları silin: DELETE FROM kullanicilar WHERE eposta LIKE \'%.demo@ornek.com\';',
-                'panel/kullanicilar', 'Kullanıcılar');
+                'Parolaları herkesçe bilinen ("' . Demo::PAROLA . '") hesaplar var. Örnek veriyi kaldırın; gerçek hesaplara dokunulmaz.',
+                'panel/sistem#kurulum', 'Örnek veriyi kaldır');
+        }
+
+        /* Bakım modu unutulursa site günlerce kapalı kalır; panele giren
+         * yönetici ve editör siteyi normal gördüğü için fark etmez. */
+        if (Setting::bool('sistem_bakim_modu', false)) {
+            $notices[] = self::notice('bakim-modu', 'warning', 'Bakım modu açık',
+                'Ziyaretçiler bakım sayfasını görüyor; siteyi yalnızca yöneticiler ve editörler gezebiliyor.',
+                $demoHesabi ? '' : 'panel/ayarlar/sistem', $demoHesabi ? '' : 'Bakım modunu kapat');
         }
 
         if (Config::isDebug() && !self::isLocalRequest()) {
@@ -110,6 +118,31 @@ final class PanelNotices
                 'panel/ayarlar/eposta', 'E-posta ayarları', kapatilabilir: true);
         }
 
+        /* Sayaçlar bilgi amaçlıdır: tablo yoksa (migration bekliyor) ya da
+         * sorgu hata verirse panel açılmaya devam eder. İkisi de indeksli
+         * sütuna bakar (kullanicilar.durum, mail_kayitlari.durum). */
+        try {
+            $db = Database::connection();
+
+            $bekleyenHesap = (new \App\Repositories\UserRepository($db))->countByStatus('onay_bekliyor');
+
+            if ($bekleyenHesap > 0) {
+                $notices[] = self::notice('onay-bekleyen', 'info', $bekleyenHesap . ' hesap e-posta doğrulaması bekliyor',
+                    'Doğrulama bağlantısına tıklamayan hesaplar giriş yapamaz. Gerekirse kullanıcı ekranından durumlarını değiştirebilirsiniz.',
+                    'panel/kullanicilar', 'Kullanıcılar', kapatilabilir: true);
+            }
+
+            $basarisiz = (new \App\Repositories\MailRepository($db))->countFailed();
+
+            if ($basarisiz > 0) {
+                $notices[] = self::notice('eposta-basarisiz', 'info', $basarisiz . ' e-posta gönderilemedi',
+                    'Geçmiş sekmesinde hatanın nedenini görüp mektubu yeniden kuyruğa alabilirsiniz.',
+                    'panel/eposta?sekme=gecmis&durum=basarisiz', 'E-posta geçmişi', kapatilabilir: true);
+            }
+        } catch (Throwable) {
+            // Bildirim yoksa panel yine açılır.
+        }
+
         return self::$cache = $notices;
     }
 
@@ -124,6 +157,22 @@ final class PanelNotices
         bool $kapatilabilir = false,
     ): array {
         return compact('id', 'tur', 'baslik', 'metin', 'yol', 'baglanti', 'kapatilabilir');
+    }
+
+    /**
+     * Bildirim bağlantısının adresi. "yol" sorgu (?sekme=gecmis) ve çapa
+     * (#kurulum) taşıyabilir; url()'e bütün olarak verilirse "güzel adres"
+     * kapalıyken (index.php?r=…) ikisi de r parametresinin içine
+     * kodlanıp bozuluyordu.
+     */
+    public static function href(array $notice): string
+    {
+        [$yol, $capa]  = array_pad(explode('#', (string) $notice['yol'], 2), 2, '');
+        [$yol, $sorgu] = array_pad(explode('?', $yol, 2), 2, '');
+        parse_str($sorgu, $parametreler);
+
+        /** @var array<string,string|int> $parametreler */
+        return url($yol, $parametreler) . ($capa !== '' ? '#' . rawurlencode($capa) : '');
     }
 
     /** Kullanıcı bu bildirimi bu oturumda kapatmış mı? */

@@ -41,6 +41,16 @@ sayfasındadır.
 - **Karakter sayacı:** `data-sayac="#hedef"` taşıyan her alan "120 / 1000"
   gösterir, sınırın %90'ında uyarı rengine döner; `data-sayac-oneri="60"`
   ile SEO alanlarında "42 / 60 önerilen".
+- **"E-posta adresiniz değiştirildi" mektubu ESKİ adrese.** Adres Hesabım'dan
+  ya da bir yönetici tarafından değişince gider; yeni adres maskelenir
+  (`EmailChanged` olayı, `EpostaDegistiBildir` dinleyicisi). Ele geçirilen
+  bir oturumla adres değiştirilirse asıl sahibin bunu fark etmesinin yolu
+  budur: sıfırlama bağlantıları artık yeni adrese gider.
+- **"Hesabınız silinecek" mektubu.** Silme isteğinden sonra tarih ve iptal
+  yolu (`AccountDeletionScheduled` olayı, `HesapSilmeBildir` dinleyicisi).
+- **Panel bildirimleri:** bakım modu açık (uyarı), e-posta doğrulaması
+  bekleyen hesap sayısı ve gönderilemeyen e-posta sayısı (kapatılabilir
+  bilgi). Son bağlantı e-posta geçmişini "Başarısız" süzgeciyle açar.
 
 ### Değişti
 
@@ -54,6 +64,11 @@ sayfasındadır.
 - **Toplu e-posta ekranı açılır açılmaz kırmızı hata gösteriyordu**
   ("En az bir e-posta adresi girin"). Alıcı henüz seçilmemişse alıcı
   ucu artık ipucu döner; hatalı adres yine reddedilir.
+- **"Örnek hesaplar duruyor" uyarısı ham `DELETE` SQL'i öneriyordu.** Artık
+  Sistem → Kurulum ve örnek veri → "Örnek veriyi kaldır" düğmesine götürür.
+- **Panel bildirim bağlantıları güzel adres kapalıyken bozuluyordu**
+  (`panel/sistem#migration` → `index.php?r=panel/sistem%23migration`).
+  Sorgu ve çapa artık ayrı ele alınır (`PanelNotices::href`).
 
 ---
 

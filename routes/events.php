@@ -26,12 +26,16 @@ declare(strict_types=1);
 
 use App\Core\Events\Events;
 use App\Core\Log\Logger;
+use App\Events\AccountDeletionScheduled;
 use App\Events\ContactMessageReceived;
+use App\Events\EmailChanged;
 use App\Events\FileUploaded;
 use App\Events\PasswordChanged;
 use App\Events\UserLoggedIn;
 use App\Events\UserLoggedOut;
 use App\Events\UserRegistered;
+use App\Listeners\EpostaDegistiBildir;
+use App\Listeners\HesapSilmeBildir;
 use App\Listeners\HosgeldinMailiGonder;
 use App\Listeners\IletisimMesajiniBildir;
 use App\Listeners\ParolaDegistiBildir;
@@ -46,6 +50,14 @@ Events::listen(UserRegistered::class, HosgeldinMailiGonder::class);
 
 // Parola değişince sahibine bilgilendirme (profil, sıfırlama bağlantısı, yönetici).
 Events::listen(PasswordChanged::class, ParolaDegistiBildir::class);
+
+// E-posta adresi değişince ESKİ adrese bilgilendirme (profil ya da yönetici).
+// Kapatmak için bu satırı silin.
+Events::listen(EmailChanged::class, EpostaDegistiBildir::class);
+
+// Üye hesabını silmeyi isteyince silinme tarihi ve iptal yolu.
+// Kapatmak için bu satırı silin.
+Events::listen(AccountDeletionScheduled::class, HesapSilmeBildir::class);
 
 /* ---------------------------------------------------------------------
  *  İLETİŞİM FORMU

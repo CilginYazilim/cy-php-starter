@@ -21,6 +21,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\Uploader;
 use App\Core\Validator;
+use App\Events\EmailChanged;
 use App\Events\PasswordChanged;
 use App\Http\Controller;
 use App\Models\Role;
@@ -299,6 +300,11 @@ final class UserApiController extends Controller
 
             if (!empty($payload['sifre'])) {
                 Events::dispatch(new PasswordChanged($target->id, kendisi: Auth::isSelf($target->id), kaynak: PasswordChanged::YONETICI));
+            }
+
+            // Adres değiştiyse ESKİ adrese bilgi (bkz. Listeners\EpostaDegistiBildir).
+            if (mb_strtolower((string) $payload['eposta']) !== mb_strtolower($target->eposta)) {
+                Events::dispatch(new EmailChanged($target->id, $target->eposta, (string) $payload['eposta'], EmailChanged::YONETICI));
             }
 
             /* Yönetici KENDİ parolasını buradan değiştirdiyse oturum sürümü

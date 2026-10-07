@@ -87,7 +87,7 @@ $flashes      = Flash::pull();
                                     <span><?= e($uyari['metin']) ?></span>
                                 </p>
                                 <?php if ($uyari['yol'] !== ''): ?>
-                                    <a href="<?= e(url($uyari['yol'])) ?>" class="cy-notice__action"><?= e($uyari['baglanti']) ?> →</a>
+                                    <a href="<?= e(App\Core\PanelNotices::href($uyari)) ?>" class="cy-notice__action"><?= e($uyari['baglanti']) ?> →</a>
                                 <?php endif; ?>
                                 <?php if ($uyari['kapatilabilir']): ?>
                                     <button type="button" class="cy-notice__close js-notice-close" aria-label="Bildirimi kapat" title="Bu oturumda gösterme">

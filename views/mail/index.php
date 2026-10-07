@@ -20,7 +20,8 @@
 $stats     = $stats ?? ['toplam' => 0, 'gonderildi' => 0, 'kuyrukta' => 0, 'basarisiz' => 0, 'bugun' => 0];
 $prefill   = $prefill ?? ['adres' => '', 'konu' => ''];
 $canSend   = $canSend ?? false;
-$ilkSekme  = $canSend ? 'gonder' : 'gecmis';
+$ilkSekme  = $canSend && ($sekme ?? '') !== 'gecmis' ? 'gonder' : 'gecmis';
+$durum     = $durum ?? '';
 ?>
 
 <?php /* SAYFA BAŞLIĞI ÜST ÇUBUKTA yazar; burada tekrar edilmiyor.
@@ -91,7 +92,7 @@ $ilkSekme  = $canSend ? 'gonder' : 'gecmis';
         <ul class="nav nav-pills cy-tabnav" role="tablist">
             <?php if ($canSend): ?>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#pane-gonder" type="button" role="tab">
+                    <button class="nav-link<?= $ilkSekme === 'gonder' ? ' active' : '' ?>" data-bs-toggle="pill" data-bs-target="#pane-gonder" type="button" role="tab">
                         <?= icon('send', 'cy-icon cy-icon--sm') ?> Gönder
                     </button>
                 </li>
@@ -109,7 +110,7 @@ $ilkSekme  = $canSend ? 'gonder' : 'gecmis';
 
             <?php if ($canSend): ?>
                 <!-- ==================== GÖNDER ==================== -->
-                <div class="tab-pane fade show active" id="pane-gonder" role="tabpanel">
+                <div class="tab-pane fade<?= $ilkSekme === 'gonder' ? ' show active' : '' ?>" id="pane-gonder" role="tabpanel">
                     <form id="mail_form" novalidate>
                         <?= csrf_field() ?>
 
@@ -244,9 +245,9 @@ $ilkSekme  = $canSend ? 'gonder' : 'gecmis';
                     <div class="cy-toolbar__filters">
                         <select class="form-select" id="filter_durum" aria-label="Duruma göre filtrele">
                             <option value="">Tüm durumlar</option>
-                            <option value="gonderildi">Gönderildi</option>
-                            <option value="kuyrukta">Kuyrukta</option>
-                            <option value="basarisiz">Başarısız</option>
+                            <?php foreach (['gonderildi' => 'Gönderildi', 'kuyrukta' => 'Kuyrukta', 'basarisiz' => 'Başarısız'] as $deger => $etiket): ?>
+                                <option value="<?= e($deger) ?>"<?= $durum === $deger ? ' selected' : '' ?>><?= e($etiket) ?></option>
+                            <?php endforeach; ?>
                         </select>
                         <select class="form-select" id="filter_tur" aria-label="Türe göre filtrele">
                             <option value="">Tüm türler</option>

@@ -8,6 +8,8 @@
  *      Notifier::yeniMesaj($mesaj);        // yöneticiye bildirim
  *      Notifier::mesajAlindi($mesaj);      // ziyaretçiye otomatik yanıt
  *      Notifier::hosgeldin($user);         // yeni üyeye karşılama
+ *      Notifier::epostaDegisti($user, …);  // eski adrese güvenlik bildirimi
+ *      Notifier::hesapSilinecek($user, …); // silme isteği alındı
  *
  *  Böylece şablon, alıcı ve ayar denetimi tek yerde toplanır. Yeni bir
  *  bildirim eklemek istediğinizde buraya bir metot yazarsınız.
@@ -200,7 +202,6 @@ final class Notifier
         return Mailer::send($mail);
     }
 
-    /** Bu adrese, bu şablonla son $dakika içinde mektup gitti mi? (veritabanı yoksa "evet") */
     /**
      * "Parolamı unuttum" bağlantısı. Aynı adrese 2 dakikada en fazla
      * BİR mektup: formu art arda göndermek gelen kutusunu doldurmasın.
@@ -254,6 +255,65 @@ final class Notifier
         return Mailer::send($mail);
     }
 
+    /**
+     * "E-posta adresiniz değiştirildi" — ESKİ adrese (bkz. Listeners\EpostaDegistiBildir).
+     *
+     * Yeni adres mektupta maskelenir: eski adresi okuyan herkes (ör.
+     * devredilmiş bir iş adresi) yeni adresi öğrenmesin. Not satırındaki
+     * iletişim adresi, değişen eski adresin kendisiyse yazılmaz — kişiyi
+     * kendine yazmaya yönlendirmek anlamsız olurdu.
+     */
+    public static function epostaDegisti(User $user, string $eskiEposta, string $yeniEposta, string $kaynak = 'profil'): bool
+    {
+        if ($eskiEposta === '' || mb_strtolower($eskiEposta) === mb_strtolower($yeniEposta)) {
+            return false;
+        }
+
+        $siteAdi  = Setting::get('site_adi', 'Site');
+        $iletisim = trim(Setting::get('iletisim_eposta'));
+
+        if (mb_strtolower($iletisim) === mb_strtolower($eskiEposta)) {
+            $iletisim = '';
+        }
+
+        $mail = Mailable::make()
+            ->to($eskiEposta, $user->fullName())
+            ->subject($siteAdi . ' – E-posta adresiniz değiştirildi')
+            ->type('sistem')
+            ->forUser($user->id)
+            ->view('emails/eposta-degisti', [
+                'siteAdi'     => $siteAdi,
+                'ad'          => $user->ad,
+                'tarih'       => date('d.m.Y H:i'),
+                'nasil'       => $kaynak === 'yonetici' ? 'site yöneticisi tarafından' : 'hesap ayarlarınızdan',
+                'yeniMaskeli' => \App\Models\MailLog::maskEmail($yeniEposta),
+                'iletisim'    => $iletisim,
+            ]);
+
+        return Mailer::send($mail);
+    }
+
+    /** "Hesabınız silinecek" — üyenin silme isteğinden sonra (bkz. Listeners\HesapSilmeBildir). */
+    public static function hesapSilinecek(User $user, string $tarih): bool
+    {
+        $siteAdi = Setting::get('site_adi', 'Site');
+
+        $mail = Mailable::make()
+            ->to($user->eposta, $user->fullName())
+            ->subject($siteAdi . ' – Hesabınız silinecek')
+            ->type('sistem')
+            ->forUser($user->id)
+            ->view('emails/hesap-silinecek', [
+                'siteAdi'  => $siteAdi,
+                'ad'       => $user->ad,
+                'tarih'    => $tarih,
+                'girisUrl' => Mailer::absolute(url('giris')),
+            ]);
+
+        return Mailer::send($mail);
+    }
+
+    /** Bu adrese, bu şablonla son $dakika içinde mektup gitti mi? (veritabanı yoksa "evet") */
     private static function sentRecently(string $email, string $template, int $dakika): bool
     {
         try {

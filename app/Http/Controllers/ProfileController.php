@@ -23,6 +23,8 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Core\Uploader;
 use App\Core\Validator;
+use App\Events\AccountDeletionScheduled;
+use App\Events\EmailChanged;
 use App\Events\FileUploaded;
 use App\Events\PasswordChanged;
 use App\Http\Controller;
@@ -125,6 +127,13 @@ final class ProfileController extends Controller
             'telefon'  => $data['telefon'] ?? '',
             'hakkinda' => $data['hakkinda'] ?? '',
         ]);
+
+        // Adres değiştiyse ESKİ adrese bilgi (bkz. Listeners\EpostaDegistiBildir).
+        if ($yeniEposta !== mb_strtolower($user->eposta)) {
+            Events::dispatch(new EmailChanged($user->id, $user->eposta, (string) $data['eposta'], EmailChanged::PROFIL));
+            Flash::success('Bilgileriniz güncellendi. Eski e-posta adresinize değişiklikle ilgili bilgi gönderildi.');
+            Response::redirect(url('panel/hesabim'));
+        }
 
         Flash::success('Bilgileriniz güncellendi.');
         Response::redirect(url('panel/hesabim'));
@@ -371,6 +380,9 @@ final class ProfileController extends Controller
             Flash::error('Hesap silme şu anda planlanamadı. Lütfen daha sonra tekrar deneyin.');
             Response::redirect(url('panel/hesabim'));
         }
+
+        // Çıkıştan ÖNCE: dinleyici kullanıcıyı ve adresini okur.
+        Events::dispatch(new AccountDeletionScheduled($user->id, $tarih));
 
         Auth::logout();
         Session::start();
