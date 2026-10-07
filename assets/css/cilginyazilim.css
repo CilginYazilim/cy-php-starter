@@ -1183,3 +1183,19 @@ table.dataTable > thead .sorting_desc:after { display: none !important; }
     height: 1px;
     overflow: hidden;
 }
+
+/* ------------------------------------------------------------------
+ *  KOYU TEMADA LOGO
+ * ------------------------------------------------------------------
+ *  Çoğu logo koyu renklidir ve saydam zeminlidir; koyu temada zeminle
+ *  birleşip kaybolur. Logo kapları koyu temada açık bir zemin alır.
+ * ------------------------------------------------------------------ */
+html[data-cy-theme="dark"] .cy-sidebar__logo,
+html[data-cy-theme="dark"] .cy-auth-card__logo { background: #eef2f7; border-color: transparent; }
+html[data-cy-theme="dark"] .cy-site-nav__brand img { background: #eef2f7; border-radius: 8px; padding: 3px; }
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-cy-theme="light"]) .cy-sidebar__logo,
+    html:not([data-cy-theme="light"]) .cy-auth-card__logo { background: #eef2f7; border-color: transparent; }
+    html:not([data-cy-theme="light"]) .cy-site-nav__brand img { background: #eef2f7; border-radius: 8px; padding: 3px; }
+}

@@ -305,19 +305,26 @@ test('Hatalı girişler kilide takılıyor (saat diliminden bağımsız)', funct
     $c     = new Istemci($base);
     $kimlik = 'yok_' . bin2hex(random_bytes(4));
 
+    $iz = [];
+
     for ($i = 1; $i <= 8; $i++) {
-        $c->giris($kimlik, 'yanlis-parola-' . $i);
+        $p     = $c->giris($kimlik, 'yanlis-parola-' . $i);
         $sayfa = $c->istek('giris')['govde'];
 
+        // Teşhis: kilit geç gelirse hangi denemenin kimlik doğrulamaya ulaşmadığı görünsün.
+        $iz[] = $i . ':' . $p['kod'] . (str_contains($sayfa, 'Kalan deneme') ? '/kalan' : '')
+              . (str_contains($sayfa, 'Güvenlik doğrulaması') || $p['kod'] === 419 ? '/csrf' : '')
+              . (str_contains($sayfa, 'hatalı') ? '/hatali' : '');
+
         if (str_contains($sayfa, 'Çok fazla hatalı deneme')) {
-            return $i <= 6 ? true : $i . '. denemede kilitlendi';
+            return $i <= 6 ? true : $i . '. denemede kilitlendi [' . implode(' ', $iz) . ']';
         }
     }
 
-    return '8 denemede kilit devreye girmedi';
+    return '8 denemede kilit devreye girmedi [' . implode(' ', $iz) . ']';
 });
 
-test('"Kalan deneme hakkı" var olmayan hesapta da gösteriliyor', function () use ($base): bool|string {
+test('"Kalan deneme hakkı" var olmayan hesapta da gösteriliyor', function () use ($base): bool|string|null {
     $c      = new Istemci($base);
     $kimlik = 'yok_' . bin2hex(random_bytes(4));
     $goruldu = false;
