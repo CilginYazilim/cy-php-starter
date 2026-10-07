@@ -1,6 +1,6 @@
 # CY PHP Starter — Sistem Kılavuzu
 
-**PHP Başlangıç Şablonunun mimarisi, tasarım kararları ve genişletme rehberi** · Sürüm 1.5.1
+**PHP Başlangıç Şablonunun mimarisi, tasarım kararları ve genişletme rehberi** · Sürüm 1.6.1
 
 > Bu dosya sistemin **tamamını** anlatır: mimari kararlar, her katmanın
 > ne işe yaradığı, neden öyle yazıldığı ve nasıl genişletileceği.
@@ -702,7 +702,8 @@ nötrdür ("Yeni Proje"). Aynı veri dört yoldan kurulur ve kaldırılır:
 | Sihirbaz → **Örnek veriyle kur** | Kurulumun sonunda `DemoData::seed()` + açık modüllerin tohumlayıcıları |
 | `php cy db:seed` | `database/seeders/DemoSeeder.php` aynı sınıfı çağırır |
 | `php cy demo:reset` | Ziyaretçi değişikliklerini siler, veriyi baştan kurar (demo modunda 3 saatte bir kendiliğinden) |
-| `php cy demo:temizle` · Panel → Sistem → **Örnek veriyi kaldır** | Yalnızca örnek kayıtları siler (`*.demo@ornek.com` hesaplar, örnek sayfalar, mesajlar); gerçek veriye dokunmaz |
+| `php cy demo:temizle` · Panel → Sistem → **Örnek veriyi kaldır** | Yalnızca örnek kayıtları siler (`*.demo@ornek.com` hesaplar, örnek sayfalar, mesajlar); gerçek veriye dokunmaz. Geriye etkin bir yönetici kalmayacaksa reddeder (`DemoData::leavesAdmin`) |
+| `database/ornek-veritabani.sql` | Sihirbazsız kurulum: şema + örnek veri tek dosyada, phpMyAdmin'den içe aktarılır |
 
 İçerik: 6 hesap (yönetici, editör, üye, pasif, askıda, onay bekleyen;
 parola `Demo1234!`), 3 içerik sayfası, 9 mesaj, 7 e-posta kaydı, ÇILGIN
@@ -713,6 +714,25 @@ gelir: gerçek bir projeye temiz veritabanıyla başlarsınız.
 
 `tests/unit.php` demo hesap listesinin (`Demo::HESAPLAR`) ve `DemoData`'nın
 birbiriyle tutarlı kaldığını denetler.
+
+**SQL dosyası ikinci bir kaynak değildir, çıktıdır.** `tests/ornek-sql.php`
+onu sihirbazla örnek veriyle kurulmuş bir veritabanından üretir; elle
+düzenlenmez. Üretirken sihirbazın açtığı yönetici, formdan gelen ayarlar
+(site adı, iletişim adresi) ve kişiye ait tablolar (giriş denemeleri,
+API anahtarları…) ayıklanır; dosyada yalnızca örnek hesaplar kalır. Bu
+yüzden SQL ile kurulan sitede tek yönetici `ali.yonetici`'dir ve
+"Örnek veriyi kaldır", kendinize bir yönetici açana kadar çalışmaz.
+
+```bash
+php cy serve --port=8470                                  # temiz bir kopyada (.env yok)
+php tests/kurulum.php http://127.0.0.1:8470 --db-adi=cy_ornek --ornek-veri
+php tests/ornek-sql.php --db-adi=cy_ornek                 # → database/ornek-veritabani.sql
+```
+
+**Her sürümde yeniden üretin.** `tests/unit.php` dosyanın başlığındaki
+sürümün `config/app.php` ile aynı olduğunu ve her migration'ın dosyada
+uygulanmış sayıldığını denetler; CI dosyayı MySQL 8'e aktarıp duman
+testinden geçirir.
 
 ### Migration yazmak
 

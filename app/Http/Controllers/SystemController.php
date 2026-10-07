@@ -184,6 +184,11 @@ final class SystemController extends Controller
             Response::redirect(url('panel/sistem'));
         }
 
+        if (!\App\Core\DemoData::leavesAdmin($this->db)) {
+            Flash::error('Örnek veri kaldırılırsa panele girebilecek yönetici kalmaz. Önce Kullanıcılar ekranından kendinize etkin bir yönetici hesabı açın.');
+            Response::redirect(url('panel/sistem'));
+        }
+
         $sonuc = (new \App\Core\DemoData($this->db))->remove();
 
         Logger::info('Demo verisi panelden kaldırıldı', $sonuc, 'app');

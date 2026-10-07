@@ -12,7 +12,7 @@ sayfasındadır.
 
 | Sürüm | Tarih | Özet |
 |---|---|---|
-| [1.6.1](#161--2026-10-07) | 2026-10-07 | Form yardım metinleri, güvenlik ve bilgilendirme bildirimleri, duyuru tercihi, koyu temada AA kontrast, menüyle hizalı ana sayfa |
+| [1.6.1](#161--2026-10-07) | 2026-10-07 | Form yardım metinleri, güvenlik ve bilgilendirme bildirimleri, duyuru tercihi, koyu temada AA kontrast, menüyle hizalı ana sayfa, SQL dosyasıyla kurulum |
 | [1.6.0](#160--2026-10-07) | 2026-10-07 | Parola sıfırlama, mobil oturum API'si, KVKK araçları, hesap silme, 2 ekranlı kurulum, panelden yönetilen ana sayfa, CI'da MySQL 8 ile rol matrisi |
 | [1.5.1](#151--2026-10-07) | 2026-10-07 | Veritabanı: sık çalışan sorgular için eksik indeksler, giriş temizliğinde kilit |
 | [1.5.0](#150--2026-10-07) | 2026-10-07 | Demo modu (tek tıkla giriş), panelden modül aç/kapa, onay akışlı RBAC örnek modülü, sade panel tasarımı |
@@ -29,7 +29,9 @@ sayfasındadır.
 
 Cowork'un 1.6.0 kontrol raporu ve önerileri üzerine: formlar ne yazılacağını
 anlatıyor, güvenlik ve bilgilendirme mektupları tamamlandı, koyu tema her
-yerde WCAG AA kontrastında, ana sayfa menüyle aynı çizgide.
+yerde WCAG AA kontrastında, ana sayfa menüyle aynı çizgide. Sihirbazı
+çalıştıramayanlar için örnek veritabanı tek SQL dosyası olarak geliyor.
+Kararlı sürümdür; yeni projelere bu sürümle başlayın.
 
 **Güncelleme:** kodu çekin, `php cy migrate` (iki migration: ayar
 açıklamaları, bildirimler). Değerlerinize dokunmaz.
@@ -75,6 +77,14 @@ açıklamaları, bildirimler). Değerlerinize dokunmaz.
 - **Panel bildirimleri:** bakım modu açık (uyarı), e-posta doğrulaması
   bekleyen hesap sayısı ve gönderilemeyen e-posta sayısı (kapatılabilir
   bilgi). Son bağlantı e-posta geçmişini "Başarısız" süzgeciyle açar.
+- **SQL dosyasıyla kurulum** (`database/ornek-veritabani.sql`). Sihirbazın
+  "Örnek veriyle kur" seçeneğiyle kurduğu veritabanının aynısı: şema,
+  ayarlar, sayfalar, 6 örnek hesap, mesajlar, Örnek Modül. phpMyAdmin'den
+  içe aktarılır; adımlar README → Kurulum'da. Dosya elle yazılmaz,
+  `tests/ornek-sql.php` sihirbaz kurulumundan üretir (sihirbazın açtığı
+  yönetici ve formdan gelen ayarlar ayıklanır). Birim testi sürümün ve
+  migration listesinin güncel olduğunu denetler; CI dosyayı MySQL 8'e
+  aktarıp duman testinden geçirir.
 
 ### Değişti
 
@@ -133,6 +143,11 @@ açıklamaları, bildirimler). Değerlerinize dokunmaz.
 - **Panel bildirim bağlantıları güzel adres kapalıyken bozuluyordu**
   (`panel/sistem#migration` → `index.php?r=panel/sistem%23migration`).
   Sorgu ve çapa artık ayrı ele alınır (`PanelNotices::href`).
+- **"Örnek veriyi kaldır" son yöneticiyi silebiliyordu.** Gerçek yönetici
+  hesabı silinmiş ya da pasif bir sitede (ve SQL dosyasıyla kurulan
+  sitede) tek yönetici `ali.yonetici` idi; kaldırma onu da silip paneli
+  kilitliyordu. Artık geriye etkin bir yönetici kalmayacaksa panel ve
+  `php cy demo:temizle` reddeder (`DemoData::leavesAdmin`).
 
 ---
 

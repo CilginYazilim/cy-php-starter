@@ -411,6 +411,44 @@ if (is_array($ornekKunye)) {
     echo "  (modules/Ornek yok; atlandı)\n";
 }
 
+/* "Örnek veriyi kaldır" tek yöneticiyi silmez. SQL dosyasıyla kurulan
+ * sitede gerçek yönetici yoktur; kaldırma ali.yonetici'yi de silse
+ * panele kimse giremezdi. */
+if (in_array('sqlite', PDO::getAvailableDrivers(), true)) {
+    $yonDb = new PDO('sqlite::memory:');
+    $yonDb->exec('CREATE TABLE kullanicilar (kullanici_adi TEXT, eposta TEXT, rol TEXT, durum TEXT)');
+    $yonEkle = $yonDb->prepare('INSERT INTO kullanicilar VALUES (?, ?, ?, ?)');
+    foreach (Demo::HESAPLAR as $kadi => $h) {
+        $yonEkle->execute([$kadi, $h['eposta'], $h['rol'], $h['durum']]);
+    }
+    dogrula('Yalnızca örnek yönetici varken örnek veri kaldırılamaz', !App\Core\DemoData::leavesAdmin($yonDb));
+    $yonEkle->execute(['evren', 'evren@sirketim.com', 'admin', 'pasif']);
+    dogrula('Pasif gerçek yönetici yetmez', !App\Core\DemoData::leavesAdmin($yonDb));
+    $yonDb->exec("UPDATE kullanicilar SET eposta = 'ali@sirketim.com' WHERE kullanici_adi = 'ali.yonetici'");
+    dogrula('Adresi değişmiş örnek yönetici gerçek sayılır (kaldırma onu silmez)', App\Core\DemoData::leavesAdmin($yonDb));
+}
+
+/* SQL İLE KURULUM: database/ornek-veritabani.sql, tests/ornek-sql.php ile
+ * sihirbaz kurulumundan üretilir. Sürüm ya da migration eklenip dosya
+ * yeniden üretilmezse SQL ile kuran kişi eski şemayı alır. */
+$ornekSql = (string) @file_get_contents(CY_BASE . '/database/ornek-veritabani.sql');
+dogrula('database/ornek-veritabani.sql var', $ornekSql !== '');
+if ($ornekSql !== '') {
+    dogrula('Örnek SQL bu sürümden üretilmiş', str_contains($ornekSql, 'CY PHP Starter ' . Config::get('app.version') . ' —'),
+        'php tests/ornek-sql.php ile yeniden üretin');
+    preg_match('/INSERT INTO `migrasyonlar` .*? VALUES\n(.*?);\n/s', $ornekSql, $sqlMig);
+    preg_match_all("/'([^']+)'/", $sqlMig[1] ?? '', $sqlMigAd);
+    $sqlMigEksik = array_diff(array_map(static fn (string $f): string => basename($f, '.php'), glob(CY_BASE . '/database/migrations/*.php') ?: []), $sqlMigAd[1]);
+    dogrula('Örnek SQL bütün migration\'ları uygulanmış sayar', $sqlMigEksik === [], implode(', ', $sqlMigEksik));
+    preg_match('/INSERT INTO `kullanicilar` .*? VALUES\n(.*?);\n/s', $ornekSql, $sqlHesap);
+    preg_match_all("/'([a-z0-9._-]+@[a-z0-9.-]+)'/i", $sqlHesap[1] ?? '', $sqlEposta);
+    dogrula('Örnek SQL\'de yalnızca örnek hesaplar var (kurulumdaki yönetici sızmaz)',
+        count($sqlEposta[1]) === count(Demo::HESAPLAR)
+        && array_filter($sqlEposta[1], static fn (string $e): bool => !str_ends_with($e, App\Core\DemoData::EPOSTA_SONEKI)) === []);
+    dogrula('Örnek SQL dolu veritabanını ezmez (DROP TABLE yok), sayaç taşımaz',
+        stripos($ornekSql, 'DROP TABLE') === false && !str_contains($ornekSql, 'AUTO_INCREMENT='));
+}
+
 /* ---------------------------------------------------------------- */
 echo "\nModül yetkileri (module.json → yetkiler)\n";
 

@@ -9,7 +9,9 @@
 #               çalıştırılır, duman testi üç kez koşar (demo AÇIK, demo
 #               KAPALI, geliştirme modu APP_DEBUG=true),
 #               sonra eski sürümlerden yükseltilen şemanın yeni
-#               kurulumla aynı olduğu denetlenir.
+#               kurulumla aynı olduğu denetlenir. Son olarak
+#               database/ornek-veritabani.sql boş bir veritabanına
+#               aktarılır ve site onunla duman testinden geçer.
 #
 #  Bağımlılık yok: Composer kurulmaz, PHPUnit gerekmez.
 # =====================================================================
@@ -130,6 +132,19 @@ jobs:
             git show "$etiket:kurulum/database.sql" > /tmp/eski.sql
             php tests/sema.php --eski=/tmp/eski.sql --host=127.0.0.1 --kullanici=root --parola=root
           done
+
+      # Sihirbazsız kurulum: README'deki adımlar. Dosya boş bir veritabanına
+      # aktarılır, site yayın modunda ona bağlanır; bekleyen migration
+      # olmamalı, duman testi örnek yöneticiyle geçmeli.
+      - name: SQL dosyasıyla kurulum (database/ornek-veritabani.sql)
+        run: |
+          mysql -h 127.0.0.1 -uroot -proot -e "CREATE DATABASE cy_sql CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+          mysql -h 127.0.0.1 -uroot -proot cy_sql < database/ornek-veritabani.sql
+          sed -i 's/^DB_NAME=.*/DB_NAME=cy_sql/; s/^APP_ENV=.*/APP_ENV=production/; s/^APP_DEBUG=.*/APP_DEBUG=false/' .env
+          php cy cache:clear
+          php cy migrate:status | tee durum.txt
+          grep -q " 0 bekliyor" durum.txt
+          php tests/smoke.php http://127.0.0.1:8000 --kullanici=ali.yonetici --parola='Demo1234!'
 
       - name: Hata olursa günlükleri göster
         if: failure()

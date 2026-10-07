@@ -51,6 +51,12 @@ final class DemoRemoveCommand extends Command
             return self::HATA;
         }
 
+        if (!DemoData::leavesAdmin($this->db())) {
+            $this->out->error('Örnek veri kaldırılırsa panele girebilecek yönetici kalmaz. Önce kendinize etkin bir yönetici hesabı açın.');
+
+            return self::HATA;
+        }
+
         if (!$this->confirmDestructive('Örnek veri kaldırılacak. Devam edilsin mi?')) {
             $this->out->info('Vazgeçildi.');
 

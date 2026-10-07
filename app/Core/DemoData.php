@@ -432,6 +432,26 @@ final class DemoData
         return Demo::existing($db) !== [];
     }
 
+    /**
+     * Örnek veri kaldırılınca panele girebilecek etkin bir yönetici kalır mı?
+     *
+     * Sihirbaz her kurulumda gerçek bir yönetici açar. Ama site
+     * database/ornek-veritabani.sql ile kurulduysa tek yönetici örnek
+     * hesaptır (ali.yonetici); remove() onu da silse kimse panele
+     * giremezdi. Ölçüt remove()'unkiyle aynıdır.
+     */
+    public static function leavesAdmin(PDO $db): bool
+    {
+        $adlar = array_keys(Demo::HESAPLAR);
+        $stmt  = $db->prepare(
+            "SELECT COUNT(*) FROM kullanicilar WHERE rol = 'admin' AND durum = 'aktif'
+               AND NOT (kullanici_adi IN (" . implode(',', array_fill(0, count($adlar), '?')) . ') AND eposta LIKE ?)'
+        );
+        $stmt->execute([...$adlar, '%' . self::EPOSTA_SONEKI]);
+
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
     /* =================================================================
      *  İÇERİK
      * ============================================================== */
