@@ -43,13 +43,12 @@ final class AuthController extends Controller
             'errors'       => Flash::errors(),
             'old'          => Flash::old(),
             'scripts'      => ['login.js'],
-            /* Örnek hesaplar yalnızca demo modunda (APP_DEMO=true) ya
-             * da geliştirme ortamında listelenir; kurallar App\Core\Demo
-             * içinde. Eskiden yalnızca APP_DEBUG'a bakılıyordu; kurulum
-             * her siteyi debug açık kurduğu için canlı sitelerin giriş
-             * ekranı "Demo1234!" parolasını öneriyordu. */
-            'demoAccounts' => Demo::loginAccounts($this->db),
-            'demoMode'     => Demo::enabled(),
+            /* Örnek hesaplar YALNIZCA demo modunda (APP_DEMO=true)
+             * parolasıyla listelenir; geliştirmede parolasız bir not
+             * çıkar. Kurallar App\Core\Demo içinde. */
+            'demoAccounts'  => Demo::loginAccounts($this->db),
+            'demoMode'      => Demo::enabled(),
+            'ornekVeriNotu' => Demo::sampleDataNote($this->db),
             // Ana sayfadaki "Bu rolle gir": hesap vurgulanır. Parola adreste ASLA taşınmaz.
             'vurgulanan'   => $request->input('demo'),
         ], 'layouts/site');

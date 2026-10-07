@@ -37,7 +37,11 @@ jQuery(function ($) {
     if ($vurgu.length) {
         $('#identifier').val($vurgu.data('identifier'));
         $('#password').val($vurgu.data('password'));
-        $vurgu.trigger('focus');
+
+        // Telefonda liste ekranın altında kalıyor, vurgu görünmüyordu:
+        // satırı ortaya getir, sonra kaydırmadan odakla.
+        $vurgu[0].scrollIntoView({ block: 'center' });
+        $vurgu[0].focus({ preventScroll: true });
     }
 
     $form.on('submit', function () {

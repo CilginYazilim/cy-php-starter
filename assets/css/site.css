@@ -71,8 +71,8 @@ body.cy-site { background: var(--cy-bg); }
     font-size: .875rem;
     border-radius: var(--cy-radius-sm);
 }
-.cy-site-nav .nav-link:hover  { color: var(--cy-brand); }
-.cy-site-nav .nav-link.active { color: var(--cy-brand-600); font-weight: 700; }
+.cy-site-nav .nav-link:hover  { color: var(--cy-brand-text); }
+.cy-site-nav .nav-link.active { color: var(--cy-brand-text); font-weight: 700; }
 
 .cy-site-nav .navbar-toggler {
     display: inline-grid;
@@ -107,7 +107,7 @@ body.cy-site { background: var(--cy-bg); }
 }
 
 .cy-maintenance__box { text-align: center; max-width: 32rem; }
-.cy-maintenance__box .cy-icon { color: var(--cy-brand-600); margin-bottom: 1rem; }
+.cy-maintenance__box .cy-icon { color: var(--cy-brand-text); margin-bottom: 1rem; }
 
 /* ------------------------------------------------------------------
  *  ALT BİLGİ
@@ -204,10 +204,10 @@ body.cy-site { background: var(--cy-bg); }
     color: var(--cy-text-muted);
 }
 .cy-quick-login__badge .cy-icon { width: 13px; height: 13px; }
-.cy-quick-login__badge.is-admin  { background: var(--cy-danger-soft);  color: var(--cy-danger); }
-.cy-quick-login__badge.is-editor { background: var(--cy-warning-soft); color: var(--cy-warning); }
-.cy-quick-login__badge.is-member { background: var(--cy-info-soft);    color: var(--cy-info); }
-.cy-quick-login__badge.is-hold   { background: var(--cy-warning-soft); color: var(--cy-warning); }
+.cy-quick-login__badge.is-admin  { background: var(--cy-danger-soft);  color: var(--cy-danger-text); }
+.cy-quick-login__badge.is-editor { background: var(--cy-warning-soft); color: var(--cy-warning-text); }
+.cy-quick-login__badge.is-member { background: var(--cy-info-soft);    color: var(--cy-info-text); }
+.cy-quick-login__badge.is-hold   { background: var(--cy-warning-soft); color: var(--cy-warning-text); }
 
 .cy-quick-login__text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .cy-quick-login__text strong { font-size: .8125rem; line-height: 1.3; }
@@ -308,9 +308,21 @@ body.cy-site { background: var(--cy-bg); }
     .cy-auth-page   { padding: 2rem 0; min-height: 0; }
     .cy-quick-login__grid { grid-template-columns: 1fr; }
 
-    /* Bildirimler üstte ve tam genişlikte — panelle aynı davranış. */
-    .cy-site .cy-toast-container { left: .5rem; right: .5rem; top: .5rem; }
+    /* Telefonda bildirim ALTTA: menüyü kapatmaz, başparmağa yakındır;
+       çentikli telefonlarda ev çubuğunun üstünde durur. */
+    .cy-site .cy-toast-container { left: .5rem; right: .5rem; top: auto; bottom: calc(.25rem + env(safe-area-inset-bottom)); }
     .cy-site .cy-toast { max-width: none; width: 100%; }
+}
+
+/* --- Bildirimler (toast) ---
+   Masaüstünde üst menünün ALTINDAN başlar: eskiden menünün üstüne binip
+   giriş/çıkış bildirimi "İletişim", "Özellikler" bağlantılarını
+   kapatıyordu. --cy-site-nav-h menünün ekrandaki alt kenarıdır; app.js
+   kaydırmada ve boyut değişince günceller (önizleme şeridi, açılan menü).
+   Telefonda bildirim altta durur (yukarıdaki 768px kuralı). */
+@media (min-width: 768px) {
+    /* Kabın 1rem iç boşluğu (p-3) düşülür: bildirim menünün tam 12px altında. */
+    .cy-site .cy-toast-container { top: calc(var(--cy-site-nav-h, 64px) + 12px - 1rem); }
 }
 
 /* --- 400px altı: çok dar telefonlar --- */

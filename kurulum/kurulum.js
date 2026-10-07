@@ -98,6 +98,30 @@
         demoGoster();
     }
 
+    /* --- Örneksiz kurulumda varsayılan site adı nötr ---
+     * "CY PHP Starter" örnek vitrinin adıdır; örnek veri kapatılıp kurulan
+     * bir müşteri sitesinde kalmasın. Kullanıcı adı kendisi yazdıysa
+     * dokunulmaz; kutu yeniden açılırsa ilk ad geri gelir. */
+    var siteAdi = document.getElementById('site_adi');
+
+    if (ornek && siteAdi) {
+        var ilkAd    = siteAdi.value;
+        var notrAd   = 'Yeni Proje';
+        var elleYazdi = false;
+
+        siteAdi.addEventListener('input', function () { elleYazdi = true; });
+
+        ornek.addEventListener('change', function () {
+            if (elleYazdi) { return; }
+
+            if (!ornek.checked && siteAdi.value === ilkAd) {
+                siteAdi.value = notrAd;
+            } else if (ornek.checked && siteAdi.value === notrAd) {
+                siteAdi.value = ilkAd;
+            }
+        });
+    }
+
     /* --- "Kuruluyor…" katmanı --- */
     var kurForm = document.getElementById('kur_form');
     var katman  = document.getElementById('kur_overlay');

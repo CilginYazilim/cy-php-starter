@@ -10,7 +10,7 @@
 [![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?style=flat-square&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 ![Bağımlılık: sıfır](https://img.shields.io/badge/Bağımlılık-Sıfır-16a34a?style=flat-square)
-[![Testler](https://img.shields.io/badge/Birim_testi-281-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/actions)
+[![Testler](https://img.shields.io/badge/Birim_testi-290-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/actions)
 [![CI](https://github.com/CilginYazilim/cy-php-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/CilginYazilim/cy-php-starter/actions/workflows/ci.yml)
 [![Lisans](https://img.shields.io/badge/Lisans-MIT-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/blob/main/LICENSE)
 
@@ -195,7 +195,7 @@ seçimdir. Bu şablon, şu durumlar için yazıldı:
 | **Tema** | Tek renk seçin, panelin ve sitenin tamamı yeniden renklensin |
 | **Mobil** | Ön yüz ve panelin tamamı mobil öncelikli · tablolar telefonda karta döner · 44px dokunma hedefleri · yapışkan menü · iOS yakınlaştırma ve çentik payı çözülmüş |
 | **Konsol** | `php cy` — 24 komut, üreteçler ve XAMPP'siz geliştirme sunucusu (`php cy serve`) dahil |
-| **Testler** | 281 birim testi (rol matrisi, XSS, politika — veritabanı gerektirmez) · 50 duman testi · GitHub Actions'ta PHP 8.1–8.4 ve **MySQL 8 ile gerçek kurulum** |
+| **Testler** | 290 birim testi (rol matrisi, XSS, politika — veritabanı gerektirmez) · 50 duman testi · GitHub Actions'ta PHP 8.1–8.4 ve **MySQL 8 ile gerçek kurulum** |
 
 ---
 
@@ -498,7 +498,7 @@ php tests/kurulum.php http://127.0.0.1:8000 --db-adi=bos_db --ornek-veri --demo 
 php tests/sema.php --eski=eski-database.sql          # yükseltilen şema = yeni kurulum mu?
 ```
 
-`unit.php` 281 testi veritabanı olmadan çalıştırır; aralarında **rol
+`unit.php` 290 testi veritabanı olmadan çalıştırır; aralarında **rol
 matrisi** (96 rotanın her biri için kimin erişebildiği), 18 XSS vektörü,
 Örnek Modül politikası ve kurulum şeması tutarlılığı vardır. `smoke.php`
 siteyi değiştirmez: kurulum kilidi, gizli dosyalar (`.env`, `.git/`), açık

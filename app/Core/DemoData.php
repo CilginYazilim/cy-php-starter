@@ -45,6 +45,30 @@ final class DemoData
     /** Demo sayfaları (DemoData'nın oluşturduğu, kaldırırken silinenler). */
     public const SAYFALAR = ['baslarken', 'ozellikler'];
 
+    /**
+     * Örnek verinin yazdığı MARKA ayarları => kurulum/database.sql'deki
+     * (ya da Surum16'daki) nötr değer. remove() bunları, değer hâlâ
+     * örnek değerle aynıysa nötre döndürür. Site adı bilerek YOK: kurulumda
+     * yöneticinin seçtiği addır, kaldırmak siteyi adsız bırakırdı.
+     * tests/unit.php nötr değerlerin kurulumla aynı olduğunu denetler.
+     */
+    public const MARKA_AYARLARI = [
+        'site_slogan'           => '',
+        'site_aciklama'         => '',
+        'site_marka'            => '',
+        'sosyal_github'         => '',
+        'sosyal_x'              => '',
+        'sosyal_facebook'       => '',
+        'sosyal_instagram'      => '',
+        'seo_anahtar_kelimeler' => '',
+        'pwa_ad'                => '',
+        'pwa_kisa_ad'           => '',
+        'pwa_aciklama'          => '',
+        'mail_gonderen_adi'     => '',
+        'iletisim_saatler'      => '',
+        'iletisim_adres'        => '',
+    ];
+
     private ?Closure $say;
 
     public function __construct(private PDO $db, ?callable $say = null)
@@ -310,8 +334,8 @@ final class DemoData
 
     /**
      * Örnek veriyi kaldırır; gerçek hesaplara, kullanıcının yazdığı
-     * sayfalara ve mesajlara dokunmaz. Ana sayfa ve vitrin ayarları
-     * nötr varsayılanlarına döner.
+     * sayfalara ve mesajlara dokunmaz. Ana sayfa, vitrin ve marka ayarları
+     * nötr varsayılanlarına döner (marka: yalnızca hâlâ örnek değerdeyse).
      *
      * @return array<string,int>
      */
@@ -345,7 +369,17 @@ final class DemoData
             $kayit = (int) $this->db->exec('DELETE FROM ornek');
         }
 
-        // Vitrin ayarları nötre döner (marka ve site adı yönetici değiştirene kadar kalır).
+        /* MARKA AYARLARI: değeri hâlâ örnek veriyle AYNI olan nötre döner;
+         * yöneticinin değiştirdiğine dokunulmaz. Eskiden kalıyordu: örnek
+         * veri kaldırılmış bir müşteri sitesinin alt bilgisinde ÇILGIN
+         * Yazılım'ın sosyal hesapları ve sloganı görünüyordu. */
+        $ornek = self::settings();
+        $marka = $this->db->prepare('UPDATE ayarlar SET deger = :notr WHERE anahtar = :anahtar AND deger = :ornek');
+        foreach (self::MARKA_AYARLARI as $anahtar => $notrDeger) {
+            $marka->execute([':notr' => $notrDeger, ':anahtar' => $anahtar, ':ornek' => $ornek[$anahtar] ?? '']);
+        }
+
+        // Vitrin ayarları nötre döner (site adı yönetici değiştirene kadar kalır).
         $notr = $this->db->prepare('UPDATE ayarlar SET deger = :deger WHERE anahtar = :anahtar');
         foreach (Surum16::AYARLAR as [$anahtar, $deger]) {
             if (str_starts_with($anahtar, 'anasayfa_') || $anahtar === 'vitrin_tanitim_goster') {

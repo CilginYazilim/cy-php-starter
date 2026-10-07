@@ -235,7 +235,7 @@ test('Güvenlik başlıkları gönderiliyor', function () use ($base): bool|stri
     return true;
 });
 
-test('Giriş sayfası demo parolası önermiyor (yayın ortamı)', function () use ($base): bool|string|null {
+test('Giriş sayfası demo kapalıyken parola önermiyor (geliştirme modunda da)', function () use ($base): bool|string|null {
     $g = (new Istemci($base))->istek('giris')['govde'];
 
     // Demo modunda (APP_DEMO=true) hesapları göstermek bilinçli bir seçimdir.
@@ -243,7 +243,7 @@ test('Giriş sayfası demo parolası önermiyor (yayın ortamı)', function () u
         return null;
     }
 
-    return str_contains($g, 'Demo1234!') ? 'Demo parolası sayfada görünüyor (APP_DEBUG açık olabilir)' : true;
+    return str_contains($g, 'Demo1234!') ? 'Demo parolası sayfada görünüyor (APP_DEMO kapalıyken liste çıkmamalı)' : true;
 });
 
 /* =====================================================================

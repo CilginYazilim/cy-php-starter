@@ -96,9 +96,9 @@ $demoMode     = $demoMode ?? false;
                         <?php /* DEMO HESAPLAR — tek tıkla giriş
                                  Satıra tıklamak alanları doldurur ve formu gönderir
                                  (login.js); giriş normal yoldan, CSRF ve kaba kuvvet
-                                 korumasıyla yapılır. Liste yalnızca demo modunda
-                                 (APP_DEMO=true) ya da geliştirme ortamında dolar,
-                                 bkz. App\Core\Demo::loginAccounts. */ ?>
+                                 korumasıyla yapılır. Liste YALNIZCA demo modunda
+                                 (APP_DEMO=true) dolar; geliştirmede parolasız bir
+                                 not çıkar. Bkz. App\Core\Demo::loginAccounts. */ ?>
                         <?php if ($demoAccounts !== []): ?>
                             <div class="cy-quick-login" data-demo-modu="<?= $demoMode ? '1' : '0' ?>">
                                 <div class="cy-quick-login__divider"><span>Demo hesaplar · tek tıkla giriş</span></div>
@@ -128,17 +128,17 @@ $demoMode     = $demoMode ?? false;
                                 </div>
 
                                 <p class="cy-quick-login__hint">
-                                    <?php if ($demoMode): ?>
-                                        Bu hesaplar yalnızca örnek veridir; bir satıra tıklamanız giriş için yeterli.
-                                        Demo hesaplarla hesap bilgileri, kullanıcılar, site ayarları ve e-posta
-                                        gönderimi kilitlidir.
-                                    <?php else: ?>
-                                        Bu liste yalnızca geliştirme ortamında (<code>APP_DEBUG=true</code>) görünür.
-                                        "Pasif" ve "Askıda" hesaplar bilerek giriş yapamaz — durum kontrolünün nasıl
-                                        çalıştığını gösterir.
-                                    <?php endif; ?>
+                                    Bu hesaplar yalnızca örnek veridir; bir satıra tıklamanız giriş için yeterli.
+                                    Demo hesaplarla hesap bilgileri, kullanıcılar, site ayarları ve e-posta
+                                    gönderimi kilitlidir.
                                 </p>
                             </div>
+                        <?php elseif (!empty($ornekVeriNotu)): ?>
+                            <?php /* Geliştirme ortamı + örnek veri: parola SAYFAYA YAZILMAZ. */ ?>
+                            <p class="cy-quick-login__hint text-center mt-3 mb-0">
+                                Örnek veri yüklü; demo hesaplar
+                                <a class="cy-link" href="https://github.com/CilginYazilim/cy-php-starter#demo-hesaplar" target="_blank" rel="noopener">README'de</a>.
+                            </p>
                         <?php endif; ?>
                     </div>
                 </div>

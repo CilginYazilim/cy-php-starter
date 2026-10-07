@@ -63,6 +63,18 @@
     --cy-brand:      var(--cy-brand-600);
     --cy-brand-soft: var(--cy-brand-50);
 
+    /* METİN olarak marka rengi (bağlantı, üst etiket, etkin menü).
+     * Zemin renkleriyle (--cy-brand-600: düğme zemini) AYNI token
+     * olamaz: koyu temada #0b5cb5 yazı koyu zeminde 2.6:1 kalıyordu.
+     * Koyu temada açık bir tona döner; WCAG AA ≥ 4.5:1. */
+    --cy-brand-text:        var(--cy-brand-600);
+    --cy-brand-text-strong: var(--cy-brand-700);
+
+    /* Bootstrap'in <code> rengi (#d63384) gri zeminde 4.3:1 kalıyordu. */
+    --bs-code-color: #b0215f;
+    /* Bootstrap .text-muted bu değişkeni okur; koyu temada siyah kalıyordu. */
+    --bs-secondary-color: var(--cy-text-muted);
+
     --cy-accent:     #0ea5e9;
     --cy-accent-600: #0284c7;
 
@@ -76,6 +88,13 @@
     --cy-info:         #0284c7;
     --cy-info-soft:    #e0f2fe;
 
+    /* Durum rengi YAZI olarak kendi soluk zemininde (rol rozetleri):
+     * #d97706 turuncu #fef3c7 üstünde 2.9:1 kalıyordu. */
+    --cy-success-text: #047857;
+    --cy-danger-text:  #b91c1c;
+    --cy-warning-text: #92400e;
+    --cy-info-text:    #075985;
+
     /* --- Yüzeyler ve metin --------------------------------------- */
     --cy-bg:           #f6f8fb;  /* Sayfa zemini */
     --cy-surface:      #ffffff;  /* Kart / panel zemini */
@@ -85,7 +104,7 @@
 
     --cy-text:         #0f172a;
     --cy-text-soft:    #475569;
-    --cy-text-muted:   #64748b;  /* beyazda 4.76:1 (WCAG AA); eskiden #94a3b8 = 2.56:1 */
+    --cy-text-muted:   #61718a;  /* beyazda 4.95:1, gri zeminde (#f6f8fb) 4.6:1 (WCAG AA); eskiden #94a3b8 = 2.56:1 */
 
     --cy-border:       #e6ebf2;
     --cy-border-strong:#d3dbe6;
@@ -162,6 +181,14 @@
         --cy-danger-soft:   #451414;
         --cy-info-soft:     #08324a;
 
+        --cy-brand-text:        #60a5fa;
+        --cy-brand-text-strong: #93c5fd;
+        --bs-code-color:        #f9a8d4;
+        --cy-success-text:      #6ee7b7;
+        --cy-danger-text:       #fca5a5;
+        --cy-warning-text:      #fcd34d;
+        --cy-info-text:         #7dd3fc;
+
         --cy-shadow-sm: 0 1px 3px rgba(0, 0, 0, .4);
         --cy-shadow:    0 4px 16px rgba(0, 0, 0, .45);
         --cy-shadow-lg: 0 20px 48px rgba(0, 0, 0, .6);
@@ -191,6 +218,14 @@
     --cy-warning-soft:  #422a06;
     --cy-danger-soft:   #451414;
     --cy-info-soft:     #08324a;
+
+    --cy-brand-text:        #60a5fa;
+    --cy-brand-text-strong: #93c5fd;
+    --bs-code-color:        #f9a8d4;
+    --cy-success-text:      #6ee7b7;
+    --cy-danger-text:       #fca5a5;
+    --cy-warning-text:      #fcd34d;
+    --cy-info-text:         #7dd3fc;
 
     --cy-shadow-sm: 0 1px 3px rgba(0, 0, 0, .4);
     --cy-shadow:    0 4px 16px rgba(0, 0, 0, .45);
@@ -375,9 +410,9 @@ body.cy-app {
 /* Yumuşak marka tonu – üçüncül eylem */
 .cy-btn--soft {
     background: var(--cy-brand-100);
-    color: var(--cy-brand-600);
+    color: var(--cy-brand-text);
 }
-.cy-btn--soft:hover { background: var(--cy-brand-200); color: var(--cy-brand-700); }
+.cy-btn--soft:hover { background: var(--cy-brand-200); color: var(--cy-brand-text-strong); }
 
 .cy-btn--danger { background: var(--cy-danger); color: #fff; }
 .cy-btn--danger:hover { background: #b91c1c; color: #fff; }
@@ -425,7 +460,7 @@ body.cy-app {
     border: 1px solid var(--cy-border);
 }
 
-.cy-badge--brand { background: var(--cy-brand-100); color: var(--cy-brand-600); border-color: transparent; }
+.cy-badge--brand { background: var(--cy-brand-100); color: var(--cy-brand-text); border-color: transparent; }
 
 /* --- Rol rozeti ---
    Renk burada ANLAM taşır: yetki seviyesi ne kadar yüksekse renk
@@ -441,9 +476,9 @@ body.cy-app {
     letter-spacing: .01em;
 }
 
-.cy-role--admin  { background: var(--cy-danger-soft);  color: var(--cy-danger); }
-.cy-role--editor { background: var(--cy-warning-soft); color: var(--cy-warning); }
-.cy-role--member { background: var(--cy-info-soft);    color: var(--cy-info); }
+.cy-role--admin  { background: var(--cy-danger-soft);  color: var(--cy-danger-text); }
+.cy-role--editor { background: var(--cy-warning-soft); color: var(--cy-warning-text); }
+.cy-role--member { background: var(--cy-info-soft);    color: var(--cy-info-text); }
 
 /* --- Durum göstergesi (aktif / pasif) --- */
 .cy-status {
@@ -471,10 +506,10 @@ button.cy-status:hover { border-color: var(--cy-border-strong); background: var(
     flex-shrink: 0;
 }
 
-.cy-status.is-active  { color: var(--cy-success); background: var(--cy-success-soft); }
+.cy-status.is-active  { color: var(--cy-success-text); background: var(--cy-success-soft); }
 .cy-status.is-passive { color: var(--cy-text-muted); }
-.cy-status.is-hold    { color: var(--cy-warning); background: var(--cy-warning-soft); }
-.cy-status.is-danger  { color: var(--cy-danger);  background: var(--cy-danger-soft); }
+.cy-status.is-hold    { color: var(--cy-warning-text); background: var(--cy-warning-soft); }
+.cy-status.is-danger  { color: var(--cy-danger-text);  background: var(--cy-danger-soft); }
 
 /* Küçük gri etiket ("siz" işareti gibi) */
 .cy-tag {
@@ -487,7 +522,7 @@ button.cy-status:hover { border-color: var(--cy-border-strong); background: var(
     letter-spacing: .05em;
 }
 
-.cy-tag--self { background: var(--cy-brand-100); color: var(--cy-brand-600); }
+.cy-tag--self { background: var(--cy-brand-100); color: var(--cy-brand-text); }
 
 
 /* ------------------------------------------------------------------
@@ -701,6 +736,8 @@ button.cy-status:hover { border-color: var(--cy-border-strong); background: var(
  * 10) TABLO
  * ------------------------------------------------------------------ */
 .cy-table {
+    /* Bootstrap hücrelere kendi rengini basar (#000); koyu temada okunmuyordu. */
+    --bs-table-color: var(--cy-text);
     --bs-table-bg: transparent;
     width: 100%;
     margin: 0;
@@ -1150,8 +1187,8 @@ table.dataTable > thead .sorting_desc:after { display: none !important; }
 .cy-nowrap    { white-space: nowrap; }
 .cy-mono      { font-family: var(--cy-font-mono); font-size: .8125rem; }
 .cy-divider   { height: 1px; background: var(--cy-border); border: 0; margin: 1rem 0; }
-.cy-link      { color: var(--cy-brand-600); text-decoration: none; font-weight: 600; }
-.cy-link:hover { text-decoration: underline; color: var(--cy-brand-700); }
+.cy-link      { color: var(--cy-brand-text); text-decoration: none; font-weight: 600; }
+.cy-link:hover { text-decoration: underline; color: var(--cy-brand-text-strong); }
 
 /* "İçeriğe geç": klavyeyle gezinen ilk Tab'da görür, menüyü atlar. */
 .cy-skip {

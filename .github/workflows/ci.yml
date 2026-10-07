@@ -6,8 +6,9 @@
 #               testleri (rol matrisi, XSS, politika…) çalışır.
 #  2. kurulum   Gerçek bir MySQL 8 ile: depo yerleşik PHP sunucusunda
 #               açılır, kurulum sihirbazı HTTP üzerinden örnek veriyle
-#               çalıştırılır, duman testi demo modu AÇIK ve KAPALI iki kez
-#               koşar, sonra eski sürümlerden yükseltilen şemanın yeni
+#               çalıştırılır, duman testi üç kez koşar (demo AÇIK, demo
+#               KAPALI, geliştirme modu APP_DEBUG=true),
+#               sonra eski sürümlerden yükseltilen şemanın yeni
 #               kurulumla aynı olduğu denetlenir.
 #
 #  Bağımlılık yok: Composer kurulmaz, PHPUnit gerekmez.
@@ -108,6 +109,15 @@ jobs:
           sed -i 's/^APP_DEMO=true/APP_DEMO=false/' .env
           # İlk koşunun bilerek yaptığı hatalı girişler IP sayacında kalır;
           # temizlenmezse kilit testi önceki koşunun denemelerini de sayar.
+          mysql -h 127.0.0.1 -uroot -proot cy_ci -e "DELETE FROM login_attempts"
+          php tests/smoke.php http://127.0.0.1:8000 --kullanici=yonetici --parola=Yonetici1234
+
+      # Sihirbazın "geliştirme modu" kutusuyla kurulmuş site: örnek hesaplar
+      # duruyor ama demo kapalı. Giriş ekranı parola ÖNERMEMELİ (1.6.1'e
+      # kadar altı hesabı "Demo1234!" ile listeliyordu).
+      - name: Duman testi (geliştirme modu, APP_DEBUG=true, demo KAPALI)
+        run: |
+          sed -i 's/^APP_ENV=.*/APP_ENV=local/; s/^APP_DEBUG=.*/APP_DEBUG=true/' .env
           mysql -h 127.0.0.1 -uroot -proot cy_ci -e "DELETE FROM login_attempts"
           php tests/smoke.php http://127.0.0.1:8000 --kullanici=yonetici --parola=Yonetici1234
 

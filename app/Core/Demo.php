@@ -187,26 +187,41 @@ final class Demo
     }
 
     /**
-     * Giriş ekranında gösterilecek hesaplar.
+     * Giriş ekranında gösterilecek hesaplar: YALNIZCA demo modunda
+     * (APP_DEMO=true) Yönetici, Editör ve Üye.
      *
-     * Demo modunda Yönetici, Editör ve Üye; geliştirme ortamında
-     * (debug açık, ortam yayın değil) pasif ve askıdakiler de. Yayındaki
-     * sıradan bir sitede hiçbiri — parolası bilinen hesap önermek
-     * güvenlik açığıdır. Hesap ancak veritabanında HESAPLAR'daki
+     * Eskiden geliştirme ortamında da (APP_DEBUG=true) altı hesabın
+     * hepsi parolasıyla listeleniyordu. Kurulum sihirbazının "geliştirme
+     * modu" kutusu açık kalan bir site yayına alınınca giriş ekranı
+     * "Demo1234!" öneriyordu — örnek veride bir YÖNETİCİ hesabı da var.
+     * Geliştirmede artık yalnızca parolasız bir not çıkar
+     * (bkz. sampleDataNote). Hesap ancak veritabanında HESAPLAR'daki
      * e-postasıyla GERÇEKTEN varsa listelenir.
      *
      * @return array<int,array<string,mixed>>
      */
     public static function loginAccounts(PDO $db): array
     {
-        $demo       = self::enabled();
-        $gelistirme = Config::isDebug() && !Config::isProduction();
-
-        if (!$demo && !$gelistirme) {
+        if (!self::enabled()) {
             return [];
         }
 
-        return self::visibleAccounts($demo, self::existing($db));
+        return self::visibleAccounts(true, self::existing($db));
+    }
+
+    /**
+     * Geliştirme ortamında örnek veri yüklü mü? Giriş ekranı parolaları
+     * DEĞİL, "demo hesaplar README'de" notunu gösterir.
+     */
+    public static function sampleDataNote(PDO $db): bool
+    {
+        /* Ad ve örnek E-POSTASI birlikte eşleşmeli: örnek veri
+         * kaldırıldıktan sonra adresini değiştirip kalan bir hesap
+         * (artık gerçek hesap) notu açık tutmasın. */
+        return !self::enabled()
+            && Config::isDebug()
+            && !Config::isProduction()
+            && self::visibleAccounts(false, self::existing($db)) !== [];
     }
 
     /**

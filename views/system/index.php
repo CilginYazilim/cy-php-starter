@@ -197,13 +197,14 @@ $bakimKilidi    = !can('system.manage') ? 'Bu işlemler için yetkiniz yok.' : \
                     <span class="cy-module__body">
                         <strong>Örnek veri yüklü</strong>
                         <span class="cy-module__desc">
-                            Demo hesapları, örnek mesajlar ve e-postalar, demo sayfaları, Örnek Modül kayıtları ve ana sayfa vitrini.
+                            Demo hesapları, örnek mesajlar ve e-postalar, demo sayfaları, Örnek Modül kayıtları, ana sayfa vitrini
+                            ve örnek marka ayarları (slogan, sosyal hesaplar, anahtar kelimeler).
                             Kendi hesaplarınıza ve yazdığınız içeriğe dokunulmaz.
                             <?php if ($demoAcik): ?><br>Demo modu açık; kaldırmak için önce <code class="cy-mono">.env</code> içinde <code class="cy-mono">APP_DEMO=false</code> yapın.<?php endif; ?>
                         </span>
                     </span>
                     <form method="post" action="<?= e(url('panel/sistem/demo-kaldir')) ?>" class="cy-module__toggle"
-                          data-confirm="Örnek veri kaldırılacak (demo hesapları, mesajları, sayfaları, Örnek Modül kayıtları). Devam edilsin mi?">
+                          data-confirm="Örnek veri kaldırılacak (demo hesapları, mesajları, sayfaları, Örnek Modül kayıtları). Marka ayarları da nötre döner; sizin değiştirdikleriniz ve site adı kalır. Devam edilsin mi?">
                         <?= csrf_field() ?>
                         <button type="submit" class="btn cy-btn cy-btn--ghost cy-btn--sm" <?= $bakimKilidi !== null || $demoAcik ? 'disabled' : '' ?>>
                             <?= icon('trash', 'cy-icon cy-icon--sm') ?> Örnek veriyi kaldır

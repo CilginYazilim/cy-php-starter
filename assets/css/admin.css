@@ -156,10 +156,10 @@ body.is-collapsed .cy-main { margin-left: var(--cy-sidebar-w-collapsed); }
    renk körlüğü olan kullanıcılar için önemlidir. */
 .cy-nav-link.is-active {
     background: var(--cy-brand-100);
-    color: var(--cy-brand-600);
+    color: var(--cy-brand-text);
     font-weight: 600;
 }
-.cy-nav-link.is-active .cy-icon { color: var(--cy-brand-600); }
+.cy-nav-link.is-active .cy-icon { color: var(--cy-brand-text); }
 
 .cy-nav-link.is-active::before {
     content: "";
@@ -185,7 +185,7 @@ body.is-collapsed .cy-main { margin-left: var(--cy-sidebar-w-collapsed); }
     font-weight: 700;
     font-variant-numeric: tabular-nums;
 }
-.cy-nav-link.is-active .cy-nav-link__badge { background: var(--cy-brand-200); color: var(--cy-brand-700); }
+.cy-nav-link.is-active .cy-nav-link__badge { background: var(--cy-brand-200); color: var(--cy-brand-text-strong); }
 
 /* --- Alt menüsü olan öğeler (ör. Site Ayarları) ---
    Düğme normal bağlantı gibi görünür; "chevron" simgesi açık/kapalı
@@ -218,7 +218,7 @@ body.is-collapsed .cy-main { margin-left: var(--cy-sidebar-w-collapsed); }
     transition: background-color var(--cy-transition), color var(--cy-transition);
 }
 .cy-nav-sublink:hover { background: var(--cy-surface-hover); color: var(--cy-text); }
-.cy-nav-sublink.is-active { background: var(--cy-brand-100); color: var(--cy-brand-600); font-weight: 600; }
+.cy-nav-sublink.is-active { background: var(--cy-brand-100); color: var(--cy-brand-text); font-weight: 600; }
 
 /* Daraltılmış menüde (yalnızca ikonlar) alt menü için yer yoktur;
    düğmeye tıklanınca app.js önce menüyü genişletir. */
@@ -243,6 +243,7 @@ body.is-collapsed .cy-nav-submenu { display: none; }
 
 .cy-side-user__info { min-width: 0; flex: 1; line-height: 1.25; }
 .cy-side-user__name {
+    color: var(--cy-text);
     display: block;
     font-size: .8125rem;
     font-weight: 600;
@@ -426,7 +427,7 @@ body.is-sidebar-open .cy-backdrop { opacity: 1; visibility: visible; }
     color: var(--cy-text-muted);
 }
 .cy-footer a { color: var(--cy-text-soft); text-decoration: none; font-weight: 600; }
-.cy-footer a:hover { color: var(--cy-brand-600); }
+.cy-footer a:hover { color: var(--cy-brand-text); }
 
 
 /* ------------------------------------------------------------------
@@ -491,7 +492,7 @@ body.is-sidebar-open .cy-backdrop { opacity: 1; visibility: visible; }
     flex-shrink: 0;
 }
 
-.cy-stat__icon--brand   { background: var(--cy-brand-100);   color: var(--cy-brand-600); }
+.cy-stat__icon--brand   { background: var(--cy-brand-100);   color: var(--cy-brand-text); }
 .cy-stat__icon--success { background: var(--cy-success-soft); color: var(--cy-success); }
 .cy-stat__icon--warning { background: var(--cy-warning-soft); color: var(--cy-warning); }
 .cy-stat__icon--danger  { background: var(--cy-danger-soft);  color: var(--cy-danger); }
@@ -1259,6 +1260,14 @@ html, body { overflow-x: hidden; overflow-x: clip; }
     box-shadow: 0 -6px 18px rgba(15, 23, 42, .06);
 }
 
+/* Sekme renkleri temadan: Bootstrap'ın sabit #0d6efd mavisi koyu temada
+   3.8:1 kalıyordu. */
+.cy-tabnav {
+    --bs-nav-link-color: var(--cy-brand-text);
+    --bs-nav-link-hover-color: var(--cy-brand-text-strong);
+    --bs-nav-pills-link-active-bg: var(--cy-brand-600);
+}
+
 /* Sekme başlığındaki ikon + sayaç hizası */
 .cy-tabnav .nav-link {
     display: inline-flex;
@@ -1315,7 +1324,7 @@ html, body { overflow-x: hidden; overflow-x: clip; }
     height: 42px;
     border-radius: 11px;
     background: var(--cy-brand-soft);
-    color: var(--cy-brand);
+    color: var(--cy-brand-text);
 }
 
 .cy-setting-card.is-warning .cy-setting-card__icon {
@@ -1410,7 +1419,7 @@ html, body { overflow-x: hidden; overflow-x: clip; }
     color: var(--cy-text-muted);
 }
 .cy-breadcrumb a { color: var(--cy-text-muted); text-decoration: none; }
-.cy-breadcrumb a:hover { color: var(--cy-brand); text-decoration: underline; }
+.cy-breadcrumb a:hover { color: var(--cy-brand-text); text-decoration: underline; }
 
 /* Sağa bakan "chevron" ikonunu sola çevirir (geri bağlantıları). */
 .cy-flip { transform: scaleX(-1); }
@@ -1494,7 +1503,7 @@ html, body { overflow-x: hidden; overflow-x: clip; }
     cursor: pointer;
 }
 .cy-editor__btn:hover { background: var(--cy-surface); color: var(--cy-text); border-color: var(--cy-border); }
-.cy-editor__btn.is-active { background: var(--cy-brand-100); color: var(--cy-brand-600); border-color: transparent; }
+.cy-editor__btn.is-active { background: var(--cy-brand-100); color: var(--cy-brand-text); border-color: transparent; }
 
 .cy-editor__sep { width: 1px; margin: .25rem .3rem; background: var(--cy-border); }
 
@@ -1516,7 +1525,7 @@ html, body { overflow-x: hidden; overflow-x: clip; }
 .cy-editor__area h4 { font-size: 1rem;    margin: 1rem 0 .4rem; }
 .cy-editor__area p  { margin: 0 0 .9rem; }
 .cy-editor__area ul, .cy-editor__area ol { margin: 0 0 .9rem 1.25rem; }
-.cy-editor__area a  { color: var(--cy-brand); }
+.cy-editor__area a  { color: var(--cy-brand-text); }
 .cy-editor__area img { max-width: 100%; height: auto; border-radius: var(--cy-radius-sm); }
 .cy-editor__area blockquote {
     margin: 0 0 .9rem;
@@ -1728,10 +1737,10 @@ html, body { overflow-x: hidden; overflow-x: clip; }
     margin-top: .75rem;
     font-size: .78rem;
     font-weight: 600;
-    color: var(--cy-brand-600);
+    color: var(--cy-brand-text);
     text-decoration: none;
 }
-.cy-panel__foot:hover { color: var(--cy-brand-700); }
+.cy-panel__foot:hover { color: var(--cy-brand-text-strong); }
 
 /* Sütunlara akan kart dizisi: kartlar bölünmez, boşluk bırakmaz. */
 .cy-masonry { column-gap: 1rem; columns: 1; }
@@ -1750,9 +1759,9 @@ html, body { overflow-x: hidden; overflow-x: clip; }
     background: var(--cy-surface-soft);
     color: var(--cy-text-soft);
 }
-.cy-pill.is-ok     { background: var(--cy-success-soft); color: var(--cy-success); }
-.cy-pill.is-warn   { background: var(--cy-warning-soft); color: var(--cy-warning); }
-.cy-pill.is-danger { background: var(--cy-danger-soft);  color: var(--cy-danger); }
+.cy-pill.is-ok     { background: var(--cy-success-soft); color: var(--cy-success-text); }
+.cy-pill.is-warn   { background: var(--cy-warning-soft); color: var(--cy-warning-text); }
+.cy-pill.is-danger { background: var(--cy-danger-soft);  color: var(--cy-danger-text); }
 
 /* Denetim listesi: geçen madde tek satır, uyarı açıklamalı */
 .cy-checks { list-style: none; margin: 0; padding: 0; }
@@ -1853,7 +1862,7 @@ html, body { overflow-x: hidden; overflow-x: clip; }
 .cy-queue__name small { display: block; font-weight: 400; font-size: .72rem; color: var(--cy-text-muted); overflow-wrap: anywhere; }
 .cy-queue__nums { display: flex; gap: .9rem; font-size: .75rem; color: var(--cy-text-muted); }
 .cy-queue__nums b { font-size: .9rem; color: var(--cy-text); margin-right: .1rem; }
-.cy-queue__nums .is-danger, .cy-queue__nums .is-danger b { color: var(--cy-danger); }
+.cy-queue__nums .is-danger, .cy-queue__nums .is-danger b { color: var(--cy-danger-text); }
 
 /* --- Örnek Modül: RBAC ekranı --- */
 .cy-checks__item.is-no { color: var(--cy-text-muted); }
@@ -1869,7 +1878,7 @@ html, body { overflow-x: hidden; overflow-x: clip; }
 .cy-ornek__lock { display: inline-flex; padding: .35rem; color: var(--cy-text-muted); cursor: help; }
 
 .cy-matrix th.is-current, .cy-matrix td.is-current { background: var(--cy-brand-50); }
-.cy-matrix th.is-current { color: var(--cy-brand-700); }
+.cy-matrix th.is-current { color: var(--cy-brand-text-strong); }
 .cy-matrix__mark.is-yes { color: var(--cy-success); }
 .cy-matrix__mark.is-no  { color: var(--cy-border-strong); }
 
@@ -1938,11 +1947,11 @@ a.cy-stat--link:focus-visible { outline: 2px solid var(--cy-brand); outline-offs
     align-self: center;
     font-size: .78rem;
     font-weight: 600;
-    color: var(--cy-brand-600);
+    color: var(--cy-brand-text);
     text-decoration: none;
     white-space: nowrap;
 }
-.cy-notice__action:hover { color: var(--cy-brand-700); text-decoration: underline; }
+.cy-notice__action:hover { color: var(--cy-brand-text-strong); text-decoration: underline; }
 
 .cy-notice__close {
     flex-shrink: 0;
@@ -1998,7 +2007,7 @@ a.cy-stat--link:focus-visible { outline: 2px solid var(--cy-brand); outline-offs
 .cy-people__body small { display: block; font-size: .72rem; color: var(--cy-text-muted); }
 .cy-people__muted { font-weight: 400; color: var(--cy-text-soft); }
 
-.cy-pill.is-info { background: var(--cy-info-soft); color: var(--cy-info); }
+.cy-pill.is-info { background: var(--cy-info-soft); color: var(--cy-info-text); }
 
 /* --- Hesap özeti (istatistik yetkisi olmayan roller) --- */
 .cy-me { display: flex; align-items: center; gap: .85rem; }
@@ -2042,7 +2051,7 @@ a.cy-stat--link:focus-visible { outline: 2px solid var(--cy-brand); outline-offs
     height: 34px;
     border-radius: var(--cy-radius-sm);
     background: var(--cy-brand-100);
-    color: var(--cy-brand-600);
+    color: var(--cy-brand-text);
 }
 .cy-shortcut__body { flex: 1; min-width: 0; }
 .cy-shortcut__body strong { display: block; font-size: .8125rem; }
@@ -2070,7 +2079,7 @@ a.cy-stat--link:focus-visible { outline: 2px solid var(--cy-brand); outline-offs
     background: var(--cy-surface-soft);
     color: var(--cy-text-muted);
 }
-.cy-module.is-on .cy-module__icon { background: var(--cy-brand-100); color: var(--cy-brand-600); }
+.cy-module.is-on .cy-module__icon { background: var(--cy-brand-100); color: var(--cy-brand-text); }
 
 .cy-module__body { flex: 1; min-width: 0; font-size: .8125rem; }
 .cy-module__body > strong { display: block; font-weight: 650; color: var(--cy-text); }
@@ -2122,7 +2131,7 @@ a.cy-stat--link:focus-visible { outline: 2px solid var(--cy-brand); outline-offs
     box-shadow: 0 1px 2px rgba(15, 23, 42, .25);
     transition: transform .18s ease;
 }
-.cy-switch.is-on { color: var(--cy-success); }
+.cy-switch.is-on { color: var(--cy-success-text); }
 .cy-switch.is-on .cy-switch__track { background: var(--cy-success); }
 .cy-switch.is-on .cy-switch__thumb { transform: translateX(16px); }
 .cy-switch__text { min-width: 3.2em; text-align: left; }
@@ -2145,7 +2154,7 @@ a.cy-stat--link:focus-visible { outline: 2px solid var(--cy-brand); outline-offs
     height: 36px;
     border-radius: var(--cy-radius-sm);
     background: var(--cy-brand-100);
-    color: var(--cy-brand-600);
+    color: var(--cy-brand-text);
 }
 .cy-intro__body { flex: 1; min-width: 0; }
 .cy-intro__title { margin: .1rem 0 .25rem; font-size: .9rem; font-weight: 700; }
@@ -2164,7 +2173,7 @@ a.cy-stat--link:focus-visible { outline: 2px solid var(--cy-brand); outline-offs
     display: inline-block;
     font-size: .78rem;
     font-weight: 600;
-    color: var(--cy-brand-600);
+    color: var(--cy-brand-text);
     cursor: pointer;
 }
 .cy-intro__more[open] summary { margin-bottom: .5rem; }
@@ -2192,7 +2201,7 @@ a.cy-stat--link:focus-visible { outline: 2px solid var(--cy-brand); outline-offs
     cursor: pointer;
 }
 .cy-ornek__step:hover { border-color: var(--cy-text-muted); color: var(--cy-text); }
-.cy-ornek__step.is-primary { border-color: var(--cy-success); color: var(--cy-success); }
+.cy-ornek__step.is-primary { border-color: var(--cy-success); color: var(--cy-success-text); }
 .cy-ornek__step.is-primary:hover { background: var(--cy-success-soft); }
 .cy-ornek__actions form { display: inline-flex; margin: 0; }
 .cy-ornek.is-editing { box-shadow: inset 3px 0 0 var(--cy-brand); padding-left: .6rem; }
@@ -2230,7 +2239,7 @@ a.cy-stat--link:focus-visible { outline: 2px solid var(--cy-brand); outline-offs
 }
 .cy-me__progress:hover { border-color: var(--cy-brand); color: inherit; }
 .cy-me__progress-head { display: flex; justify-content: space-between; font-size: .78rem; font-weight: 600; }
-.cy-me__progress-head strong { color: var(--cy-brand-600); }
+.cy-me__progress-head strong { color: var(--cy-brand-text); }
 .cy-me__progress-hint { font-size: .74rem; color: var(--cy-text-muted); }
 .cy-progress { display: block; height: 6px; border-radius: 999px; background: var(--cy-surface-soft); overflow: hidden; }
 .cy-progress__bar { display: block; height: 100%; border-radius: inherit; background: var(--cy-brand-500); }

@@ -31,6 +31,8 @@ final class UserController extends Controller
                 'toplam'  => $users->countAll(),
                 'aktif'   => $users->countByStatus('aktif'),
                 'pasif'   => $users->countByStatus('pasif') + $users->countByStatus('askida'),
+                // Toplam = aktif + pasif/askıda + onay bekleyen; eskiden sonuncusu hiçbir kartta yoktu.
+                'onay'    => $users->countByStatus('onay_bekliyor'),
                 'yonetici' => $users->countByRole(Role::ADMIN),
                 'yeni'    => $users->countSince(7),
             ],

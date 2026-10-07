@@ -54,6 +54,31 @@ sayfasındadır.
 
 ### Değişti
 
+- **Giriş ekranı demo parolalarını YALNIZCA demo modunda listeler**
+  (`APP_DEMO=true`). Geliştirme modunda (`APP_DEBUG=true`) altı hesap
+  "Demo1234!" ile görünüyordu; sihirbazın "geliştirme modu" kutusu açık
+  kurulup yayına alınan bir sitede de. Artık yalnızca parolasız bir not
+  çıkar ("Örnek veri yüklü; demo hesaplar README'de"). CI'da duman testi
+  üçüncü kez `APP_DEBUG=true` ile koşar.
+- **"Örnek veriyi kaldır" markayı da kaldırır:** slogan, açıklama, marka
+  adı, sosyal hesaplar, anahtar kelimeler, PWA adları ve iletişim
+  saatleri nötre döner (`DemoData::MARKA_AYARLARI`). Yalnızca değeri hâlâ
+  örnek değerle aynı olanlar; yöneticinin değiştirdiği ayar ve site adı
+  kalır.
+- **Geliştirme modunda parola sıfırlama açık:** mektup diske yazılır,
+  bağlantı doğrulama mektubunda olduğu gibi Panel → E-posta'da yöneticiye
+  görünür. Editörden gizleme (`GUVENLIK_SABLONLARI`) değişmedi.
+- **Ana sayfa bölümleri menüyle aynı hizada:** içerik genişliği Bootstrap
+  `.container` kırılımlarını izler (540/720/960/1140/1320). 820px'de logo
+  62px'te, başlık 16px'teydi; artık her genişlikte fark 0.
+- **Bildirimler (toast) ön yüzde menünün altından başlar**, telefonda
+  altta durur (`safe-area-inset-bottom`). Giriş/çıkış bildirimi menü
+  bağlantılarını kapatıyordu.
+- **Telefonda özellik ızgarası** 480px altında tek sütun, ikon solda.
+- **Kullanıcılar özet kartı** onay bekleyen hesap sayısını da gösterir.
+- `giris?demo=…` ile gelinince vurgulanan hesap ekranın ortasına kaydırılır.
+- **Kurulum sihirbazı:** "Örnek veriyle kur" kapatılınca, ad değiştirilmediyse
+  site adı "Yeni Proje" olur.
 - **Ayar açıklamaları** yeniden yazıldı; boş olanlar dolduruldu (ana sayfa
   düğmeleri, SSS, son bant). Bakım modu açıklaması artık editörlerin de
   siteyi gezebildiğini söylüyor. Var olan kurulumlar
@@ -61,6 +86,13 @@ sayfasındadır.
 
 ### Düzeltildi
 
+- **Koyu temada kontrast (WCAG AA ≥ 4.5:1).** Marka mavisi hem düğme
+  zemini hem yazı rengiydi; koyu zeminde etkin menü bağlantısı 2.6:1,
+  karşılama rozeti 1.7:1, üst etiketler 2.4:1 kalıyordu. Yazı için ayrı
+  token'lar: `--cy-brand-text`, `--cy-*-text` (rol ve durum rozetleri).
+  Bootstrap'in `.text-muted`, tablo hücresi, sekme ve `<code>` renkleri
+  de temaya bağlandı. Site ve panelin ölçülen bütün sayfaları iki temada
+  AA'yı geçiyor.
 - **Toplu e-posta ekranı açılır açılmaz kırmızı hata gösteriyordu**
   ("En az bir e-posta adresi girin"). Alıcı henüz seçilmemişse alıcı
   ucu artık ipucu döner; hatalı adres yine reddedilir.

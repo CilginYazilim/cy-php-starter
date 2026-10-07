@@ -78,7 +78,7 @@ final class Registration
 
         if (self::requiresVerification() && !Mailer::canDeliver()) {
             return self::developmentPreview()
-                ? 'Geliştirme modu: doğrulama mektupları gönderilmiyor; bağlantıyı Panel → E-posta geçmişindeki mektuptan açabilirsiniz. Yayında kayıt formu kapanır.'
+                ? 'Geliştirme modu: doğrulama ve parola sıfırlama mektupları gönderilmiyor; bağlantıları Panel → E-posta geçmişindeki mektuptan açabilirsiniz. Yayında ikisi de kapanır.'
                 : 'Kayıt formu kapalı: e-posta doğrulaması açık ama mektuplar gönderilemiyor. SMTP ayarlayın ya da Ayarlar → Sistem\'den doğrulamayı kapatın.';
         }
 

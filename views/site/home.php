@@ -187,7 +187,7 @@ $vitrinVar  = ($hero['gorsel'] ?? '') === 'vitrin' && is_file(CY_BASE . '/assets
 <?php if ($goster('kod')): ?>
     <!-- ================= KOD ÖRNEĞİ ================= -->
     <section class="cy-home-section cy-home-section--alt" aria-labelledby="kod-baslik">
-        <div class="cy-home-container cy-code-wrap">
+        <div class="cy-home-container"><div class="cy-code-wrap">
             <header class="cy-home-head" data-reveal>
                 <span class="cy-eyebrow">Geliştirici dostu</span>
                 <h2 id="kod-baslik">Okunur kod, birkaç satırda iş</h2>
@@ -213,14 +213,14 @@ $vitrinVar  = ($hero['gorsel'] ?? '') === 'vitrin' && is_file(CY_BASE . '/assets
                     </div>
                 <?php endforeach; ?>
             </div>
-        </div>
+        </div></div>
     </section>
 <?php endif; ?>
 
 <?php if ($goster('sss') && $sss !== []): ?>
     <!-- ================= SIK SORULAN SORULAR ================= -->
     <section class="cy-home-section" aria-labelledby="sss-baslik">
-        <div class="cy-home-container cy-faq-wrap">
+        <div class="cy-home-container"><div class="cy-faq-wrap">
             <header class="cy-home-head" data-reveal>
                 <h2 id="sss-baslik">Sık sorulan sorular</h2>
             </header>
@@ -232,7 +232,7 @@ $vitrinVar  = ($hero['gorsel'] ?? '') === 'vitrin' && is_file(CY_BASE . '/assets
                     </details>
                 <?php endforeach; ?>
             </div>
-        </div>
+        </div></div>
     </section>
 <?php endif; ?>
 

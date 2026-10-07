@@ -584,6 +584,33 @@ window.CY = (function ($) {
             $(this).closest('.cy-notice').toggleClass('is-open');
         });
 
+        /* --- Ön yüz: bildirimler menünün altından başlasın ---
+         * Menü yapışkandır; üstünde önizleme şeridi olabilir, telefonda
+         * açılıp kapanır. Alt kenarını CSS'e (--cy-site-nav-h) yazıyoruz;
+         * site.css bildirim kutusunu bunun 12px altına koyar. CSSOM ile
+         * yazılan değer İçerik Güvenliği Politikası'na takılmaz. */
+        var siteMenu = document.querySelector('.cy-site-nav');
+
+        if (siteMenu) {
+            var menuBekliyor = false;
+            var menuKenari = function () {
+                menuBekliyor = false;
+                document.documentElement.style.setProperty('--cy-site-nav-h',
+                    Math.max(0, Math.round(siteMenu.getBoundingClientRect().bottom)) + 'px');
+            };
+            var menuKenariniPlanla = function () {
+                if (!menuBekliyor) {
+                    menuBekliyor = true;
+                    window.requestAnimationFrame(menuKenari);
+                }
+            };
+
+            menuKenari();
+            window.addEventListener('resize', menuKenariniPlanla);
+            window.addEventListener('scroll', menuKenariniPlanla, { passive: true });
+            $(siteMenu).on('shown.bs.collapse hidden.bs.collapse', menuKenariniPlanla);
+        }
+
         /* --- Sabit WhatsApp düğmesi alt bilgiye gelince gizlenir ---
          * Sayfanın sonundaki düğmelerin ve telif satırının üstüne
          * binmesin. Alt bilgi görünür olduğu sürece saklı kalır. */

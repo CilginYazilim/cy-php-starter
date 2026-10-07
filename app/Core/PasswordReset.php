@@ -43,9 +43,18 @@ final class PasswordReset
     /** Aynı adrese saatte en fazla bu kadar bağlantı gider. */
     private const SAATLIK_ADRES = 3;
 
+    /**
+     * "Parolamı unuttum" açık mı? Ayar açık VE mektup gerçekten gidebiliyor
+     * olmalı. Geliştirme önizlemesinde (APP_DEBUG + Kayıt sürücüsü) de
+     * açıktır: mektup diske yazılır, bağlantı doğrulama mektubunda olduğu
+     * gibi Panel → E-posta'da yöneticiye görünür (MailApiController::
+     * developmentLink). Gövde maskesi (MailLog::GUVENLIK_SABLONLARI)
+     * değişmez: editör yine göremez.
+     */
     public static function enabled(): bool
     {
-        return Setting::bool('sistem_parola_sifirlama', true) && Mailer::canDeliver();
+        return Setting::bool('sistem_parola_sifirlama', true)
+            && (Mailer::canDeliver() || Registration::developmentPreview());
     }
 
     /**

@@ -8,7 +8,7 @@
 use App\Models\Role;
 
 $roles = $roles ?? Role::options();
-$ist   = $istatistik ?? ['toplam' => 0, 'aktif' => 0, 'pasif' => 0, 'yonetici' => 0, 'yeni' => 0];
+$ist   = $istatistik ?? ['toplam' => 0, 'aktif' => 0, 'pasif' => 0, 'onay' => 0, 'yonetici' => 0, 'yeni' => 0];
 ?>
 
 <?php /* SAYFA BAŞLIĞI ÜST ÇUBUKTA yazar; burada tekrar edilmez —
@@ -42,7 +42,7 @@ $ist   = $istatistik ?? ['toplam' => 0, 'aktif' => 0, 'pasif' => 0, 'yonetici' =
         <span>
             <span class="cy-stat__label">Pasif / Askıda</span>
             <span class="cy-stat__value"><?= (int) $ist['pasif'] ?></span>
-            <span class="cy-stat__hint">giriş yapamaz</span>
+            <span class="cy-stat__hint">giriş yapamaz<?= (int) ($ist['onay'] ?? 0) > 0 ? ' · ' . (int) $ist['onay'] . ' onay bekliyor' : '' ?></span>
         </span>
     </div>
 

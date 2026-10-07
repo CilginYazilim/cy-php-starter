@@ -60,7 +60,7 @@ final class Surum16
 
         // ---- SİSTEM ----
         ['sistem_parola_sifirlama', '1', 'sistem', 'onay', 'Parola Sıfırlama',
-            '"Parolamı unuttum" bağlantısı. E-posta gönderimi yapılandırılmadıysa kendiliğinden gizlenir.', null, 22],
+            '"Parolamı unuttum" bağlantısı. E-posta gönderimi yapılandırılmadıysa kendiliğinden gizlenir; geliştirme modunda açık kalır, bağlantı Panel → E-posta geçmişinde görünür.', null, 22],
         ['sistem_kvkk_sayfa', 'gizlilik-ve-kvkk', 'sistem', 'metin', 'Aydınlatma Metni Sayfası',
             'Formlardaki onay kutusunun bağlantı verdiği sayfanın adresi (slug). Boşsa onay kutusu gösterilmez.', null, 26],
         ['sistem_kvkk_onay', '1', 'sistem', 'onay', 'Aydınlatma Metni Onayı',

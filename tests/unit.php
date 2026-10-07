@@ -342,7 +342,36 @@ foreach (Demo::HESAPLAR as $kadi => $hesap) {
 $demoListesi = array_column(Demo::visibleAccounts(true, $tumu), 'kullanici_adi');
 dogrula('Demo modunda Yönetici, Editör, Üye listelenir', $demoListesi === ['ali.yonetici', 'elif.editor', 'mehmet.uye'],
     implode(', ', $demoListesi));
-dogrula('Geliştirmede pasif/askıda/onay bekleyenler de listelenir', count(Demo::visibleAccounts(false, $tumu)) === 6);
+dogrula('Demo dışı görünümde pasif/askıda/onay bekleyenler de sayılır', count(Demo::visibleAccounts(false, $tumu)) === 6);
+
+/* Geliştirme ortamında (APP_DEBUG=true, APP_DEMO=false) giriş ekranı
+ * eskiden altı hesabı "Demo1234!" ile listeliyordu; "geliştirme modu"
+ * açık kurulup yayına alınan sitede de. Artık yalnızca demo modunda. */
+if (in_array('sqlite', PDO::getAvailableDrivers(), true)) {
+    $demoDb = new PDO('sqlite::memory:');
+    $demoDb->exec('CREATE TABLE kullanicilar (kullanici_adi TEXT, eposta TEXT)');
+    $ekle = $demoDb->prepare('INSERT INTO kullanicilar VALUES (?, ?)');
+    foreach ($tumu as $kadi => $eposta) {
+        $ekle->execute([$kadi, $eposta]);
+    }
+    $onceki = ['app.demo' => Config::get('app.demo'), 'app.debug' => Config::get('app.debug'), 'app.env' => Config::get('app.env')];
+    Config::set('app.demo', false);
+    Config::set('app.debug', true);
+    Config::set('app.env', 'local');
+    dogrula('Geliştirmede (demo kapalı) giriş ekranı parola listelemez', Demo::loginAccounts($demoDb) === []);
+    dogrula('Geliştirmede örnek veri için parolasız not çıkar', Demo::sampleDataNote($demoDb));
+    $kalanDb = new PDO('sqlite::memory:');
+    $kalanDb->exec('CREATE TABLE kullanicilar (kullanici_adi TEXT, eposta TEXT)');
+    $kalanDb->exec("INSERT INTO kullanicilar VALUES ('mehmet.uye', 'mehmet@sirketim.com')");
+    dogrula('Adresi değişmiş (gerçek) hesap örnek veri notunu açık tutmaz', !Demo::sampleDataNote($kalanDb));
+    Config::set('app.debug', false);
+    dogrula('Yayında (debug kapalı) not da çıkmaz', !Demo::sampleDataNote($demoDb));
+    Config::set('app.demo', true);
+    dogrula('Demo modunda üç hesap parolasıyla listelenir', count(Demo::loginAccounts($demoDb)) === 3 && !Demo::sampleDataNote($demoDb));
+    foreach ($onceki as $anahtar => $deger) {
+        Config::set($anahtar, $deger);
+    }
+}
 dogrula('Veritabanında olmayan ya da e-postası farklı hesap listelenmez',
     array_column(Demo::visibleAccounts(true, ['ali.yonetici' => 'baska@ornek.com', 'elif.editor' => 'elif.demo@ornek.com']), 'kullanici_adi') === ['elif.editor']);
 dogrula('Listelenen hesap parolasını taşır', (Demo::visibleAccounts(true, $tumu)[0]['parola'] ?? '') === Demo::PAROLA);
@@ -796,6 +825,37 @@ $kapali = App\Core\PanelNotices::href($bildirim) . ' ' . App\Core\PanelNotices::
 Config::set('app.pretty_urls', $guzelAdres);
 dogrula('Bildirim bağlantısı: güzel adreste sorgu ve çapa korunur', str_contains($acik, '/panel/eposta?sekme=gecmis&durum=basarisiz') && str_contains($acik, '/panel/sistem#kurulum'));
 dogrula('Bildirim bağlantısı: index.php?r= kipinde de bozulmaz', str_contains($kapali, 'index.php?r=panel/eposta&sekme=gecmis&durum=basarisiz') && str_contains($kapali, 'index.php?r=panel/sistem#kurulum'), $kapali);
+
+/* ---------------------------------------------------------------- */
+echo "\nÖrnek veriyi kaldırma: marka ayarları (1.6.1)\n";
+
+/* Kaldırılan örnek verinin markası müşteri sitesinde kalıyordu (sosyal
+ * hesaplar, slogan). MARKA_AYARLARI'ndaki her ayar örnek verinin
+ * yazdığı bir ayar olmalı; nötr değeri kurulumdakiyle aynı olmalı. */
+$ornekAyarlar = App\Core\DemoData::settings();
+$markaDisi    = array_diff(array_keys(App\Core\DemoData::MARKA_AYARLARI), array_keys($ornekAyarlar));
+dogrula('Marka listesi yalnızca örnek verinin yazdığı ayarları içerir', $markaDisi === [], implode(', ', $markaDisi));
+dogrula('Site adı marka listesinde değil (kaldırınca site adsız kalmaz)', !array_key_exists('site_adi', App\Core\DemoData::MARKA_AYARLARI));
+
+if ($sema !== '') {
+    $surum16Varsayilan = array_column(App\Support\Surum16::AYARLAR, 1, 0);
+    $notrFarki = [];
+    foreach (App\Core\DemoData::MARKA_AYARLARI as $anahtar => $notrDeger) {
+        $kurulumDegeri = $surum16Varsayilan[$anahtar] ?? null;
+        if ($kurulumDegeri === null
+            && preg_match('/^\(\'' . preg_quote($anahtar, '/') . '\',.*$/mu', $sema, $satir)
+            && preg_match_all("/'((?:[^']|'')*)'|NULL|-?\\d+/u", $satir[0], $degerler)) {
+            $kurulumDegeri = str_replace("''", "'", $degerler[1][1]);
+        }
+        if ($kurulumDegeri !== $notrDeger) {
+            $notrFarki[] = $anahtar;
+        }
+    }
+    dogrula('Marka ayarlarının nötr değeri taze kurulumdakiyle aynı', $notrFarki === [], implode(', ', $notrFarki));
+}
+
+$demoKaynak = (string) file_get_contents(CY_BASE . '/app/Core/DemoData.php');
+dogrula('Kaldırma yöneticinin değiştirdiği marka ayarına dokunmaz (AND deger = örnek)', str_contains($demoKaynak, 'WHERE anahtar = :anahtar AND deger = :ornek'));
 
 /* ---------------------------------------------------------------- */
 echo "\nKaba kuvvet sayacı\n";
