@@ -26,7 +26,7 @@ $ilk    = $ilk ?? false;
                     <div class="cy-card__body p-4">
                         <div class="text-center mb-4">
                             <span class="cy-auth-card__logo">
-                                <img src="<?= e(Setting::logoUrl()) ?>" alt="">
+                                <?= logo_img() ?>
                             </span>
                             <?php if ($ilk): ?>
                                 <h1 class="cy-title mt-3 mb-1">Hesabınızı etkinleştirin</h1>

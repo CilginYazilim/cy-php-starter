@@ -1011,6 +1011,11 @@ table.dataTable > thead .sorting_desc:after { display: none !important; }
  * ------------------------------------------------------------------ */
 .cy-toast-container { z-index: 1090; }
 
+/* logo_img() logoyu <picture> içine koyar (WebP + küçük PNG). Kutu
+   oluşturmaz: logoya yazılmış kurallar (.cy-sidebar__logo img…) img'e
+   doğrudan uygulanır, yüzdeli boyutlar bozulmaz. */
+picture.cy-logo { display: contents; }
+
 .cy-toast {
     display: flex;
     align-items: flex-start;

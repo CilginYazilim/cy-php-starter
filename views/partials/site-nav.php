@@ -44,7 +44,7 @@ try {
 <nav class="navbar navbar-expand-lg cy-site-nav" id="cy_site_nav">
     <div class="container">
         <a class="navbar-brand cy-site-nav__brand" href="<?= e(url('')) ?>">
-            <img src="<?= e(Setting::logoUrl()) ?>" alt="">
+            <?= logo_img() ?>
             <span><?= e(Setting::get('site_adi', $appName ?? '')) ?></span>
         </a>
 

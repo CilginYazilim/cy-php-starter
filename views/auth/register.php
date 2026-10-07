@@ -19,7 +19,7 @@ $old    = $old ?? [];
                 <div class="cy-card__body p-4">
                     <div class="text-center mb-4">
                         <span class="cy-auth-card__logo">
-                            <img src="<?= e(Setting::logoUrl()) ?>" alt="">
+                            <?= logo_img() ?>
                         </span>
                         <h1 class="cy-title mt-3 mb-1">Hesap oluşturun</h1>
                         <p class="cy-subtitle mb-0">Birkaç bilgiyle üye olun. <span class="text-danger">*</span> işaretli alanlar zorunludur.</p>

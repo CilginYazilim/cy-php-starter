@@ -1084,6 +1084,31 @@ dogrula('Bakım modunda giriş, bakımı atlayamayan role kapalı (Auth::attempt
     str_contains((string) file_get_contents(CY_BASE . '/app/Core/Auth.php'), "!\$user->can('maintenance.bypass')")
     && !Role::can(Role::MEMBER, 'maintenance.bypass') && Role::can(Role::EDITOR, 'maintenance.bypass'));
 
+/* ---------------------------------------------------------------- */
+echo "\nPerformans: sıkıştırma, önbellek, logo (1.6.2)\n";
+
+$htaccess = (string) @file_get_contents(CY_BASE . '/.htaccess');
+dogrula('.htaccess JS\'i "text/javascript" ile de tanır (önbellek + sıkıştırma; Apache 2.4.5x böyle gönderir)',
+    preg_match('/ExpiresByType\s+text\/javascript/', $htaccess) === 1 && preg_match('/AddOutputFilterByType DEFLATE[^\n]*text\/javascript/', $htaccess) === 1);
+dogrula('AddOutputFilterByType mod_filter koşuluyla sarılı (yalnız mod_deflate açık sunucuda 500 vermez)',
+    preg_match('/<IfModule mod_filter\.c>\s*(?:AddOutputFilterByType[^\n]*\n\s*)+<\/IfModule>/', $htaccess) === 1);
+dogrula('Sürümlü (?v=) dosyalar mod_expires olmadan da uzun önbellek alır', str_contains($htaccess, 'max-age=31536000, immutable'));
+
+$logoBoyut = [];
+foreach (['256.png', '256.webp', '512.png', '512.webp'] as $ad) {
+    $bilgi = @getimagesize(CY_BASE . '/assets/images/logo-' . $ad);
+    $logoBoyut[$ad] = $bilgi === false ? 0 : $bilgi[0];
+}
+dogrula('Varsayılan logonun 256 ve 512 piksellik PNG + WebP kopyaları var',
+    $logoBoyut === ['256.png' => 256, '256.webp' => 256, '512.png' => 512, '512.webp' => 512]
+    && filesize(CY_BASE . '/assets/images/logo-256.webp') < 20 * 1024, json_encode($logoBoyut));
+$buyukLogo = array_filter(['partials/site-nav.php', 'partials/sidebar.php', 'partials/site-footer.php', 'auth/login.php', 'auth/register.php', 'auth/forgot.php', 'auth/reset.php', 'site/home.php'],
+    static fn (string $v): bool => str_contains((string) file_get_contents(CY_BASE . '/views/' . $v), 'Setting::logoUrl()'));
+dogrula('Menü, kenar çubuğu, alt bilgi, giriş ekranları ve vitrin 1000 px logoyu indirmez (logo_img)', $buyukLogo === [], implode(', ', $buyukLogo));
+$logoEtiketi = logo_img(['alt' => 'Site'], buyuk: true);
+dogrula('logo_img(): WebP kaynağı, PNG yedeği, yüksek çözünürlükte 512 px',
+    str_contains($logoEtiketi, 'type="image/webp"') && str_contains($logoEtiketi, 'logo-512.webp') && str_contains($logoEtiketi, 'logo-256.png') && str_contains($logoEtiketi, 'alt="Site"'));
+
 $paketKurallari = (string) @file_get_contents(CY_BASE . '/.gitattributes');
 dogrula('ZIP paketinde .gitignore var (ZIP\'ten git\'e konan proje .env\'i commit\'lemez)', preg_match('/^\.gitignore\s+export-ignore/m', $paketKurallari) !== 1);
 dogrula('ZIP paketinde docs/MOBIL-API.md var, yalnızca ekran görüntüleri çıkar',

@@ -13,7 +13,7 @@ $theme = ($_COOKIE['cy_theme'] ?? '') === 'dark' ? 'dark'
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow">
     <title><?= e($title ?? 'Hata') ?></title>
-    <link rel="icon" type="image/png" href="<?= e(asset('images/logo.png')) ?>">
+    <link rel="icon" type="image/png" href="<?= e(asset('images/favicon.png')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/bootstrap.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/cilginyazilim.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/admin.css')) ?>">

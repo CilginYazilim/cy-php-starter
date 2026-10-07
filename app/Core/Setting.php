@@ -230,6 +230,29 @@ final class Setting
         return $url !== '' ? $url : Url::asset('images/logo.png');
     }
 
+    /** Yönetici kendi logosunu yüklemiş mi? */
+    public static function hasCustomLogo(): bool
+    {
+        return Uploader::url(self::get('site_logo')) !== '';
+    }
+
+    /**
+     * Küçük gösterimler (menü, kenar çubuğu, giriş ekranları, e-posta:
+     * 32–160 px) için logo. Kurulumla gelen logo 1000×1000 ve 70 KB'tır;
+     * her sayfada indirilmesin diye 256 ya da 512 piksellik PNG/WebP
+     * kopyası verilir. Yüklenen logoyu Uploader zaten küçültür, o olduğu
+     * gibi döner. OG görseli, yapısal veri ve PWA simgesi büyük logoyu
+     * (logoUrl) kullanır. Görünümlerde logo_img() yardımcısını kullanın.
+     */
+    public static function logoSmallUrl(int $boyut = 256, string $tur = 'png'): string
+    {
+        if (self::hasCustomLogo()) {
+            return self::logoUrl();
+        }
+
+        return Url::asset('images/logo-' . ($boyut > 256 ? 512 : 256) . ($tur === 'webp' ? '.webp' : '.png'));
+    }
+
     /**
      * Sekme simgesinin (favicon) adresi.
      *

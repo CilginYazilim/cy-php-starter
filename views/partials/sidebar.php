@@ -102,7 +102,7 @@ $menu[] = [
 
     <a class="cy-sidebar__brand" href="<?= e(url('panel')) ?>">
         <span class="cy-sidebar__logo">
-            <img src="<?= e(Setting::logoUrl()) ?>" alt="">
+            <?= logo_img() ?>
         </span>
         <span class="cy-sidebar__title">
             <strong><?= e(Setting::get('site_adi', $appName ?? '')) ?></strong>

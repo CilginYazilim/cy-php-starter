@@ -188,6 +188,42 @@ if (!function_exists('upload_max_mb')) {
     }
 }
 
+if (!function_exists('logo_img')) {
+    /**
+     * Site logosu. Kurulumla gelen logoda <picture> (WebP + 256 px PNG);
+     * yönetici logo yüklediyse düz <img>. $buyuk: ana sayfa vitrini gibi
+     * 160 px'lik gösterim, yüksek çözünürlüklü ekranda 512 px'lik kopya.
+     *
+     * Eskiden her sayfa 1000×1000 / 70 KB'lık logoyu 32–56 px göstermek
+     * için indiriyordu. <picture> "cy-logo" sınıfıyla display: contents
+     * alır; logoya yazılmış CSS (.cy-sidebar__logo img…) aynen çalışır.
+     *
+     * @param array<string,string|int> $nitelik img nitelikleri (alt, width, class…)
+     */
+    function logo_img(array $nitelik = [], bool $buyuk = false): string
+    {
+        $nitelik += ['alt' => ''];
+        $html     = '';
+
+        foreach ($nitelik as $ad => $deger) {
+            $html .= ' ' . $ad . '="' . e((string) $deger) . '"';
+        }
+
+        if (Setting::hasCustomLogo()) {
+            return '<img src="' . e(Setting::logoUrl()) . '"' . $html . '>';
+        }
+
+        $kume = static fn (string $tur): string => $buyuk
+            ? Setting::logoSmallUrl(256, $tur) . ' 1x, ' . Setting::logoSmallUrl(512, $tur) . ' 2x'
+            : Setting::logoSmallUrl(256, $tur);
+
+        return '<picture class="cy-logo">'
+            . '<source type="image/webp" srcset="' . e($kume('webp')) . '">'
+            . '<img src="' . e(Setting::logoSmallUrl(256)) . '"' . ($buyuk ? ' srcset="' . e($kume('png')) . '"' : '') . $html . '>'
+            . '</picture>';
+    }
+}
+
 if (!function_exists('human_date')) {
     /** Tarihi "3 dakika önce" gibi okunur biçime çevirir. */
     function human_date(?string $value): string

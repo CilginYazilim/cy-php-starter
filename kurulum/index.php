@@ -1400,7 +1400,7 @@ $hataAria = static fn (string $alan): string => isset($fieldErrors[$alan])
 <main class="kur-wrap">
 
     <header class="kur-head">
-        <img src="../assets/images/logo.png" alt="" width="36" height="36">
+        <img src="../assets/images/logo-256.png" alt="" width="36" height="36">
         <div>
             <strong>CY PHP Starter</strong>
             <span>Kurulum</span>

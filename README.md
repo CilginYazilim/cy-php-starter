@@ -10,7 +10,7 @@
 [![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?style=flat-square&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 ![Bağımlılık: sıfır](https://img.shields.io/badge/Bağımlılık-Sıfır-16a34a?style=flat-square)
-[![Testler](https://img.shields.io/badge/Birim_testi-332-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/actions)
+[![Testler](https://img.shields.io/badge/Birim_testi-338-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/actions)
 [![CI](https://github.com/CilginYazilim/cy-php-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/CilginYazilim/cy-php-starter/actions/workflows/ci.yml)
 [![Lisans](https://img.shields.io/badge/Lisans-MIT-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/blob/main/LICENSE)
 
@@ -195,7 +195,7 @@ seçimdir. Bu şablon, şu durumlar için yazıldı:
 | **Tema** | Tek renk seçin, panelin ve sitenin tamamı yeniden renklensin |
 | **Mobil** | Ön yüz ve panelin tamamı mobil öncelikli · tablolar telefonda karta döner · 44px dokunma hedefleri · yapışkan menü · iOS yakınlaştırma ve çentik payı çözülmüş |
 | **Konsol** | `php cy` — 24 komut, üreteçler ve XAMPP'siz geliştirme sunucusu (`php cy serve`) dahil |
-| **Testler** | 332 birim testi (rol matrisi, XSS, politika — veritabanı gerektirmez) · 54 duman testi · GitHub Actions'ta PHP 8.1–8.4 ve **MySQL 8 ile gerçek kurulum** |
+| **Testler** | 338 birim testi (rol matrisi, XSS, politika — veritabanı gerektirmez) · 54 duman testi · GitHub Actions'ta PHP 8.1–8.4 ve **MySQL 8 ile gerçek kurulum** |
 
 ---
 
@@ -520,7 +520,7 @@ php tests/sema.php --eski=eski-database.sql          # yükseltilen şema = yeni
 php tests/ornek-sql.php --db-adi=ornek_db             # örnek veritabanı SQL dosyasını üretir
 ```
 
-`unit.php` 332 testi veritabanı olmadan çalıştırır; aralarında **rol
+`unit.php` 338 testi veritabanı olmadan çalıştırır; aralarında **rol
 matrisi** (96 rotanın her biri için kimin erişebildiği), 18 XSS vektörü,
 Örnek Modül politikası ve kurulum şeması tutarlılığı vardır. `smoke.php`
 siteyi değiştirmez: kurulum kilidi, gizli dosyalar (`.env`, `.git/`), açık
@@ -729,6 +729,22 @@ php cy config:cache && php cy migrate
 - [ ] `php cy mail:test` başarılı
 - [ ] Cron kuruldu
 - [ ] Sistem Bilgisi sayfasındaki tüm denetimler yeşil
+- [ ] Apache'de `mod_deflate` + `mod_filter` (sıkıştırma), `mod_expires`
+      ve `mod_headers` (tarayıcı önbelleği) açık
+
+> **Sıkıştırma ve önbellek.** `.htaccess` CSS, JS, JSON ve SVG'yi
+> sıkıştırır; sürümlü dosyalara (`?v=…`) bir yıllık `immutable` önbellek
+> verir. Bunun için sunucuda `mod_deflate`, `mod_filter` ve `mod_headers`
+> açık olmalıdır (`mod_expires` varsa sürümsüz görseller de önbelleğe
+> girer). Paylaşımlı hostinglerin çoğunda açıktır. XAMPP'ta
+> `apache/conf/httpd.conf` içinde `mod_deflate`, `mod_filter` ve
+> `mod_expires` satırlarının başındaki `#` silinip Apache yeniden
+> başlatılır. Modül kapalıysa site yine çalışır, yalnızca dosyalar
+> sıkıştırılmadan gider.
+>
+> **"Hata ayıklama açık" uyarısı** yalnızca yerel olmayan adreste
+> görünür: `localhost`'ta `APP_DEBUG=true` bilinçli bir geliştirme
+> ayarıdır. Canlı sunucuda bu uyarıyı görürseniz `.env` → `APP_DEBUG=false`.
 
 ### Nginx kullanıyorsanız
 

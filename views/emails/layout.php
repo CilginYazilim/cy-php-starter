@@ -22,7 +22,7 @@ use App\Core\Setting;
 
 $siteAdi   = Setting::get('site_adi', 'Site');
 $renk      = Setting::get('sistem_tema_rengi', '#0b5cb5');
-$logo      = Mailer::absolute(Setting::logoUrl());
+$logo      = Mailer::absolute(Setting::logoSmallUrl());   // 256 px PNG: e-postada WebP desteklenmez, 1000 px gereksiz
 $siteAdres = Mailer::absolute('');
 $altBilgi  = Setting::get('mail_alt_bilgi');
 $mailKonu  = $mailKonu ?? $siteAdi;

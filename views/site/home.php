@@ -93,7 +93,7 @@ $vitrinVar  = ($hero['gorsel'] ?? '') === 'vitrin' && is_file(CY_BASE . '/assets
                     <img class="cy-home-hero__img" src="<?= e($gorsel) ?>" alt="<?= e($siteAdi) ?>" fetchpriority="high">
                 <?php else: ?>
                     <div class="cy-home-logo">
-                        <img src="<?= e(Setting::logoUrl()) ?>" alt="<?= e($siteAdi) ?>" width="160" height="160">
+                        <?= logo_img(['alt' => $siteAdi, 'width' => 160, 'height' => 160], buyuk: true) ?>
                         <span><?= e($siteAdi) ?></span>
                     </div>
                 <?php endif; ?>

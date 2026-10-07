@@ -101,6 +101,21 @@ Cowork'un 1.6.1 kurulum raporu üzerine (ZIP'ten, README izlenerek kurulum).
   üstünde e-posta · telefon · WhatsApp çipleri var (yalnızca dolu olanlar);
   eskiden ilk ekranda hiçbir iletişim yolu görünmüyordu. Öteki iç
   sayfalardaki WebPage + BreadcrumbList yapısal verisi burada da var.
+- **JavaScript sıkıştırılmıyor ve önbelleğe alınmıyordu.** Apache 2.4.5x
+  `.js`'yi `text/javascript` olarak gönderir; `.htaccess` yalnızca
+  `application/javascript`'i tanıyordu (jQuery 85 KB, Bootstrap 79 KB,
+  app.js 30 KB sıkıştırmasız gidiyordu). İki tür de yazılı. Sürümlü
+  (`?v=…`) dosyalar `mod_headers` ile bir yıllık `immutable` önbellek alır;
+  `mod_expires` kapalıyken de (XAMPP'ta kapalı). `AddOutputFilterByType`
+  artık `mod_filter` koşuluyla sarılı: yalnızca `mod_deflate` açık bir
+  sunucuda her istek 500 verirdi.
+- **Logo her sayfada 70 KB'tı:** 1000×1000 PNG 32–56 px gösteriliyordu.
+  Varsayılan logonun 256 ve 512 piksellik PNG + WebP kopyaları var;
+  `logo_img()` yardımcısı `<picture>` üretir (menü, kenar çubuğu, alt
+  bilgi, giriş ekranları, vitrin). E-postalar 256 px PNG, PWA künyesi
+  gerçek boyutlu 256/512 kopyaları kullanır. Ana sayfanın logo aktarımı
+  71 KB'tan 6 KB'a indi. Yüklenen logoya dokunulmaz (Uploader zaten
+  küçültür); OG görseli büyük logoyu kullanmaya devam eder.
 - **Küçük mesajlar:** Kullanıcı eklerken parola boş ve "hesap bilgisi
   gönder" işaretsizse iki yol birden söylenir. Toplu e-postada alıcı
   hatası adres alanının altına da yazılır. Ayar kaydı "12 ayar

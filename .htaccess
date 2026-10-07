@@ -129,9 +129,14 @@ DirectoryIndex index.php
 # ---------------------------------------------------------------------
 #  4) İSTEMCİ ÖNBELLEĞİ (statik dosyalar)
 # ---------------------------------------------------------------------
+#  Apache 2.4.5x .js dosyalarını "text/javascript" olarak gönderir (RFC
+#  9239). Eskiden yalnızca "application/javascript" yazılıydı; jQuery,
+#  Bootstrap ve app.js ne önbelleğe alınıyor ne sıkıştırılıyordu. İkisi
+#  de yazılır.
 <IfModule mod_expires.c>
     ExpiresActive On
     ExpiresByType text/css               "access plus 1 year"
+    ExpiresByType text/javascript        "access plus 1 year"
     ExpiresByType application/javascript "access plus 1 year"
     ExpiresByType image/png              "access plus 1 year"
     ExpiresByType image/jpeg             "access plus 1 year"
@@ -140,11 +145,25 @@ DirectoryIndex index.php
     ExpiresByType image/x-icon           "access plus 1 year"
 </IfModule>
 
+#  Sürümlü (?v=…) dosyalar değişmez: asset() adrese dosyanın tarihini
+#  ekler, içerik değişince adres de değişir. Tarayıcı bir yıl boyunca
+#  yeniden sormaz. mod_expires kapalıyken de çalışır (XAMPP'ta kapalı).
+<IfModule mod_headers.c>
+    <If "%{QUERY_STRING} =~ /(^|&)v=/ && %{REQUEST_URI} =~ m#/(assets|upload)/#">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </If>
+</IfModule>
+
 # ---------------------------------------------------------------------
 #  5) SIKIŞTIRMA
 # ---------------------------------------------------------------------
+#  AddOutputFilterByType Apache 2.4'te mod_filter'dandır: yalnızca
+#  mod_deflate açık bir sunucuda (XAMPP'ta tek satırı açan) koşulsuz
+#  yazılsaydı HER istek 500 verirdi.
 <IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html text/css text/plain
-    AddOutputFilterByType DEFLATE application/javascript application/json
-    AddOutputFilterByType DEFLATE image/svg+xml
+    <IfModule mod_filter.c>
+        AddOutputFilterByType DEFLATE text/html text/css text/plain
+        AddOutputFilterByType DEFLATE text/javascript application/javascript application/json
+        AddOutputFilterByType DEFLATE image/svg+xml application/manifest+json
+    </IfModule>
 </IfModule>

@@ -22,6 +22,7 @@ namespace App\Http\Controllers;
 use App\Core\Request;
 use App\Core\Setting;
 use App\Core\Theme;
+use App\Core\Uploader;
 use App\Core\Url;
 use App\Http\Controller;
 
@@ -52,11 +53,7 @@ final class PwaController extends Controller
             'orientation'      => $this->secim('pwa_yon', self::YONLER, 'any'),
             'background_color' => $this->renk('pwa_arka_renk', '#ffffff'),
             'theme_color'      => Theme::brand(),
-            'icons'            => [
-                ['src' => $simge, 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
-                ['src' => $simge, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
-                ['src' => $simge, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
-            ],
+            'icons'            => $this->simgeler($simge),
         ];
 
         if (!headers_sent()) {
@@ -65,6 +62,34 @@ final class PwaController extends Controller
         }
 
         echo json_encode($manifest, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    }
+
+    /**
+     * Künye simgeleri. Yönetici simge ya da logo yüklemediyse kurulumla
+     * gelen logonun GERÇEK boyutlu kopyaları verilir (256 ve 512 px).
+     * Eskiden 1000×1000 / 70 KB'lık logo "192x192" ve "512x512" diye
+     * bildiriliyordu; tarayıcı her ziyarette arka planda onu indiriyordu.
+     *
+     * @return array<int,array{src:string,sizes:string,type:string,purpose:string}>
+     */
+    private function simgeler(string $simge): array
+    {
+        if (Uploader::url(Setting::get('pwa_simge')) === '' && !Setting::hasCustomLogo()) {
+            $kucuk = Setting::logoSmallUrl(256);
+            $buyuk = Setting::logoSmallUrl(512);
+
+            return [
+                ['src' => $kucuk, 'sizes' => '256x256', 'type' => 'image/png', 'purpose' => 'any'],
+                ['src' => $buyuk, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
+                ['src' => $buyuk, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
+            ];
+        }
+
+        return [
+            ['src' => $simge, 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
+            ['src' => $simge, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
+            ['src' => $simge, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
+        ];
     }
 
     /**

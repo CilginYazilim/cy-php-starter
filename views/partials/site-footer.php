@@ -82,7 +82,7 @@ $kaynaklar = [
         <div class="row g-4">
             <div class="col-12 col-lg-4">
                 <div class="cy-site-nav__brand mb-3">
-                    <img src="<?= e(Setting::logoUrl()) ?>" alt="">
+                    <?= logo_img() ?>
                     <span><?= e(Setting::get('site_adi', $appName ?? '')) ?></span>
                 </div>
 
