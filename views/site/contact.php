@@ -25,12 +25,6 @@ $baslik   = $sayfa?->baslik ?? 'İletişim';
 
 <section class="cy-pagehero">
     <div class="container">
-        <nav class="cy-breadcrumb" aria-label="Konum">
-            <a href="<?= e(url('')) ?>">Ana Sayfa</a>
-            <?= icon('chevron', 'cy-icon cy-icon--sm') ?>
-            <span><?= e($baslik) ?></span>
-        </nav>
-
         <h1 class="cy-pagehero__title"><?= e($baslik) ?></h1>
 
         <p class="cy-pagehero__lead">

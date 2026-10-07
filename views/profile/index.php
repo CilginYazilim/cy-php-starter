@@ -381,6 +381,57 @@ $epostaDegisti = isset($errors['eposta_sifre'])
             </div>
         <?php endif; ?>
 
+        <?php /* E-POSTA BİLDİRİMLERİ (bkz. App\Core\NotificationPrefs).
+                 Duyurular kişiseldir; yönetici bildirimleri site ayarıdır ve
+                 yalnızca ayar yetkisi olana görünür. Güvenlik mektupları
+                 KAPATILAMAZ — bunu açıkça yazıyoruz. */ ?>
+        <?php $tercih = $bildirimTercihi ?? App\Core\NotificationPrefs::VARSAYILAN; ?>
+        <div class="cy-card" id="bildirimler">
+            <div class="cy-card__header"><h3 class="cy-section-title"><?= icon('bell', 'cy-icon cy-icon--sm') ?> E-posta Bildirimleri</h3></div>
+            <form method="post" action="<?= e(url('panel/hesabim/bildirimler')) ?>">
+                <?= csrf_field() ?>
+                <div class="cy-card__body">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" name="duyuru" id="bildirim_duyuru" value="1"
+                               aria-describedby="bildirim_duyuru_ipucu" <?= $tercih[App\Core\NotificationPrefs::DUYURU] ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="bildirim_duyuru">Duyurular</label>
+                        <div class="form-text mt-0" id="bildirim_duyuru_ipucu">Site yöneticisinin bütün üyelere ya da bir role gönderdiği toplu duyurular.</div>
+                    </div>
+
+                    <?php if (!empty($siteBildirimleri)): ?>
+                        <?php $iletisimAdresi = App\Core\Mail\Mailer::adminAddress(); ?>
+                        <p class="cy-form-section mt-0">Yönetici bildirimleri <span class="cy-muted small fw-normal">(site geneli)</span></p>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" role="switch" name="yeni_mesaj" id="bildirim_yeni_mesaj" value="1"
+                                   <?= setting_bool('mail_bildirim_yeni_mesaj', true) ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="bildirim_yeni_mesaj">Yeni iletişim mesajı</label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" role="switch" name="yeni_uye" id="bildirim_yeni_uye" value="1"
+                                   <?= setting_bool('mail_bildirim_yeni_uye', false) ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="bildirim_yeni_uye">Yeni üye kaydı</label>
+                        </div>
+                        <p class="form-text mb-3">
+                            Bu ikisi iletişim adresine gider<?= $iletisimAdresi !== '' ? ' (' . e($iletisimAdresi) . ')' : '' ?>
+                            ve Ayarlar → E-posta ekranındaki ayarlarla aynıdır.
+                        </p>
+                    <?php endif; ?>
+
+                    <div class="cy-alert cy-alert--info mb-0 py-2 small" role="note">
+                        <span class="cy-alert__icon"><?= icon('lock', 'cy-icon cy-icon--sm') ?></span>
+                        <div class="cy-alert__body">
+                            <strong>Güvenlik mektupları kapatılamaz:</strong> parolanız ya da e-posta adresiniz değiştiğinde,
+                            hesap silme isteğinde ve parola sıfırlamada her zaman haber veririz. Hesabınıza başkası
+                            girerse fark etmenizin yolu bu mektuplardır.
+                        </div>
+                    </div>
+                </div>
+                <div class="cy-card__footer d-flex justify-content-end">
+                    <button type="submit" class="btn cy-btn cy-btn--primary"><?= icon('check', 'cy-icon cy-icon--sm') ?> Tercihleri Kaydet</button>
+                </div>
+            </form>
+        </div>
+
         <?php if (!empty($hesapSilme)): ?>
             <?php /* HESABI SİL (KVKK). Silme 7 gün bekler; bu sürede giriş yapmak
                      silmeyi iptal eder. Bkz. App\Core\AccountDeletion. */ ?>

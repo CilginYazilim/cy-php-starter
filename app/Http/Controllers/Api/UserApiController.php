@@ -16,6 +16,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Core\Auth;
 use App\Core\Events\Events;
+use App\Core\Mail\Notifier;
+use App\Core\PasswordReset;
 use App\Core\RateLimiter;
 use App\Core\Request;
 use App\Core\Response;
@@ -159,6 +161,11 @@ final class UserApiController extends Controller
             Response::error(self::ADMIN_ONLY, 403);
         }
 
+        /* Yeni kayıtta "hesap bilgisi gönder": parola zorunlu değil;
+         * boşsa rastgele parola konur, kullanıcı 48 saatlik bağlantıyla
+         * kendi parolasını belirler. Mektup gidemiyorsa seçenek yok sayılır. */
+        $hesapBilgisi = !$isEdit && $request->input('hesap_bilgisi') === '1' && PasswordReset::canSendLinks();
+
         $validator = new Validator($_POST);
         $validator->name('ad', 'Ad')
                   ->name('soyad', 'Soyad')
@@ -166,7 +173,7 @@ final class UserApiController extends Controller
                   ->email('eposta')
                   ->phone('telefon')
                   ->text('hakkinda', 'Hakkında', 0, 1000)
-                  ->password('sifre', !$isEdit);
+                  ->password('sifre', !$isEdit && !$hesapBilgisi);
 
         if ($validator->passes() && $this->users()->fieldTaken('eposta', (string) $validator->validated()['eposta'], $target?->id)) {
             $validator->addError('eposta', 'Bu e-posta adresi başka bir hesapta kayıtlı.');
@@ -206,6 +213,11 @@ final class UserApiController extends Controller
 
         if ($isEdit && Auth::isSelf($target->id) && $status !== 'aktif') {
             $validator->addError('durum', 'Kendi hesabınızı pasife alamazsınız.');
+        }
+
+        // Etkin olmayan hesap bağlantıyı kullanamaz (PasswordReset::find).
+        if ($hesapBilgisi && $status !== 'aktif') {
+            $validator->addError('hesap_bilgisi', 'Hesap bilgisi yalnızca "Aktif" hesaba gönderilebilir.');
         }
 
         // Son aktif yöneticinin yetkisi/durumu elinden alınamaz.
@@ -322,8 +334,18 @@ final class UserApiController extends Controller
             Response::success('Kullanıcı başarıyla güncellendi.', ['id' => $target->id]);
         }
 
-        $payload['sifre'] = (string) $data['sifre'];
+        // Parola boşsa (yalnızca "hesap bilgisi gönder" ile mümkün) kimsenin
+        // bilmediği rastgele bir parola: giriş ancak bağlantıyla açılır.
+        $payload['sifre'] = (string) ($data['sifre'] ?? '') !== '' ? (string) $data['sifre'] : bin2hex(random_bytes(24));
         $newId = $this->users()->create($payload);
+
+        if ($hesapBilgisi && ($yeni = $this->users()->find($newId)) !== null) {
+            $gitti = Notifier::hesapAcildi($yeni, PasswordReset::setupLink($yeni, $request->ip()), PasswordReset::HESAP_ACILIS_SAAT);
+
+            Response::success($gitti
+                ? 'Kullanıcı eklendi; hesap bilgisi e-postayla gönderildi.'
+                : 'Kullanıcı eklendi ama hesap bilgisi gönderilemedi (E-posta geçmişine bakın).', ['id' => $newId]);
+        }
 
         Response::success('Kullanıcı başarıyla eklendi.', ['id' => $newId]);
     }

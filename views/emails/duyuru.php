@@ -12,6 +12,7 @@
  *  @var string $ad        Alıcının adı ("Merhaba Ali," için)
  *  @var string $dugmeMetni
  *  @var string $dugmeUrl
+ *  @var string $iptalUrl  Kitle duyurusunda imzalı "almak istemiyorum" bağlantısı
  * =====================================================================
  */
 
@@ -34,4 +35,11 @@ $dugmeUrl   = trim($dugmeUrl ?? '');
 
 <?php if ($dugmeMetni !== '' && $dugmeUrl !== ''): ?>
     <?= MailUi::dugme($dugmeUrl, $dugmeMetni) ?>
+<?php endif; ?>
+
+<?php if (($iptalUrl ?? '') !== ''): ?>
+    <?php /* Yalnızca kitleye (tüm üyeler / bir rol) giden duyurularda.
+             İmzalı, giriş gerektirmez (bkz. App\Core\NotificationPrefs). */ ?>
+    <?= MailUi::ayrac() ?>
+    <?= MailUi::kucukBaglanti('Bu duyuruyu sitemize üye olduğunuz için aldınız.', $iptalUrl, 'Duyuruları almak istemiyorum') ?>
 <?php endif; ?>

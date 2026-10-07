@@ -777,6 +777,114 @@ test('Kayıt formu e-posta gönderilemiyorsa kapalı (geliştirme önizlemesinde
 });
 
 /* =====================================================================
+ *  10) BİLDİRİMLER (1.6.1): duyuru tercihi ve hesap açılışı
+ * ---------------------------------------------------------------------
+ *  Kurulum yöneticisiyle (--kullanici/--parola) çalışır; değiştirdiği
+ *  her şeyi geri alır (tercih eski hâline döner, açılan hesap silinir).
+ * ================================================================== */
+echo "\nBildirimler\n";
+
+/** Yönetici istemcisi ya da null (bilgi verilmediyse / giriş olmadıysa). */
+function yonetici_istemcisi(string $base, array $opts): ?Istemci
+{
+    static $hazir = false;
+
+    if ($hazir !== false) {
+        return $hazir;
+    }
+
+    if (!isset($opts['kullanici'], $opts['parola'])) {
+        return $hazir = null;
+    }
+
+    $c = new Istemci($base);
+
+    return $hazir = str_contains($c->giris($opts['kullanici'], $opts['parola'])['konum'], 'panel') ? $c : null;
+}
+
+test('Duyuru tercihi: kapatınca kitle özeti atlar, açınca geri gelir', function () use ($base, $opts): bool|string|null {
+    $c = yonetici_istemcisi($base, $opts);
+
+    if ($c === null) {
+        return null;
+    }
+
+    $hesabim = $c->istek('panel/hesabim')['govde'];
+
+    if (!str_contains($hesabim, 'id="bildirim_duyuru"')) {
+        return 'Hesabım\'da E-posta Bildirimleri kartı yok';
+    }
+
+    // Site geneli yönetici bildirimleri olduğu gibi korunur.
+    $site = [];
+    foreach (['yeni_mesaj', 'yeni_uye'] as $ad) {
+        if (preg_match('/id="bildirim_' . $ad . '"[^>]*\bchecked\b/', $hesabim)) {
+            $site[$ad] = '1';
+        }
+    }
+
+    $kaydet = static function (bool $duyuru) use ($c, $site): array {
+        $t = preg_match('/name="csrf_token" value="([a-f0-9]+)"/', $c->istek('panel/hesabim')['govde'], $m) ? $m[1] : '';
+
+        return $c->istek('panel/hesabim/bildirimler', 'POST', ['csrf_token' => $t] + $site + ($duyuru ? ['duyuru' => '1'] : []));
+    };
+
+    $kaydet(false);
+    $kapali = !preg_match('/id="bildirim_duyuru"[^>]*\bchecked\b/', $c->istek('panel/hesabim')['govde']);
+    $ozet   = json_decode($c->istek('api/eposta/alicilar', 'POST', ['hedef' => 'rol:admin'], [
+        'X-CSRF-Token: ' . meta_jeton($c), 'X-Requested-With: XMLHttpRequest',
+    ])['govde'], true);
+
+    $kaydet(true);
+    $acik = (bool) preg_match('/id="bildirim_duyuru"[^>]*\bchecked\b/', $c->istek('panel/hesabim')['govde']);
+
+    if (!$kapali) {
+        return 'Tercih kapanmadı';
+    }
+    if ((int) ($ozet['atlanan'] ?? 0) < 1) {
+        return 'Kitle özeti duyuruyu kapatan yöneticiyi atlamadı: ' . json_encode($ozet, JSON_UNESCAPED_UNICODE);
+    }
+
+    return $acik ? true : 'Tercih yeniden açılmadı';
+});
+
+test('Duyuru iptal bağlantısı imzasız açılmaz', function () use ($base): bool|string {
+    $r = (new Istemci($base))->istek('duyurular/iptal?k=1&i=' . str_repeat('0', 64));
+
+    return $r['kod'] === 403 && str_contains($r['govde'], 'Bağlantı geçersiz') ? true : 'HTTP ' . $r['kod'];
+});
+
+test('Hesap açılışı: parolasız kullanıcı + "parolanızı belirleyin" mektubu', function () use ($base, $opts): bool|string|null {
+    $c = yonetici_istemcisi($base, $opts);
+
+    if ($c === null) {
+        return null;
+    }
+
+    $ad = 'duman_' . bin2hex(random_bytes(3));
+    $r  = $c->istek('api/kullanicilar/save', 'POST', [
+        'action' => 'add', 'ad' => 'Duman', 'soyad' => 'Testi', 'kullanici_adi' => $ad, 'eposta' => $ad . '@ornek.test',
+        'rol' => 'uye', 'durum' => 'aktif', 'sifre' => '', 'hesap_bilgisi' => '1',
+    ], ['X-CSRF-Token: ' . meta_jeton($c), 'X-Requested-With: XMLHttpRequest']);
+    $j = json_decode($r['govde'], true) ?: [];
+
+    // E-posta gönderilemiyorsa seçenek yok sayılır ve parola zorunludur.
+    if ($r['kod'] === 422 && isset($j['errors']['sifre'])) {
+        return null;
+    }
+
+    $id = (int) ($j['id'] ?? 0);
+
+    if ($id > 0) {
+        $c->istek('api/kullanicilar/delete', 'POST', ['id' => $id], ['X-CSRF-Token: ' . meta_jeton($c), 'X-Requested-With: XMLHttpRequest']);
+    }
+
+    return $r['kod'] === 200 && str_contains((string) ($j['description'] ?? ''), 'hesap bilgisi e-postayla gönderildi')
+        ? true
+        : 'HTTP ' . $r['kod'] . ' ' . substr($r['govde'], 0, 160);
+});
+
+/* =====================================================================
  *  SONUÇ
  * ================================================================== */
 printf(

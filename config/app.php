@@ -39,7 +39,7 @@ return [
 
     /* Birim testi sayısı — ana sayfadaki {test} yer tutucusu. tests/unit.php
      * gerçek sayıyla karşılaştırır; test eklenip burası güncellenmezse kırılır. */
-    'test_sayisi' => 290,
+    'test_sayisi' => 306,
 
     'desc'  => Env::get('APP_DESCRIPTION', ''),
     'url'   => Env::get('APP_URL', ''),

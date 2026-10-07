@@ -53,8 +53,16 @@ final class PasswordReset
      */
     public static function enabled(): bool
     {
-        return Setting::bool('sistem_parola_sifirlama', true)
-            && (Mailer::canDeliver() || Registration::developmentPreview());
+        return Setting::bool('sistem_parola_sifirlama', true) && self::canSendLinks();
+    }
+
+    /**
+     * Bağlantılı mektup (sıfırlama, hesap açılışı) alıcısına ulaşabilir
+     * mi? Gerçek gönderim ya da geliştirme önizlemesi (bağlantı panelde).
+     */
+    public static function canSendLinks(): bool
+    {
+        return Mailer::canDeliver() || Registration::developmentPreview();
     }
 
     /**
@@ -100,6 +108,33 @@ final class PasswordReset
         Logger::info('Parola sıfırlama bağlantısı üretildi', ['kullanici' => $user->id, 'ip' => $ip], 'auth');
 
         return Notifier::parolaSifirlama($user, Mailer::absolute(url('parola-sifirla', ['jeton' => $jeton])), self::DAKIKA);
+    }
+
+    /** Yöneticinin açtığı hesaptaki "parolanızı belirleyin" bağlantısının ömrü (saat). */
+    public const HESAP_ACILIS_SAAT = 48;
+
+    /**
+     * Yöneticinin açtığı hesap için "parolanızı belirleyin" bağlantısı
+     * üretir (bkz. Notifier::hesapAcildi). Sıfırlamayla AYNI tablo ve
+     * aynı tek kullanımlık jeton; yalnızca ömrü uzundur. Hız sınırı
+     * yoktur: yalnızca users.create yetkisi olan bir yönetici tetikler.
+     */
+    public static function setupLink(User $user, string $ip): string
+    {
+        $jeton = bin2hex(random_bytes(32));
+
+        Database::connection()->prepare(
+            'INSERT INTO parola_sifirlama (kullanici_id, ozet, son_gecerlilik, ip)
+             VALUES (:kullanici, :ozet, NOW() + INTERVAL ' . self::HESAP_ACILIS_SAAT . ' HOUR, :ip)'
+        )->execute([
+            ':kullanici' => $user->id,
+            ':ozet'      => hash('sha256', $jeton),
+            ':ip'        => mb_substr($ip, 0, 45),
+        ]);
+
+        Logger::info('Hesap açılış bağlantısı üretildi', ['kullanici' => $user->id], 'auth');
+
+        return Mailer::absolute(url('parola-sifirla', ['jeton' => $jeton]));
     }
 
     /** Jeton geçerliyse (kullanılmamış, süresi dolmamış, hesap etkin) sahibini döndürür. */
@@ -167,11 +202,15 @@ final class PasswordReset
         return $user;
     }
 
-    /** Bir günden eski kayıtları siler (zamanlanmış görev). */
+    /**
+     * Süresi bir günden uzun zaman önce dolmuş kayıtları siler
+     * (zamanlanmış görev). Oluşturma tarihine BAKILMAZ: 48 saatlik hesap
+     * açılış bağlantısı ertesi gün silinip kullanılamaz hâle geliyordu.
+     */
     public static function purge(?PDO $db = null): int
     {
         $stmt = ($db ?? Database::connection())->prepare(
-            'DELETE FROM parola_sifirlama WHERE created_at < NOW() - INTERVAL 1 DAY'
+            'DELETE FROM parola_sifirlama WHERE son_gecerlilik < NOW() - INTERVAL 1 DAY'
         );
         $stmt->execute();
 

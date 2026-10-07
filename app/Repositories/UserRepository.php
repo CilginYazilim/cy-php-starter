@@ -14,6 +14,7 @@ namespace App\Repositories;
 
 use App\Core\Database;
 use App\Core\Log\Logger;
+use App\Core\NotificationPrefs;
 use App\Models\Role;
 use App\Models\User;
 use PDO;
@@ -388,6 +389,68 @@ final class UserRepository
         $stmt->execute([':rol' => $role]);
 
         return (int) $stmt->fetchColumn();
+    }
+
+    /* =================================================================
+     *  BİLDİRİM TERCİHLERİ (bkz. App\Core\NotificationPrefs)
+     *  Sütun 1.6.1 migration'ıyla gelir; yoksa varsayılan döner, yazma
+     *  sessizce başarısız olur — panel migration bekliyor uyarısı verir.
+     * ============================================================== */
+
+    /** @return array<string,bool> */
+    public function notificationPrefs(int $id): array
+    {
+        try {
+            $stmt = $this->db->prepare('SELECT bildirim_tercihleri FROM kullanicilar WHERE id = :id');
+            $stmt->execute([':id' => $id]);
+            $deger = $stmt->fetchColumn();
+
+            return NotificationPrefs::decode(is_string($deger) ? $deger : null);
+        } catch (PDOException) {
+            return NotificationPrefs::VARSAYILAN;
+        }
+    }
+
+    /** @param array<string,mixed> $tercihler */
+    public function saveNotificationPrefs(int $id, array $tercihler): bool
+    {
+        try {
+            $stmt = $this->db->prepare('UPDATE kullanicilar SET bildirim_tercihleri = :tercih WHERE id = :id');
+            $stmt->execute([':tercih' => NotificationPrefs::encode($tercihler), ':id' => $id]);
+
+            return true;
+        } catch (PDOException $e) {
+            Logger::warning('Bildirim tercihi yazılamadı (migration bekliyor olabilir)', ['hata' => $e->getMessage()]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Duyuruları kapatmış hesapların adresleri (küçük harf => true).
+     * Toplu duyuru alıcı listesinden düşülür. Varsayılandaki (NULL)
+     * hesaplar hiç okunmaz.
+     *
+     * @return array<string,true>
+     */
+    public function announcementOptOuts(): array
+    {
+        try {
+            $satirlar = $this->db->query('SELECT eposta, bildirim_tercihleri FROM kullanicilar WHERE bildirim_tercihleri IS NOT NULL')
+                                 ->fetchAll(PDO::FETCH_KEY_PAIR);
+        } catch (PDOException) {
+            return [];
+        }
+
+        $kapali = [];
+
+        foreach ($satirlar as $eposta => $json) {
+            if (!NotificationPrefs::decode((string) $json)[NotificationPrefs::DUYURU]) {
+                $kapali[mb_strtolower((string) $eposta)] = true;
+            }
+        }
+
+        return $kapali;
     }
 
     public function countByStatus(string $status): int

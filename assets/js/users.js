@@ -21,6 +21,9 @@ jQuery(function ($) {
     var MAX_MB    = parseInt($('#avatar').attr('data-max-mb'), 10) || 2;
     var MAX_BYTES = MAX_MB * 1024 * 1024;
 
+    // E-posta gönderilemiyorsa sunucu kutuyu pasif basar (bkz. modals.php).
+    var BILGI_GIDEBILIR = $('#hesap_bilgisi').length > 0 && !$('#hesap_bilgisi').prop('disabled');
+
     var userModal   = new bootstrap.Modal(document.getElementById('userModal'));
     var detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
     var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
@@ -108,6 +111,10 @@ jQuery(function ($) {
         $('#password_required').addClass('d-none');
         $('#password_hint').text('Değiştirmek istemiyorsanız boş bırakın.');
         $('#sifre').attr('placeholder', 'Boş bırakılırsa değişmez');
+
+        // "Hesap bilgisi gönder" yalnızca yeni kayıtta; düzenlemede gönderilmez.
+        $('#hesap_bilgisi_group').addClass('d-none');
+        $('#hesap_bilgisi').prop('disabled', true);
 
         // Yönetici ya da kendi hesabı: e-posta/parola değişikliği parola onayı ister.
         $('#reauth_group').toggleClass('d-none', !data.onay_gerekir);
@@ -201,10 +208,27 @@ jQuery(function ($) {
         $('#form_action').val('add');
         $('#userModalLabel').text('Yeni Kullanıcı');
         $('#userModalSubtitle').text('Formu doldurup hesabı oluşturun.');
-        $('#password_required').removeClass('d-none');
-        $('#password_hint').text($('#password_hint').attr('data-varsayilan'));
-        $('#sifre').removeAttr('placeholder');
+        $('#hesap_bilgisi_group').removeClass('d-none');
+        $('#hesap_bilgisi').prop('disabled', !BILGI_GIDEBILIR).prop('checked', BILGI_GIDEBILIR);
+        yeniKayitParolasi();
         userModal.show();
+    });
+
+    /* Yeni kayıtta "hesap bilgisi gönder" işaretliyse parola ZORUNLU
+     * DEĞİL: boş bırakılırsa kullanıcı bağlantıyla kendi parolasını
+     * belirler (sunucu rastgele bir parola koyar). */
+    function yeniKayitParolasi() {
+        var bilgi = $('#hesap_bilgisi').is(':checked') && !$('#hesap_bilgisi').prop('disabled');
+
+        $('#password_required').toggleClass('d-none', bilgi);
+        $('#password_hint').text(bilgi
+            ? 'İsteğe bağlı. Boş bırakırsanız kullanıcı e-postadaki bağlantıyla kendi parolasını belirler.'
+            : $('#password_hint').attr('data-varsayilan'));
+        $('#sifre').removeAttr('placeholder');
+    }
+
+    $('#hesap_bilgisi').on('change', function () {
+        if ($('#form_action').val() === 'add') { yeniKayitParolasi(); }
     });
 
     $('#avatar').on('change', function () {

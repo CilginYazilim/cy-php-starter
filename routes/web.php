@@ -32,6 +32,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PwaController;
 use App\Http\Controllers\Site\ContactController;
 use App\Http\Controllers\Site\HomeController;
+use App\Http\Controllers\Site\NotificationController;
 use App\Http\Controllers\Site\PageController as SitePageController;
 use App\Http\Controllers\Site\SeoController;
 use App\Http\Controllers\SettingsController;
@@ -183,6 +184,7 @@ $router->post('panel/hesabim/api-anahtari/sil', ProfileController::class, 'revok
 $router->post('panel/hesabim/oturumlari-kapat', ProfileController::class, 'logoutOthers', ['installed', 'auth', 'csrf', 'can:profile.update']);
 $router->post('panel/hesabim/cihaz/sil',        ProfileController::class, 'revokeSession', ['installed', 'auth', 'csrf', 'can:profile.update']);
 $router->post('panel/hesabim/sil',              ProfileController::class, 'deleteAccount', ['installed', 'auth', 'csrf', 'can:profile.update']);
+$router->post('panel/hesabim/bildirimler',      ProfileController::class, 'notifications', ['installed', 'auth', 'csrf', 'can:profile.update']);
 
 /* ---------------------------------------------------------------------
  *  REST API (dış istemciler) — "Authorization: Bearer cy_…"
@@ -226,6 +228,7 @@ $router->group('api/v1', ['installed'], function (Router $r): void {
  *  yanıltırdı.
  * ------------------------------------------------------------------ */
 $router->get('onizleme/{id}', SitePageController::class, 'preview', ['installed']);   // imzalı, 30 dk (bkz. PageController::previewUrl)
+$router->get('duyurular/iptal', NotificationController::class, 'unsubscribe', ['installed']);   // imzalı, giriş gerektirmez (bkz. NotificationPrefs)
 $router->get('{slug}', SitePageController::class, 'show', ['installed']);
 
 /* ---------------------------------------------------------------------

@@ -28,7 +28,7 @@ final class MailLog
      * okuyabilen bir editör, başkasının doğrulama ya da parola sıfırlama
      * bağlantısını açıp o hesabı ele geçirebilirdi.
      */
-    public const GUVENLIK_SABLONLARI = ['dogrulama', 'parola-sifirlama'];
+    public const GUVENLIK_SABLONLARI = ['dogrulama', 'parola-sifirlama', 'hesap-acildi'];
 
     public function isSensitive(): bool
     {

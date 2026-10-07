@@ -103,6 +103,28 @@ $roles = $roles ?? [];
                             <div class="invalid-feedback" data-error-for="sifre"></div>
                         </div>
 
+                        <?php /* YALNIZCA YENİ KAYITTA (users.js düzenlemede gizler).
+                                 Mektupta parola YAZMAZ: 48 saat geçerli "parolanızı
+                                 belirleyin" bağlantısı gider (PasswordReset::setupLink). */ ?>
+                        <?php $bilgiGidebilir = App\Core\PasswordReset::canSendLinks(); ?>
+                        <div class="col-12" id="hesap_bilgisi_group">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="hesap_bilgisi" id="hesap_bilgisi" value="1"
+                                       aria-describedby="hesap_bilgisi_ipucu" <?= $bilgiGidebilir ? 'checked' : 'disabled' ?>>
+                                <label class="form-check-label" for="hesap_bilgisi">Kullanıcıya hesap bilgisi gönder</label>
+                                <div class="form-text mt-0" id="hesap_bilgisi_ipucu">
+                                    <?php if (!$bilgiGidebilir): ?>
+                                        E-posta gönderimi kapalı (Ayarlar → E-posta). Parolayı kullanıcıya kendiniz iletin.
+                                    <?php else: ?>
+                                        Parola mektupta yazmaz: kullanıcı <?= App\Core\PasswordReset::HESAP_ACILIS_SAAT ?> saat geçerli bir bağlantıyla
+                                        kendi parolasını belirler. Parola alanını boş bırakabilirsiniz.
+                                        <?php if (!App\Core\Mail\Mailer::canDeliver()): ?>(Geliştirme modu: bağlantı Panel → E-posta geçmişinde görünür.)<?php endif; ?>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="invalid-feedback d-block" data-error-for="hesap_bilgisi"></div>
+                            </div>
+                        </div>
+
                         <?php /* Bir YÖNETİCİNİN ya da kendi hesabının e-postası veya
                                  parolası değişiyorsa işlemi yapanın parolası istenir
                                  (bkz. UserApiController::save). JS yalnızca gerektiğinde gösterir. */ ?>

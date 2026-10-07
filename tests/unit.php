@@ -36,6 +36,7 @@ use App\Core\Exceptions\HttpException;
 use App\Core\Ip;
 use App\Core\Mail\NativeTransport;
 use App\Core\Middleware;
+use App\Core\NotificationPrefs;
 use App\Core\Modules\Module;
 use App\Core\Modules\Modules;
 use App\Core\Request;
@@ -856,6 +857,41 @@ if ($sema !== '') {
 
 $demoKaynak = (string) file_get_contents(CY_BASE . '/app/Core/DemoData.php');
 dogrula('Kaldırma yöneticinin değiştirdiği marka ayarına dokunmaz (AND deger = örnek)', str_contains($demoKaynak, 'WHERE anahtar = :anahtar AND deger = :ornek'));
+
+/* ---------------------------------------------------------------- */
+echo "\nBildirim tercihleri, yeni üye ve hesap açılışı (1.6.1)\n";
+
+dogrula('Tercih yoksa (NULL) duyurular açık', NotificationPrefs::decode(null) === [NotificationPrefs::DUYURU => true]);
+dogrula('Bozuk JSON varsayılana döner', NotificationPrefs::decode('{bozuk') === NotificationPrefs::VARSAYILAN);
+dogrula('Kapalı duyuru okunur, bilinmeyen anahtar atılır',
+    NotificationPrefs::decode('{"duyuru":false,"reklam":true}') === [NotificationPrefs::DUYURU => false]);
+dogrula('Varsayılan tercih NULL yazılır (yeni tercih eskilere de varsayılanla gelsin)', NotificationPrefs::encode([NotificationPrefs::DUYURU => true]) === null);
+dogrula('Kapalı tercih JSON yazılır', NotificationPrefs::encode([NotificationPrefs::DUYURU => false]) === '{"duyuru":false}');
+
+$iptalAdresi = NotificationPrefs::unsubscribeUrl(42);
+parse_str((string) parse_url($iptalAdresi, PHP_URL_QUERY), $iptalSorgu);
+dogrula('İptal bağlantısı imzalı ve kendi kullanıcısı için geçerli', ($iptalSorgu['k'] ?? '') === '42' && NotificationPrefs::verify(42, (string) ($iptalSorgu['i'] ?? '')));
+dogrula('Aynı imza başka kullanıcıda geçmez', !NotificationPrefs::verify(43, (string) ($iptalSorgu['i'] ?? '')));
+dogrula('Bozulmuş imza geçmez', !NotificationPrefs::verify(42, substr((string) ($iptalSorgu['i'] ?? ''), 0, -1) . 'x') && !NotificationPrefs::verify(42, ''));
+
+$yeniUyeAyari = array_values(array_filter(App\Support\Surum161::AYARLAR, static fn (array $a): bool => $a[0] === 'mail_bildirim_yeni_uye'))[0] ?? null;
+dogrula('Yeni üye bildirimi ayarı: E-posta grubu, onay, varsayılan kapalı, açıklaması dolu',
+    $yeniUyeAyari !== null && $yeniUyeAyari[1] === '0' && $yeniUyeAyari[2] === 'eposta' && $yeniUyeAyari[3] === 'onay' && trim((string) $yeniUyeAyari[5]) !== '');
+dogrula('Yeni üye dinleyicisi kayıtlı, saatlik tavan 10',
+    str_contains($olayTablosu, 'Events::listen(UserRegistered::class, YeniUyeyiBildir::class)') && App\Core\Mail\Notifier::YENI_UYE_SAATLIK === 10);
+
+dogrula('Hesap açılış mektubu editörden gizlenir (güvenlik şablonu)', in_array('hesap-acildi', App\Models\MailLog::GUVENLIK_SABLONLARI, true));
+$acilisSablonu = (string) @file_get_contents(CY_BASE . '/views/emails/hesap-acildi.php');
+dogrula('Hesap açılış mektubu parola taşımaz, bağlantı taşır', $acilisSablonu !== '' && !preg_match('/\$(sifre|parola)\b/', $acilisSablonu) && str_contains($acilisSablonu, '$baglanti'));
+dogrula('Hesap açılış bağlantısı 48 saat geçerli', App\Core\PasswordReset::HESAP_ACILIS_SAAT === 48);
+$sifirlamaKaynak = (string) file_get_contents(CY_BASE . '/app/Core/PasswordReset.php');
+dogrula('Temizlik süresi DOLMUŞ kayıtları siler (48 saatlik bağlantı ertesi gün silinmez)',
+    str_contains($sifirlamaKaynak, "WHERE son_gecerlilik < NOW() - INTERVAL 1 DAY") && !str_contains($sifirlamaKaynak, 'WHERE created_at < NOW() - INTERVAL 1 DAY'));
+
+if ($sema !== '') {
+    dogrula('Taze kurulum bildirim_tercihleri sütunuyla gelir', str_contains($sema, '`bildirim_tercihleri` JSON NULL DEFAULT NULL'));
+    dogrula('1.6.1 migration\'ı database.sql\'de kurulmuş sayılmaz (ayar satırını o yazar)', !str_contains($sema, "'2026_10_08_020000_surum_1_6_1'"));
+}
 
 /* ---------------------------------------------------------------- */
 echo "\nKaba kuvvet sayacı\n";

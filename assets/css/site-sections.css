@@ -301,37 +301,35 @@ a.cy-contact-card:hover { border-color: var(--cy-brand); color: inherit; }
     color: var(--cy-text-muted);
 }
 
-/* ------------------------ İÇ SAYFA BAŞLIĞI ------------------------ */
+/* ------------------------ İÇ SAYFA BAŞLIĞI ------------------------
+   Yalnızca başlık ve tek cümle özet; görünür "Ana Sayfa › …" izi yok
+   (arama motorları için BreadcrumbList JSON-LD olarak durur). Bant ince
+   bir çizgiyle biter, içerik hemen altından başlar. */
 .cy-pagehero {
-    padding: clamp(2rem, 6vw, 3.25rem) 0 clamp(1.25rem, 3vw, 1.75rem);
+    padding: clamp(1.75rem, 5vw, 2.75rem) 0 clamp(1.5rem, 4vw, 2.25rem);
     background: var(--cy-brand-soft);
+    border-bottom: 1px solid var(--cy-border);
 }
 
 .cy-pagehero__title {
     font-size: clamp(1.6rem, 5vw, 2.4rem);
     font-weight: 730;
     letter-spacing: -.015em;
+    line-height: 1.15;
     color: var(--cy-text);
-    margin: .35rem 0 .5rem;
+    margin: 0;
 }
 
 .cy-pagehero__lead {
     font-size: clamp(.95rem, 2.2vw, 1.08rem);
-    color: var(--cy-text-muted);
-    max-width: 52ch;
-    margin: 0;
+    line-height: 1.6;
+    color: var(--cy-text-soft);
+    max-width: 60ch;
+    margin: .6rem 0 0;
 }
 
-.cy-breadcrumb {
-    display: flex;
-    align-items: center;
-    gap: .3rem;
-    font-size: .78rem;
-    color: var(--cy-text-muted);
-}
-
-.cy-breadcrumb a { color: var(--cy-text-muted); text-decoration: none; }
-.cy-breadcrumb a:hover { color: var(--cy-brand-text); text-decoration: underline; }
+/* Başlık bandının hemen altındaki bölüm daha az boşlukla başlar. */
+.cy-pagehero + .cy-section { padding-top: clamp(1.5rem, 4vw, 2.5rem); }
 
 /* ------------------------------ METİN ----------------------------- */
 .cy-prose {

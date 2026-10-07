@@ -328,6 +328,26 @@ final class MailRepository
      * Bu adrese son $minutes dakikada bu ŞABLONLA mektup gitti mi?
      * (doğrulama ve "zaten kayıtlı" mektuplarının tekrarını sınırlamak için)
      */
+    /**
+     * Bu adrese, bu şablonla son $minutes içinde kaç mektup gitti?
+     * (Yeni üye bildirimi gibi saatlik tavanı olan bildirimler için;
+     * idx_mail_alici indeksini kullanır.)
+     */
+    public function countTemplateSentTo(string $email, string $template, int $minutes): int
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM mail_kayitlari
+              WHERE alici_eposta = :eposta AND sablon = :sablon
+                AND created_at >= (NOW() - INTERVAL :dakika MINUTE)"
+        );
+        $stmt->bindValue(':eposta', mb_strtolower($email));
+        $stmt->bindValue(':sablon', $template);
+        $stmt->bindValue(':dakika', max(1, $minutes), PDO::PARAM_INT);
+        $stmt->execute();
+
+        return (int) $stmt->fetchColumn();
+    }
+
     public function sentTemplateRecently(string $email, string $template, int $minutes): bool
     {
         $stmt = $this->db->prepare(

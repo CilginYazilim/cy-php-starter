@@ -231,6 +231,9 @@ CREATE TABLE `kullanicilar` (
   `son_giris`     TIMESTAMP NULL DEFAULT NULL,
   `son_giris_ip`  VARCHAR(45)  NOT NULL DEFAULT '',
   `giris_sayisi`  INT UNSIGNED NOT NULL DEFAULT 0,
+  -- E-posta bildirim tercihleri, ör. {"duyuru":false}. NULL = varsayılan
+  -- (hepsi açık). Güvenlik mektupları bu tercihe bakmaz (bkz. NotificationPrefs).
+  `bildirim_tercihleri` JSON NULL DEFAULT NULL,
   `created_at`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 

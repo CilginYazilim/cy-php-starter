@@ -147,6 +147,83 @@ final class Notifier
         return Mailer::send($mail);
     }
 
+    /** Yeni üye bildirimi kapanmadan önce saatte en fazla bu kadar mektup. */
+    public const YENI_UYE_SAATLIK = 10;
+
+    /**
+     * Yöneticiye "yeni üye" bildirimi (bkz. Listeners\YeniUyeyiBildir).
+     * Ayar kapalıysa (varsayılan), adres yoksa ya da son bir saatte
+     * YENI_UYE_SAATLIK mektup gittiyse gönderilmez: kayıt formunu bir
+     * bot doldurursa yöneticinin gelen kutusu dolmasın.
+     */
+    public static function yeniUye(User $user): bool
+    {
+        if (!Setting::bool('mail_bildirim_yeni_uye', false)) {
+            return false;
+        }
+
+        $admin = Mailer::adminAddress();
+
+        if ($admin === '') {
+            return false;
+        }
+
+        try {
+            $log = new \App\Repositories\MailRepository(\App\Core\Database::connection());
+
+            if ($log->countTemplateSentTo($admin, 'yeni-uye', 60) >= self::YENI_UYE_SAATLIK) {
+                return false;
+            }
+        } catch (\Throwable) {
+            return false;
+        }
+
+        $siteAdi = Setting::get('site_adi', 'Site');
+
+        $mail = Mailable::make()
+            ->to($admin, $siteAdi)
+            ->subject($siteAdi . ' – Yeni üye: ' . $user->fullName())
+            ->type('sistem')
+            ->forUser($user->id)
+            ->view('emails/yeni-uye', [
+                'siteAdi'      => $siteAdi,
+                'adSoyad'      => $user->fullName(),
+                'kullaniciAdi' => $user->kullaniciAdi,
+                'eposta'       => $user->eposta,
+                'tarih'        => User::formatDate($user->createdAt ?? date('Y-m-d H:i:s')),
+                'panelUrl'     => Mailer::absolute(url('panel/kullanicilar')),
+            ]);
+
+        return Mailer::send($mail);
+    }
+
+    /**
+     * Yöneticinin açtığı hesaba karşılama: "parolanızı belirleyin"
+     * bağlantısı (bkz. PasswordReset::setupLink). Parola mektuba
+     * YAZILMAZ. Gövde panelde editörden gizlenir
+     * (MailLog::GUVENLIK_SABLONLARI: 'hesap-acildi').
+     */
+    public static function hesapAcildi(User $user, string $link, int $saat): bool
+    {
+        $siteAdi = Setting::get('site_adi', 'Site');
+
+        $mail = Mailable::make()
+            ->to($user->eposta, $user->fullName())
+            ->subject($siteAdi . ' – Hesabınız açıldı')
+            ->type('sistem')
+            ->forUser($user->id)
+            ->view('emails/hesap-acildi', [
+                'siteAdi'      => $siteAdi,
+                'ad'           => $user->ad,
+                'kullaniciAdi' => $user->kullaniciAdi,
+                'baglanti'     => $link,
+                'saat'         => $saat,
+                'girisUrl'     => Mailer::absolute(url('giris')),
+            ]);
+
+        return Mailer::send($mail);
+    }
+
     /**
      * Hesap doğrulama bağlantısı (kayıt formuna yazılan adrese).
      *

@@ -355,6 +355,11 @@ jQuery(function ($) {
                 text += ' Örnek: ' + res.ornek.join(', ') + (res.sayi > res.ornek.length ? ' …' : '');
             }
 
+            // Kitle duyurusunda tercihini kapatanlar düşülür (sunucu sayar).
+            if (res.atlanan > 0) {
+                text += ' ' + res.atlanan + ' kişi duyuruları kapattığı için atlandı.';
+            }
+
             $summary.text(text);
         })
         .fail(function (xhr) {

@@ -37,12 +37,10 @@ $onizlemeBitis = $onizlemeBitis ?? null;
 
 <section class="cy-pagehero">
     <div class="container">
-        <nav class="cy-breadcrumb cy-breadcrumb--light" aria-label="Konum">
-            <a href="<?= e(url('')) ?>">Ana Sayfa</a>
-            <?= icon('chevron', 'cy-icon cy-icon--sm') ?>
-            <span><?= e($sayfa->baslik) ?></span>
-        </nav>
-
+        <?php /* Görünür "Ana Sayfa › …" izi yok: tek seviyeli sitede bilgi
+                 taşımıyor, başlığın üstünde kalabalık yapıyordu. Arama
+                 motorları için BreadcrumbList JSON-LD olarak durur
+                 (bkz. Site\PageController::structuredData). */ ?>
         <h1 class="cy-pagehero__title"><?= e($sayfa->baslik) ?></h1>
 
         <?php if ($sayfa->ozet !== ''): ?>

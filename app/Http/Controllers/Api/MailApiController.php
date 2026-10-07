@@ -30,6 +30,7 @@ use App\Core\Mail\Mailable;
 use App\Core\Mail\MailException;
 use App\Core\Mail\Mailer;
 use App\Core\Mail\Notifier;
+use App\Core\NotificationPrefs;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Setting;
@@ -135,7 +136,7 @@ final class MailApiController extends Controller
     /** Güvenlik bağlantılı mektubun gövdesi yerine gösterilen metin. */
     private const HIDDEN_BODY = '<div style="font-family:system-ui,sans-serif;padding:2rem;color:#475569;line-height:1.6">'
         . '<strong style="color:#0f172a">Bu mektup bir güvenlik bağlantısı içerir.</strong><br>'
-        . 'E-posta doğrulama ve parola sıfırlama mektuplarının içeriğini yalnızca kullanıcıları yönetebilen roller görebilir.'
+        . 'E-posta doğrulama, parola sıfırlama ve hesap açılış mektuplarının içeriğini yalnızca kullanıcıları yönetebilen roller görebilir.'
         . '</div>';
 
     /** Bu kullanıcıya mektubun içeriği gizlenmeli mi? */
@@ -226,12 +227,16 @@ final class MailApiController extends Controller
             Response::error($e->getMessage(), 422);
         }
 
+        [$recipients, $atlanan] = $this->withoutOptOuts($recipients, $request);
+
         $ornek = array_slice(array_column($recipients, 'eposta'), 0, 5);
 
         Response::json([
             'success' => true,
             'sayi'    => count($recipients),
             'ornek'   => $ornek,
+            // Duyuruları kapatıp kitle gönderiminden düşenler (bkz. withoutOptOuts).
+            'atlanan' => $atlanan,
         ]);
     }
 
@@ -261,8 +266,13 @@ final class MailApiController extends Controller
             Response::error($e->getMessage(), 422);
         }
 
+        [$recipients, $atlanan] = $this->withoutOptOuts($recipients, $request);
+        $kitle = $this->isAudience($request);
+
         if ($recipients === []) {
-            Response::error('Seçtiğiniz hedef kitlede hiç alıcı yok.', 422);
+            Response::error($atlanan > 0
+                ? 'Seçtiğiniz kitlede duyuru almak isteyen kimse yok (' . $atlanan . ' kişi duyuruları kapattı).'
+                : 'Seçtiğiniz hedef kitlede hiç alıcı yok.', 422);
         }
 
         if (count($recipients) > self::MAX_RECIPIENTS) {
@@ -276,7 +286,8 @@ final class MailApiController extends Controller
             $mail = Mailable::make()
                 ->to($recipient['eposta'], $recipient['ad'])
                 ->subject($draft['konu'])
-                ->html($this->renderBody($draft, $recipient['ad']))
+                ->html($this->renderBody($draft, $recipient['ad'],
+                    $kitle && $recipient['id'] !== null ? NotificationPrefs::unsubscribeUrl((int) $recipient['id']) : ''))
                 ->template('duyuru')
                 ->type(count($recipients) > 1 ? 'toplu' : 'bildirim')
                 ->forUser($recipient['id']);
@@ -291,7 +302,7 @@ final class MailApiController extends Controller
             $queued++;
         }
 
-        Response::success($queued . ' mektup kuyruğa alındı.', [
+        Response::success($queued . ' mektup kuyruğa alındı.' . ($atlanan > 0 ? ' ' . $atlanan . ' kişi duyuruları kapattığı için atlandı.' : ''), [
             'toplu_id'     => $batchId,
             'toplam'       => $queued,
             'parti'        => $this->batchSize(),
@@ -412,7 +423,7 @@ final class MailApiController extends Controller
     /**
      * @param array{konu:string,govde:string,baslik:string,dugme_metni:string,dugme_url:string} $draft
      */
-    private function renderBody(array $draft, string $name): string
+    private function renderBody(array $draft, string $name, string $iptalUrl = ''): string
     {
         $content = View::capture('emails/duyuru', [
             'baslik'     => $draft['baslik'],
@@ -420,6 +431,7 @@ final class MailApiController extends Controller
             'ad'         => $name,
             'dugmeMetni' => $draft['dugme_metni'],
             'dugmeUrl'   => $draft['dugme_url'],
+            'iptalUrl'   => $iptalUrl,
         ]);
 
         return View::capture('emails/layout', [
@@ -427,6 +439,44 @@ final class MailApiController extends Controller
             'mailKonu' => $draft['konu'],
             'onizleme' => $draft['konu'],
         ]);
+    }
+
+    /**
+     * Gönderim bir KİTLE duyurusu mu (tüm üyeler / bir rol)? Elle yazılan
+     * adresler ve tek kullanıcıya giden mektup kişiye özeldir; duyuru
+     * tercihine bakılmaz, "almak istemiyorum" bağlantısı da eklenmez.
+     */
+    private function isAudience(Request $request): bool
+    {
+        $hedef = $request->input('hedef', 'elle');
+
+        return $hedef === 'tumu' || str_starts_with($hedef, 'rol:');
+    }
+
+    /**
+     * Kitle duyurusunda, duyuruları kapatmış hesapları listeden düşer.
+     *
+     * @param array<int,array{eposta:string,ad:string,id:int|null}> $recipients
+     * @return array{0:array<int,array{eposta:string,ad:string,id:int|null}>,1:int} [kalanlar, atlanan sayısı]
+     */
+    private function withoutOptOuts(array $recipients, Request $request): array
+    {
+        if (!$this->isAudience($request)) {
+            return [$recipients, 0];
+        }
+
+        $kapali = $this->users()->announcementOptOuts();
+
+        if ($kapali === []) {
+            return [$recipients, 0];
+        }
+
+        $kalan = array_values(array_filter(
+            $recipients,
+            static fn (array $r): bool => !isset($kapali[mb_strtolower($r['eposta'])])
+        ));
+
+        return [$kalan, count($recipients) - count($kalan)];
     }
 
     /**

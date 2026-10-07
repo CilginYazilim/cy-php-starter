@@ -18,9 +18,11 @@ use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\Events\Events;
 use App\Core\Flash;
+use App\Core\NotificationPrefs;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
+use App\Core\Setting;
 use App\Core\Uploader;
 use App\Core\Validator;
 use App\Events\AccountDeletionScheduled;
@@ -62,7 +64,41 @@ final class ProfileController extends Controller
             /* Yeni anahtarın AÇIK HALİ yalnızca bir kez, üretildiği
              * isteğin hemen ardından gösterilir; sonra oturumdan silinir. */
             'yeniAnahtar' => Session::pull('_yeni_api_anahtari'),
+            // E-posta bildirimleri kartı (bkz. App\Core\NotificationPrefs).
+            'bildirimTercihi' => $user !== null ? $this->users()->notificationPrefs($user->id) : NotificationPrefs::VARSAYILAN,
+            'siteBildirimleri' => Auth::can('settings.manage'),
         ]);
+    }
+
+    /**
+     * E-posta bildirim tercihleri. Duyurular kişiseldir; yönetici
+     * bildirimleri (yeni mesaj, yeni üye) SİTE ayarıdır ve yalnızca ayar
+     * yetkisi olan değiştirir. Güvenlik mektuplarının seçeneği yoktur.
+     */
+    public function notifications(Request $request): void
+    {
+        $user = Auth::user();
+
+        if ($user === null) {
+            Response::redirect(url('giris'));
+        }
+
+        $kaydedildi = $this->users()->saveNotificationPrefs($user->id, [
+            NotificationPrefs::DUYURU => $request->input('duyuru') === '1',
+        ]);
+
+        if (Auth::can('settings.manage')) {
+            Setting::saveMany($this->db, [
+                'mail_bildirim_yeni_mesaj' => $request->input('yeni_mesaj') === '1' ? '1' : '0',
+                'mail_bildirim_yeni_uye'   => $request->input('yeni_uye') === '1' ? '1' : '0',
+            ]);
+        }
+
+        $kaydedildi
+            ? Flash::success('Bildirim tercihleriniz kaydedildi.')
+            : Flash::error('Tercihler kaydedilemedi: veritabanı güncel değil. Panel → Sistem Bilgisi\'nden bekleyen migration\'ı çalıştırın.');
+
+        Response::redirect(url('panel/hesabim') . '#bildirimler');
     }
 
     /** @return array<int,array<string,mixed>> Tablo henüz yoksa boş */

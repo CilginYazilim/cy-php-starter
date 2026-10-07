@@ -39,6 +39,7 @@ use App\Listeners\HesapSilmeBildir;
 use App\Listeners\HosgeldinMailiGonder;
 use App\Listeners\IletisimMesajiniBildir;
 use App\Listeners\ParolaDegistiBildir;
+use App\Listeners\YeniUyeyiBildir;
 
 /* ---------------------------------------------------------------------
  *  ÜYELİK
@@ -47,6 +48,10 @@ use App\Listeners\ParolaDegistiBildir;
 // Karşılama mektubunu kapatmak için bu satırı silmeniz yeterli;
 // çekirdek kodda hiçbir değişiklik gerekmez.
 Events::listen(UserRegistered::class, HosgeldinMailiGonder::class);
+
+// Yöneticiye "yeni üye" bildirimi. Ayarla açılır (Ayarlar → E-posta →
+// Yeni Üye Bildirimi, varsayılan kapalı); saatte en fazla 10 mektup.
+Events::listen(UserRegistered::class, YeniUyeyiBildir::class);
 
 // Parola değişince sahibine bilgilendirme (profil, sıfırlama bağlantısı, yönetici).
 Events::listen(PasswordChanged::class, ParolaDegistiBildir::class);

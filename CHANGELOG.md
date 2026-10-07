@@ -48,6 +48,22 @@ sayfasındadır.
   budur: sıfırlama bağlantıları artık yeni adrese gider.
 - **"Hesabınız silinecek" mektubu.** Silme isteğinden sonra tarih ve iptal
   yolu (`AccountDeletionScheduled` olayı, `HesapSilmeBildir` dinleyicisi).
+- **Yeni üye bildirimi (yöneticiye).** Ayarlar → E-posta → Yeni Üye
+  Bildirimi (varsayılan kapalı): hesap etkinleşince iletişim adresine ad,
+  kullanıcı adı, e-posta, tarih ve "Kullanıcıyı aç" düğmesi. Saatte en
+  fazla 10 mektup (`YeniUyeyiBildir` dinleyicisi).
+- **Yöneticinin açtığı hesaba karşılama.** Kullanıcı modalında "Kullanıcıya
+  hesap bilgisi gönder" (varsayılan açık). Mektupta parola YAZMAZ: 48 saat
+  geçerli, tek kullanımlık "Parolanızı belirleyin" bağlantısı gider
+  (`PasswordReset::setupLink`). Parola alanı boş bırakılabilir; o zaman
+  kimsenin bilmediği rastgele bir parola konur. Mektup editörden gizlenir.
+- **E-posta bildirim tercihleri (Hesabım).** Üye toplu duyuruları
+  kapatabilir; yönetici ayrıca site geneli yeni mesaj / yeni üye
+  bildirimlerini buradan açıp kapatır. Güvenlik mektupları kapatılamaz ve
+  ekranda bu açıkça yazar. Kitle duyurusunda (tüm üyeler / bir rol)
+  duyuruyu kapatanlar alıcıdan düşer, özet "3 kişi duyuruları kapattığı
+  için atlandı" der; her duyurunun altında imzalı, giriş gerektirmeyen
+  "Duyuruları almak istemiyorum" bağlantısı vardır.
 - **Panel bildirimleri:** bakım modu açık (uyarı), e-posta doğrulaması
   bekleyen hesap sayısı ve gönderilemeyen e-posta sayısı (kapatılabilir
   bilgi). Son bağlantı e-posta geçmişini "Başarısız" süzgeciyle açar.
@@ -74,6 +90,10 @@ sayfasındadır.
 - **Bildirimler (toast) ön yüzde menünün altından başlar**, telefonda
   altta durur (`safe-area-inset-bottom`). Giriş/çıkış bildirimi menü
   bağlantılarını kapatıyordu.
+- **İç sayfa başlığı sadeleşti:** Hakkımızda, İletişim, KVKK gibi sayfaların
+  üstündeki "Ana Sayfa › …" izi kaldırıldı; bantta yalnızca başlık ve
+  özet var, içerik hemen altından başlar. Arama motorları için
+  BreadcrumbList yapısal verisi (JSON-LD) aynen duruyor.
 - **Telefonda özellik ızgarası** 480px altında tek sütun, ikon solda.
 - **Kullanıcılar özet kartı** onay bekleyen hesap sayısını da gösterir.
 - `giris?demo=…` ile gelinince vurgulanan hesap ekranın ortasına kaydırılır.
@@ -96,6 +116,9 @@ sayfasındadır.
 - **Toplu e-posta ekranı açılır açılmaz kırmızı hata gösteriyordu**
   ("En az bir e-posta adresi girin"). Alıcı henüz seçilmemişse alıcı
   ucu artık ipucu döner; hatalı adres yine reddedilir.
+- **Parola sıfırlama kayıtlarının temizliği** oluşturma tarihine bakıyordu;
+  artık süresi dolmuş kayıtları siler (48 saatlik hesap açılış bağlantısı
+  ertesi gün silinmesin).
 - **"Örnek hesaplar duruyor" uyarısı ham `DELETE` SQL'i öneriyordu.** Artık
   Sistem → Kurulum ve örnek veri → "Örnek veriyi kaldır" düğmesine götürür.
 - **Panel bildirim bağlantıları güzel adres kapalıyken bozuluyordu**

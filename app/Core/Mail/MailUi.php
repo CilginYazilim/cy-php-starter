@@ -56,6 +56,14 @@ final class MailUi
              . ' line-height:1.6; color:#64748b;">' . nl2br(e($text)) . '</p>';
     }
 
+    /** Küçük not + sonunda bağlantı ("Duyuruları almak istemiyorum" gibi). */
+    public static function kucukBaglanti(string $text, string $url, string $label): string
+    {
+        return '<p style="margin:16px 0 0; font-family:' . self::FONT . '; font-size:12px;'
+             . ' line-height:1.6; color:#64748b;">' . e($text) . ' '
+             . '<a href="' . e($url) . '" style="color:#64748b; text-decoration:underline;">' . e($label) . '</a></p>';
+    }
+
     /** Ortalanmış, dokunmatik ekranda rahat tıklanan eylem düğmesi. */
     public static function dugme(string $url, string $label): string
     {
