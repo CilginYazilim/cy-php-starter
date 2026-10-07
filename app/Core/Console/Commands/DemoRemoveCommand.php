@@ -67,8 +67,9 @@ final class DemoRemoveCommand extends Command
 
         Logger::info('Demo verisi kaldırıldı', $sonuc, 'app');
         $this->out->success(sprintf(
-            '%d hesap, %d mesaj, %d e-posta kaydı, %d sayfa, %d Örnek Modül kaydı kaldırıldı.',
-            $sonuc['hesap'], $sonuc['mesaj'], $sonuc['eposta'], $sonuc['sayfa'], $sonuc['kayit']
+            '%d hesap, %d mesaj, %d e-posta kaydı, %d sayfa, %d Örnek Modül kaydı kaldırıldı.%s',
+            $sonuc['hesap'], $sonuc['mesaj'], $sonuc['eposta'], $sonuc['sayfa'], $sonuc['kayit'],
+            $sonuc['notr'] > 0 ? ' Hakkımızda şablon metnine döndü.' : ''
         ));
 
         return self::BASARILI;

@@ -178,9 +178,10 @@ jQuery(function ($) {
     /* =============================================================
      *  KUYRUĞU İŞLEME
      * ------------------------------------------------------------
-     *  "isle" ucu KUYRUĞUN TAMAMINDAN bir parti gönderir; yalnızca
-     *  az önce yazdığımız partiden değil. Bu yüzden ilerlemeyi
-     *  "başlangıçtaki bekleyen sayısı" üzerinden hesaplıyoruz.
+     *  Yeni bir gönderimde "isle" ucuna toplu_id verilir: yalnızca o
+     *  gönderimin mektupları işlenir ve ilerleme onları sayar (eskiden
+     *  kuyruktaki başka mektuplar da sayılıyordu: "2 kişiye gönderdim,
+     *  3 / 3 işlendi"). "Kuyruğu işle" düğmesi toplu_id vermez.
      * ============================================================= */
 
     function showProgress(show) {
@@ -198,10 +199,11 @@ jQuery(function ($) {
     /**
      * Kuyruğu boşalana kadar parti parti gönderir.
      *
-     * @param {number}   total    Başlangıçtaki bekleyen mektup sayısı
+     * @param {number}   total    İşlenecek mektup sayısı
+     * @param {string}   batch    Toplu gönderim kimliği (boşsa bütün kuyruk)
      * @param {function} onFinish İşlem bitince çağrılır (sonuç özeti ile)
      */
-    function drainQueue(total, onFinish) {
+    function drainQueue(total, batch, onFinish) {
         var sent    = 0;
         var failed  = 0;
         var lastError = '';
@@ -209,7 +211,7 @@ jQuery(function ($) {
         function step() {
             $.ajax({
                 url: API.process, method: 'POST', dataType: 'json',
-                data: { csrf_token: CY.token() }
+                data: { csrf_token: CY.token(), toplu_id: batch }
             })
             .done(function (res) {
                 sent   += res.gonderildi;
@@ -217,7 +219,7 @@ jQuery(function ($) {
 
                 if (res.hata) { lastError = res.hata; }
 
-                setPending(res.kalan);
+                setPending(res.bekleyen);
                 updateProgress(sent + failed, total);
 
                 // GÜVENLİK SUBABI: bir turda hiçbir şey işlenmediyse
@@ -268,7 +270,7 @@ jQuery(function ($) {
         showProgress(true);
         updateProgress(0, total, 'Kuyruk gönderiliyor…');
 
-        drainQueue(total, function (result) {
+        drainQueue(total, '', function (result) {
             busy = false;
             $button.prop('disabled', false);
             showProgress(false);
@@ -423,9 +425,9 @@ jQuery(function ($) {
                 // Kuyruğa yazıldı; şimdi parti parti gönderiyoruz.
                 setSending(true, 'Gönderiliyor…');
                 showProgress(true);
-                updateProgress(0, res.bekleyen, res.toplam + ' mektup kuyruğa alındı, gönderim başlıyor…');
+                updateProgress(0, res.toplam, res.toplam + ' mektup kuyruğa alındı, gönderim başlıyor…');
 
-                drainQueue(res.bekleyen, function (result) {
+                drainQueue(res.toplam, res.toplu_id, function (result) {
                     setSending(false);
                     showProgress(false);
 

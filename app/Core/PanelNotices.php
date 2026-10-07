@@ -111,6 +111,19 @@ final class PanelNotices
                 'Oturumlar kurulum klasörüne bağlı kalır (her dağıtımda herkes çıkış yapar). Üretmek için: php -r "echo bin2hex(random_bytes(32));"');
         }
 
+        /* İletişim formu ve üye bildirimleri bu adrese gider. Sihirbaz
+         * yöneticinin adresini yazar; SQL dosyasıyla kurulan sitede boştur
+         * ve mesajlar sessizce kaybolurdu. */
+        if (trim(Setting::get('iletisim_eposta')) === '') {
+            $gonderen = trim(Setting::get('mail_gonderen'));
+            $notices[] = self::notice('iletisim-eposta', 'info', 'İletişim e-postası tanımlı değil',
+                ($gonderen !== ''
+                    ? 'Form mesajlarının ve üye bildirimlerinin bildirimleri şimdilik gönderen adresine (' . $gonderen . ') gidiyor. '
+                    : 'Form mesajlarının ve üye bildirimlerinin bildirimleri hiçbir yere gitmiyor. ')
+                . 'Okuduğunuz bir adresi Ayarlar → İletişim\'den girin.',
+                $demoHesabi ? '' : 'panel/ayarlar/iletisim', $demoHesabi ? '' : 'İletişim ayarları');
+        }
+
         $kayit = Registration::closedReason();
 
         if ($kayit !== '') {
@@ -124,7 +137,10 @@ final class PanelNotices
         try {
             $db = Database::connection();
 
-            $bekleyenHesap = (new \App\Repositories\UserRepository($db))->countByStatus('onay_bekliyor');
+            /* Örnek verideki onay bekleyen hesap (zeynep.onay) ve başarısız
+             * mektup sayılmaz: taze kurulum ilk açılışta "bir şey bozuk"
+             * gibi görünüyordu. */
+            $bekleyenHesap = (new \App\Repositories\UserRepository($db))->countByStatus('onay_bekliyor', ornekHaric: true);
 
             if ($bekleyenHesap > 0) {
                 $notices[] = self::notice('onay-bekleyen', 'info', $bekleyenHesap . ' hesap e-posta doğrulaması bekliyor',
@@ -132,7 +148,7 @@ final class PanelNotices
                     'panel/kullanicilar', 'Kullanıcılar', kapatilabilir: true);
             }
 
-            $basarisiz = (new \App\Repositories\MailRepository($db))->countFailed();
+            $basarisiz = (new \App\Repositories\MailRepository($db))->countFailed(ornekHaric: true);
 
             if ($basarisiz > 0) {
                 $notices[] = self::notice('eposta-basarisiz', 'info', $basarisiz . ' e-posta gönderilemedi',

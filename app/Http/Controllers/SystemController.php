@@ -193,8 +193,9 @@ final class SystemController extends Controller
 
         Logger::info('Demo verisi panelden kaldırıldı', $sonuc, 'app');
         Flash::success(sprintf(
-            'Örnek veri kaldırıldı: %d hesap, %d mesaj, %d e-posta kaydı, %d sayfa, %d Örnek Modül kaydı.',
-            $sonuc['hesap'], $sonuc['mesaj'], $sonuc['eposta'], $sonuc['sayfa'], $sonuc['kayit']
+            'Örnek veri kaldırıldı: %d hesap, %d mesaj, %d e-posta kaydı, %d sayfa, %d Örnek Modül kaydı.%s',
+            $sonuc['hesap'], $sonuc['mesaj'], $sonuc['eposta'], $sonuc['sayfa'], $sonuc['kayit'],
+            $sonuc['notr'] > 0 ? ' Hakkımızda sayfası şablon metnine döndü.' : ''
         ));
         Response::redirect(url('panel/sistem'));
     }

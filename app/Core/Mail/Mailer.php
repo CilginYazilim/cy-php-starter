@@ -340,9 +340,14 @@ final class Mailer
     /**
      * Kuyruktaki mektuplardan en fazla $limit tanesini gönderir.
      *
+     * $batch verilirse yalnızca o toplu gönderimin mektupları işlenir ve
+     * "kalan" o gönderimde kalanı sayar. Panelden yapılan bir duyurunun
+     * ilerlemesi eskiden kuyruktaki BAŞKA mektupları da sayıyordu
+     * ("2 kişiye gönderdim, 3 / 3 işlendi").
+     *
      * @return array{gonderildi:int,basarisiz:int,kalan:int}
      */
-    public static function processQueue(int $limit = 10): array
+    public static function processQueue(int $limit = 10, string $batch = ''): array
     {
         $repository = self::log();
 
@@ -362,7 +367,7 @@ final class Mailer
         /* Satırlar TEK TEK, gönderimden hemen önce ayrılır (claimNext).
          * İşçi çökerse yalnızca o an elindeki satır takılır. */
         while ($sent + $failed < max(1, $limit)) {
-            $row = $repository->claimNext();
+            $row = $repository->claimNext($batch);
 
             if ($row === null) {
                 break;
@@ -398,7 +403,7 @@ final class Mailer
         return [
             'gonderildi' => $sent,
             'basarisiz'  => $failed,
-            'kalan'      => $repository->countPending(),
+            'kalan'      => $repository->countPending($batch),
         ];
     }
 

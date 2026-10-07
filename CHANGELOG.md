@@ -48,6 +48,29 @@ Cowork'un 1.6.1 kurulum raporu üzerine (ZIP'ten, README izlenerek kurulum).
   artık ayrı bir veritabanı kullanıcısı açmayı ya da root parolası
   tanımlamayı söyler. "Bağlantıyı dene"nin teknik ayrıntısı, sayfa
   gönderimindeki gibi ayrı ve "Teknik ayrıntı" etiketiyle görünür.
+- **Örnek veri kaldırılınca Hakkımızda ÇILGIN Yazılım tanıtımıyla
+  kalıyordu** (ana sayfadaki Hakkımızda özeti de). Örnek veri bu korumalı
+  sayfanın içeriğini değiştiriyor ama geri almıyordu. Artık başlık, özet,
+  içerik ve SEO açıklaması hâlâ birebir örnek metinse kurulumdaki şablon
+  metnine döner; yöneticinin değiştirdiğine dokunulmaz. Nötr metnin tek
+  kaynağı `DemoData::NOTR_SAYFALAR`; birim testi `database.sql` ile
+  aynı olduğunu denetler.
+- **Taze kurulum "hata var" gibi açılıyordu:** panel ilk anda "1 e-posta
+  gönderilemedi" ve "1 hesap e-posta doğrulaması bekliyor" diyordu; ikisi
+  de örnek veriydi. Panel sayaçları örnek veriyi saymaz.
+- **Toplu gönderim ilerlemesi başka mektupları da sayıyordu** (2 kişiye
+  gönderilen duyuru "3 / 3 işlendi"): örnek veride kuyrukta bekleyen bir
+  mektup vardı ve "isle" ucu bütün kuyruğu işliyordu. Artık panelden
+  yapılan gönderim yalnızca kendi `toplu_id`'sini işler ve sayar;
+  örnek veride kuyrukta mektup yok. "Kuyruğu işle" düğmesi bütün kuyruğu
+  işlemeye devam eder.
+
+### Eklendi
+
+- **"İletişim e-postası tanımlı değil" panel bildirimi.** SQL dosyasıyla
+  kurulan sitede adres boştur; iletişim formu ve üye bildirimleri hiçbir
+  yere gitmiyordu (ya da okunmayan gönderen adresine gidiyordu). Bildirim
+  hangisi olduğunu söyler ve Ayarlar → İletişim'e götürür.
 
 ---
 

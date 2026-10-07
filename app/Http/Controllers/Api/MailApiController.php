@@ -316,13 +316,18 @@ final class MailApiController extends Controller
      */
     public function process(Request $request): void
     {
-        $result = Mailer::processQueue($this->batchSize());
+        /* toplu_id gelirse yalnızca o gönderim işlenir ("kalan" de onu
+         * sayar); gelmezse ("Kuyruğu işle" düğmesi) bütün kuyruk. */
+        $batch  = (string) $request->input('toplu_id', '');
+        $batch  = preg_match('/^[a-f0-9]{32}$/', $batch) === 1 ? $batch : '';
+        $result = Mailer::processQueue($this->batchSize(), $batch);
 
         Response::json([
             'success'    => true,
             'gonderildi' => $result['gonderildi'],
             'basarisiz'  => $result['basarisiz'],
             'kalan'      => $result['kalan'],
+            'bekleyen'   => $batch === '' ? $result['kalan'] : $this->mails()->countPending(),
             'hata'       => Mailer::lastError(),
         ]);
     }

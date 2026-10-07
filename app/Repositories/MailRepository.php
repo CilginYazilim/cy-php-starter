@@ -20,6 +20,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Core\Database;
+use App\Core\DemoData;
 use App\Core\Mail\Mailable;
 use App\Models\MailLog;
 use PDO;
@@ -195,17 +196,22 @@ final class MailRepository
      * Ayırma, kilitlenme (1213) ya da kilit beklemesi (1205) hatasında
      * yeniden denenir (bkz. Database::retry).
      *
+     * $batch verilirse yalnızca o toplu gönderimin satırları ayrılır
+     * (panelden yapılan gönderimin ilerlemesi başka mektupları saymasın).
+     *
      * @return array<string,mixed>|null Satır; kuyruk boşsa null
      */
-    public function claimNext(): ?array
+    public function claimNext(string $batch = ''): ?array
     {
-        return Database::retry(function (): ?array {
-            $candidates = $this->db->query(
+        return Database::retry(function () use ($batch): ?array {
+            $sec = $this->db->prepare(
                 "SELECT id FROM mail_kayitlari
-                  WHERE durum = 'kuyrukta'
+                  WHERE durum = 'kuyrukta'" . ($batch !== '' ? ' AND toplu_id = :toplu' : '') . "
                   ORDER BY id ASC
                   LIMIT 5"
-            )->fetchAll(PDO::FETCH_COLUMN);
+            );
+            $sec->execute($batch !== '' ? [':toplu' => $batch] : []);
+            $candidates = $sec->fetchAll(PDO::FETCH_COLUMN);
 
             $claim = $this->db->prepare(
                 "UPDATE mail_kayitlari
@@ -363,9 +369,17 @@ final class MailRepository
         return (int) $stmt->fetchColumn() > 0;
     }
 
-    public function countPending(): int
+    /** Kuyruktaki mektup sayısı; $batch verilirse yalnızca o toplu gönderimin. */
+    public function countPending(string $batch = ''): int
     {
-        return (int) $this->db->query("SELECT COUNT(*) FROM mail_kayitlari WHERE durum = 'kuyrukta'")->fetchColumn();
+        if ($batch === '') {
+            return (int) $this->db->query("SELECT COUNT(*) FROM mail_kayitlari WHERE durum = 'kuyrukta'")->fetchColumn();
+        }
+
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM mail_kayitlari WHERE durum = 'kuyrukta' AND toplu_id = :toplu");
+        $stmt->execute([':toplu' => $batch]);
+
+        return (int) $stmt->fetchColumn();
     }
 
     /**
@@ -462,9 +476,17 @@ final class MailRepository
         return (int) $this->db->query('SELECT COUNT(*) FROM mail_kayitlari')->fetchColumn();
     }
 
-    public function countFailed(): int
+    /** @param bool $ornekHaric örnek verinin mektupları (*.demo@ornek.com) sayılmasın */
+    public function countFailed(bool $ornekHaric = false): int
     {
-        return (int) $this->db->query("SELECT COUNT(*) FROM mail_kayitlari WHERE durum = 'basarisiz'")->fetchColumn();
+        if (!$ornekHaric) {
+            return (int) $this->db->query("SELECT COUNT(*) FROM mail_kayitlari WHERE durum = 'basarisiz'")->fetchColumn();
+        }
+
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM mail_kayitlari WHERE durum = 'basarisiz' AND alici_eposta NOT LIKE :sonek");
+        $stmt->execute([':sonek' => '%' . DemoData::EPOSTA_SONEKI]);
+
+        return (int) $stmt->fetchColumn();
     }
 
     /**

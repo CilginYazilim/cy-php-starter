@@ -992,6 +992,53 @@ if ($splitHost !== null && $dbHata !== null) {
     echo "  (kurulum/ klasörü yok; atlandı)\n";
 }
 
+/* ---------------------------------------------------------------- */
+echo "\nÖrnek veri: ilk izlenim ve kaldırma (1.6.2)\n";
+
+if ($semaSql !== '') {
+    $notrFark = [];
+    foreach (App\Core\DemoData::NOTR_SAYFALAR as $slug => $alanlar) {
+        foreach (['baslik', 'ozet', 'icerik'] as $alan) {
+            if (!str_contains($semaSql, "'" . $alanlar[$alan] . "'")) {
+                $notrFark[] = $slug . '.' . $alan;
+            }
+        }
+    }
+    dogrula('Nötr sayfa metni kurulum/database.sql ile birebir aynı (tek kaynak)', $notrFark === [], implode(', ', $notrFark));
+}
+$ornekEpostalar = (new ReflectionClassConstant(App\Core\DemoData::class, 'EPOSTALAR'))->getValue();
+dogrula('Örnek veride kuyrukta bekleyen mektup yok (ilk toplu gönderime karışmaz)', !in_array('kuyrukta', array_column($ornekEpostalar, 5), true));
+
+if (in_array('sqlite', PDO::getAvailableDrivers(), true)) {
+    $sayfaDb = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+    $sayfaDb->exec('CREATE TABLE sayfalar (id INTEGER PRIMARY KEY, slug TEXT, baslik TEXT, ozet TEXT, icerik TEXT, seo_aciklama TEXT)');
+    $ornekHakkimizda = array_column(App\Core\DemoData::pages(), null, 'slug')['hakkimizda'];
+    $sayfaDb->prepare('INSERT INTO sayfalar (slug, baslik, ozet, icerik, seo_aciklama) VALUES (?, ?, ?, ?, ?)')
+        ->execute(['hakkimizda', $ornekHakkimizda['baslik'], $ornekHakkimizda['ozet'], $ornekHakkimizda['icerik'], $ornekHakkimizda['seo']]);
+    $geriYukle = new ReflectionMethod(App\Core\DemoData::class, 'restoreCorePages');
+    $donen = $geriYukle->invoke(new App\Core\DemoData($sayfaDb));
+    $simdi = $sayfaDb->query("SELECT * FROM sayfalar WHERE slug = 'hakkimizda'")->fetch();
+    dogrula('Örnek veri kaldırılınca Hakkımızda şablon metnine döner (ÇILGIN tanıtımı kalmaz)',
+        $donen === 1 && $simdi['icerik'] === App\Core\DemoData::NOTR_SAYFALAR['hakkimizda']['icerik'] && !str_contains($simdi['icerik'] . $simdi['ozet'], 'ÇILGIN') && $simdi['seo_aciklama'] === '');
+    $sayfaDb->exec("UPDATE sayfalar SET icerik = '" . str_replace("'", "''", $ornekHakkimizda['icerik']) . "', ozet = 'Bizim şirketimiz', baslik = '" . $ornekHakkimizda['baslik'] . "', seo_aciklama = '' WHERE slug = 'hakkimizda'");
+    dogrula('Yöneticinin değiştirdiği Hakkımızda korunur', $geriYukle->invoke(new App\Core\DemoData($sayfaDb)) === 0
+        && $sayfaDb->query("SELECT ozet FROM sayfalar WHERE slug = 'hakkimizda'")->fetchColumn() === 'Bizim şirketimiz');
+
+    $sayacDb = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $sayacDb->exec('CREATE TABLE kullanicilar (kullanici_adi TEXT, eposta TEXT, durum TEXT)');
+    $sayacDb->exec("INSERT INTO kullanicilar VALUES ('zeynep.onay', 'zeynep.demo@ornek.com', 'onay_bekliyor'), ('yeni.uye', 'yeni@sirketim.com', 'onay_bekliyor')");
+    $sayacDb->exec('CREATE TABLE mail_kayitlari (alici_eposta TEXT, durum TEXT)');
+    $sayacDb->exec("INSERT INTO mail_kayitlari VALUES ('burak.demo@ornek.com', 'basarisiz'), ('musteri@sirketim.com', 'basarisiz')");
+    $sayacKullanici = new App\Repositories\UserRepository($sayacDb);
+    $sayacEposta    = new App\Repositories\MailRepository($sayacDb);
+    dogrula('Panel sayaçları örnek veriyi saymaz (onay bekleyen, başarısız e-posta)',
+        $sayacKullanici->countByStatus('onay_bekliyor', ornekHaric: true) === 1 && $sayacKullanici->countByStatus('onay_bekliyor') === 2
+        && $sayacEposta->countFailed(ornekHaric: true) === 1 && $sayacEposta->countFailed() === 2);
+}
+
+$panelKaynak = (string) file_get_contents(CY_BASE . '/app/Core/PanelNotices.php');
+dogrula('İletişim e-postası boşsa panel söyler (SQL kurulumunda boş gelir)', str_contains($panelKaynak, "'iletisim-eposta'") && str_contains($panelKaynak, "'panel/ayarlar/iletisim'"));
+
 $paketKurallari = (string) @file_get_contents(CY_BASE . '/.gitattributes');
 dogrula('ZIP paketinde .gitignore var (ZIP\'ten git\'e konan proje .env\'i commit\'lemez)', preg_match('/^\.gitignore\s+export-ignore/m', $paketKurallari) !== 1);
 dogrula('ZIP paketinde docs/MOBIL-API.md var, yalnızca ekran görüntüleri çıkar',

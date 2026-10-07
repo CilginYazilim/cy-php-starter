@@ -13,6 +13,8 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Core\Database;
+use App\Core\Demo;
+use App\Core\DemoData;
 use App\Core\Log\Logger;
 use App\Core\NotificationPrefs;
 use App\Models\Role;
@@ -453,10 +455,23 @@ final class UserRepository
         return $kapali;
     }
 
-    public function countByStatus(string $status): int
+    /**
+     * @param bool $ornekHaric örnek veri hesapları sayılmasın (panel
+     *                        bildirimleri; ölçüt DemoData::remove() ile aynı)
+     */
+    public function countByStatus(string $status, bool $ornekHaric = false): int
     {
-        $stmt = $this->db->prepare('SELECT COUNT(*) FROM kullanicilar WHERE durum = :durum');
-        $stmt->execute([':durum' => $status]);
+        $sql    = 'SELECT COUNT(*) FROM kullanicilar WHERE durum = ?';
+        $params = [$status];
+
+        if ($ornekHaric) {
+            $adlar   = array_keys(Demo::HESAPLAR);
+            $sql    .= ' AND NOT (kullanici_adi IN (' . implode(',', array_fill(0, count($adlar), '?')) . ') AND eposta LIKE ?)';
+            $params  = [...$params, ...$adlar, '%' . DemoData::EPOSTA_SONEKI];
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
 
         return (int) $stmt->fetchColumn();
     }

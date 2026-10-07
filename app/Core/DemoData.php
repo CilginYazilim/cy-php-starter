@@ -46,6 +46,24 @@ final class DemoData
     public const SAYFALAR = ['baslarken', 'ozellikler'];
 
     /**
+     * Örnek verinin İÇERİĞİNİ değiştirdiği korumalı sayfaların kurulumdaki
+     * nötr hâli. remove() sayfayı, içeriği hâlâ örnek metinse buna
+     * döndürür; yönetici değiştirdiyse dokunmaz. Eskiden Hakkımızda örnek
+     * veri kaldırıldıktan sonra da ÇILGIN Yazılım tanıtımıyla kalıyordu.
+     *
+     * kurulum/database.sql'deki INSERT ile birebir aynıdır; tests/unit.php
+     * denetler.
+     */
+    public const NOTR_SAYFALAR = [
+        'hakkimizda' => [
+            'baslik'       => 'Hakkımızda',
+            'ozet'         => 'Kim olduğumuzu, ne yaptığımızı ve nasıl çalıştığımızı anlatan kısa bir tanıtım.',
+            'icerik'       => '<h2>Biz kimiz?</h2><p>Bu metni <strong>Panel → Sayfalar → Hakkımızda</strong> ekranından değiştirebilirsiniz. Zengin metin editörü başlık, kalın/italik yazı, listeler, bağlantılar ve alıntı desteği sunar.</p><h3>Ne yapıyoruz?</h3><ul><li>İhtiyaca göre kurumsal web çözümleri geliştiriyoruz.</li><li>Var olan sistemleri bakım ve destek altına alıyoruz.</li><li>Sürecin her adımında ölçülebilir sonuç hedefliyoruz.</li></ul><h3>Neden biz?</h3><p>İşimizi sade, hızlı ve sürdürülebilir yapmaya çalışıyoruz. Sorularınız için <a href="iletisim">iletişim sayfamızdan</a> bize yazabilirsiniz.</p>',
+            'seo_aciklama' => '',
+        ],
+    ];
+
+    /**
      * Örnek verinin yazdığı MARKA ayarları => kurulum/database.sql'deki
      * (ya da Surum16'daki) nötr değer. remove() bunları, değer hâlâ
      * örnek değerle aynıysa nötre döndürür. Site adı bilerek YOK: kurulumda
@@ -364,6 +382,8 @@ final class DemoData
         $stmt->execute(self::SAYFALAR);
         $sayfa = $stmt->rowCount();
 
+        $notrSayfa = $this->restoreCorePages();
+
         $kayit = 0;
         if ($this->tableExists('ornek')) {
             $kayit = (int) $this->db->exec('DELETE FROM ornek');
@@ -395,7 +415,47 @@ final class DemoData
 
         Setting::flush();
 
-        return compact('hesap', 'mesaj', 'eposta', 'sayfa', 'kayit');
+        return compact('hesap', 'mesaj', 'eposta', 'sayfa', 'kayit') + ['notr' => $notrSayfa];
+    }
+
+    /**
+     * Örnek verinin yazdığı korumalı sayfaları (Hakkımızda) nötr metne
+     * döndürür; yalnızca başlık, özet, içerik ve SEO açıklaması hâlâ
+     * BİREBİR örnek değerdeyse. Karşılaştırma PHP'de yapılır: tablonun
+     * Türkçe sıralaması büyük/küçük harf ayırmaz, SQL eşitliği yönetici
+     * yalnızca harf büyüklüğünü değiştirdiyse de "aynı" derdi.
+     *
+     * @return int nötre dönen sayfa sayısı
+     */
+    private function restoreCorePages(): int
+    {
+        $ornek = array_column(self::pages(), null, 'slug');
+        $oku   = $this->db->prepare('SELECT id, baslik, ozet, icerik, seo_aciklama FROM sayfalar WHERE slug = :slug');
+        $yaz   = $this->db->prepare('UPDATE sayfalar SET baslik = :baslik, ozet = :ozet, icerik = :icerik, seo_aciklama = :seo WHERE id = :id');
+        $adet  = 0;
+
+        foreach (self::NOTR_SAYFALAR as $slug => $notr) {
+            $oku->execute([':slug' => $slug]);
+            $satir = $oku->fetch();
+            $o     = $ornek[$slug] ?? null;
+
+            if ($satir === false || $o === null
+                || (string) $satir['baslik'] !== $o['baslik'] || (string) $satir['ozet'] !== $o['ozet']
+                || (string) $satir['icerik'] !== $o['icerik'] || (string) $satir['seo_aciklama'] !== $o['seo']) {
+                continue;
+            }
+
+            $yaz->execute([
+                ':baslik' => $notr['baslik'],
+                ':ozet'   => $notr['ozet'],
+                ':icerik' => $notr['icerik'],
+                ':seo'    => $notr['seo_aciklama'],
+                ':id'     => (int) $satir['id'],
+            ]);
+            $adet++;
+        }
+
+        return $adet;
     }
 
     /**
@@ -602,7 +662,7 @@ final class DemoData
         ['zeynep', 'Zeynep Arslan', 'E-posta adresinizi doğrulayın', 'dogrulama', 'sistem', 'gonderildi', '', 20],
         ['ali', 'Ali Yılmaz', 'Ekim bülteni: yeni özellikler', 'duyuru', 'toplu', 'gonderildi', '', 46],
         ['burak', 'Burak Öztürk', 'Ekim bülteni: yeni özellikler', 'duyuru', 'toplu', 'basarisiz', '550 Mailbox unavailable', 46],
-        ['selin', 'Selin Kara', 'Ekim bülteni: yeni özellikler', 'duyuru', 'toplu', 'kuyrukta', '', 1],
+        ['selin', 'Selin Kara', 'Ekim bülteni: yeni özellikler', 'duyuru', 'toplu', 'gonderildi', '', 45],
     ];
 
     /** Örnek mektup gövdesi (önizlemede görünür). */
