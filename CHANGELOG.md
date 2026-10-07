@@ -12,6 +12,7 @@ sayfasındadır.
 
 | Sürüm | Tarih | Özet |
 |---|---|---|
+| [1.6.0](#160--2026-10-07) | 2026-10-07 | Parola sıfırlama, mobil oturum API'si, KVKK araçları, hesap silme, 2 ekranlı kurulum, panelden yönetilen ana sayfa, CI'da MySQL 8 ile rol matrisi |
 | [1.5.1](#151--2026-10-07) | 2026-10-07 | Veritabanı: sık çalışan sorgular için eksik indeksler, giriş temizliğinde kilit |
 | [1.5.0](#150--2026-10-07) | 2026-10-07 | Demo modu (tek tıkla giriş), panelden modül aç/kapa, onay akışlı RBAC örnek modülü, sade panel tasarımı |
 | [1.4.0](#140--2026-10-06) | 2026-10-06 | İkinci güvenlik incelemesi |
@@ -20,6 +21,138 @@ sayfasındadır.
 | [1.2.0](#120--2026-09-04) | 2026-09-04 | Ekran görüntüleri ve Canlı Demo |
 | [1.1.0](#110--2026-08-30) | 2026-08-30 | Mobil düzen, tek kaynaktan sürüm |
 | [1.0.0](#100--2026-08-18) | 2026-08-18 | İlk kararlı sürüm |
+
+---
+
+## [1.6.0] — 2026-10-07
+
+Bağımsız bir test raporunun (Cowork) bütün bulguları üzerine hazırlanan
+sürüm. Kurulum iki ekrana indi, ana sayfa panelden yönetilir hâle geldi,
+örnek veri tek kaynaktan gelir; parola sıfırlama, KVKK araçları, hesap
+silme ve **mobil uygulama için oturum API'si** eklendi. Rol ve yetki
+sistemi artık her itmede gerçek bir MySQL 8 kurulumunda otomatik sınanıyor.
+
+### Eklendi
+
+- **Parolamı unuttum.** Tek kullanımlık, 60 dakika geçerli bağlantı;
+  veritabanında yalnızca SHA-256 özeti durur. Ekran her durumda aynı
+  cevabı verir (adresin kayıtlı olup olmadığı anlaşılmaz), IP ve adres
+  başına hız sınırı vardır. Başarılı sıfırlama bütün oturumları, "beni
+  hatırla" jetonunu ve API anahtarlarını kapatır. Site e-posta
+  gönderemiyorsa bağlantı hiç görünmez.
+- **"Parolanız değiştirildi" e-postası.** Parola profilden, sıfırlama
+  bağlantısıyla ya da bir yönetici tarafından değiştiğinde sahibine gider
+  (`ParolaDegistiBildir` dinleyicisi; `PasswordChanged` olayı artık
+  değişikliğin kaynağını taşır).
+- **Mobil uygulama API'si.** `POST /api/v1/oturum` (kullanıcı adı/parola →
+  Bearer token), `DELETE /api/v1/oturum`, `GET /api/v1/oturumlar`,
+  `DELETE /api/v1/oturumlar/{id}`, `GET /api/v1/dosyalar` ve
+  `/api/v1/dosyalar/{ad}`. Mobil giriş, tarayıcı girişiyle aynı kaba kuvvet
+  korumasından geçer (`Auth::verifyCredentials`). Gövde JSON olabilir.
+  Kullanıcı açık cihazlarını **Hesabım → Bağlı cihazlar**'dan görüp tek tek
+  kapatır. Rehber: [docs/MOBIL-API.md](https://github.com/CilginYazilim/cy-php-starter/blob/main/docs/MOBIL-API.md).
+- **API anahtarı kapsamı:** "yalnız okuma" anahtarı `GET` dışında
+  `403 kapsam_yetersiz` alır. Panelden üretilen anahtarın varsayılanı
+  yalnız okumadır.
+- **Hesabımı sil (KVKK).** Parola ile onaylanır, 7 gün bekler; bu sürede
+  giriş yapmak silmeyi iptal eder. Son yönetici kendini silemez.
+- **KVKK:** kayıt ve iletişim formlarında aydınlatma metni onayı (ayarla
+  kapatılır, seçilen sayfa yayında değilse kutu çıkmaz); iletişim
+  mesajlarındaki IP ve tarayıcı bilgisi saklama süresi (varsayılan
+  180 gün) dolunca zamanlanmış görevle silinir. "Gizlilik ve KVKK" sayfası
+  kurulumla gelir.
+- **Ana Sayfa ayar grubu.** Karşılama, teknoloji şeridi, 3 adım,
+  özellikler, "Rolleri deneyin", kod örneği, SSS, hakkımızda, iletişim ve
+  son bant panelden açılıp kapanır; metinler, düğmeler, özellik/adım/SSS
+  listeleri panelde satır satır düzenlenir (yeni ayar tipleri: `liste`,
+  `coklu`). `{surum}` `{php}` `{komut}` `{migration}` `{test}` yer
+  tutucuları koddan sayılır.
+- **Tek kaynaklı örnek veri** (`App\Core\DemoData`): sihirbaz,
+  `php cy db:seed`, `php cy demo:reset` (demo modunda 3 saatte bir
+  kendiliğinden) ve `php cy demo:temizle` / Panel → Sistem "Örnek veriyi
+  kaldır" aynı veriyi kullanır. 6 demo hesap, 3 sayfa, 9 mesaj, 7 e-posta,
+  ÇILGIN Yazılım markalı vitrin, Örnek Modül'de her rol ve durumdan kayıt.
+- **Sayfa düzenleyici:** 30 dakika geçerli imzalı **önizleme** (taslak
+  da görülür), **kapak görseli** (paylaşım görseli olarak da kullanılır),
+  editörden **görsel yükleme**; geniş ekranda yapışkan Kaydet, dar ekranda
+  altta eylem çubuğu. İçerik sayfalarına WebPage + BreadcrumbList JSON-LD.
+- **`php cy serve`**: XAMPP olmadan geliştirme sunucusu.
+- Kontrol paneli kartları role göre; modüller `DashboardCards` ile kart
+  ekler; üyeye profil tamamlama çubuğu.
+
+### Değişti
+
+- **Kurulum sihirbazı 2 ekran + bitiş:** "Bağlantıyı dene", sınıflandırılmış
+  veritabanı hataları (yanlış parola, sunucu yok, yetki…), ad soyad tek alan,
+  parola gücü göstergesi, adım adım kurulum raporu, demo hesaplar tablosu.
+  Yerel olmayan sunucuda kurulum anahtarı istenir. Kurulum klasörünü
+  yalnızca kurulumu yapan oturum ya da Panel → Sistem siler.
+- **Ana sayfa yeniden tasarlandı** (mobil öncelikli, açık/koyu panel
+  görüntüsü, JSON-LD Organization + WebSite + SoftwareApplication).
+- **Panel mobilde:** Kullanıcılar, Mesajlar, E-posta ve Sayfalar tabloları
+  768px altında etiketli kartlara döner; bildirimler tek satır ve oturum
+  boyunca kapatılabilir.
+- Marka adı ayardan (`site_brand()`); koda gömülü "Çılgın Yazılım" kalmadı,
+  "CY PHP Starter ile geliştirildi" imzası ayarla kapanır.
+- Örnek Modül düğmeleri davranışı söyler: sahibi "Taslağa al", editör
+  "Onaya geri gönder" görür (`OrnekPolicy::transitionLabel`).
+- jQuery 3.7.0 ve Bootstrap 5.3.0 sıkıştırılmış sürümler (SRI ile doğrulandı).
+- `kurulum/demo.sql` kaldırıldı (yerini `DemoData` aldı).
+
+### Düzeltildi
+
+- **Demo kilidi yetki denetiminden önce çalışıyordu**: editör, zaten
+  yetkisi olmayan bir işlemde "demo modunda kapalı" mesajı görüyordu.
+  Artık önce yetki, sonra demo kilidi (`Middleware::afterAll`).
+- Panel üst çubuğu ve site menüsü kaydırınca kayboluyordu
+  (`overflow-x: hidden` yapışkan konumlandırmayı bozuyordu → `clip`).
+- Hesabım sayfası mobilde ekrandan taşıyordu (ızgara `minmax(0, 1fr)`).
+- Yan menüde iki öğe aynı anda etkin görünüyordu.
+- Büyük harfli sayfa adresi (`/Hakkimizda`) ikinci bir kopya üretiyordu → 301.
+- Doğrulama bağlantısı imzadan önce hesabı sorguluyordu.
+- Toast bildirimleri masaüstünde üst menünün üstüne biniyordu.
+- 11px yazılar 12px'e çıktı; soluk metin rengi WCAG AA (#64748b).
+
+### Güvenlik
+
+- **Yönetici hesapları** yalnızca yöneticilerce değiştirilir, silinir ya da
+  pasife alınır; yönetici rolünü yalnız yönetici verir. Bir yöneticinin ya
+  da kendi hesabının e-posta/parolası değişirken işlemi yapanın parolası
+  istenir. "Son aktif yönetici" kuralı `SELECT … FOR UPDATE` ile atomik.
+- Doğrulama ve parola sıfırlama mektuplarının gövdesi panelde gizli,
+  alıcı adresi maskeli.
+- İçerikteki `<img>` yalnızca kendi alan adını (ya da `CSP_IMG_SRC`)
+  gösterebilir; dış görsel kaydederken silinir.
+- Önizleme ve sıfırlama sayfaları `Referrer-Policy: no-referrer` ile
+  gönderilir (adres çubuğundaki imza/jeton sızmaz).
+- E-posta gönderilemeyen sitede doğrulamalı kayıt formu kendiliğinden kapanır.
+
+### Testler
+
+- Birim testleri 180 → **267**: rol matrisi (`tests/rol-matrisi.php` —
+  96 rotanın her biri için kim erişebilir; yeni ya da yetkisi değişen rota
+  testi kırar), 18 XSS vektörü, önizleme imzası, sıfırlama jetonu, kapsam.
+- Duman testi 27 → **50**: demo hesaplarla rol matrisi (GET ve CSRF'li
+  POST), editörün reddinin "yetki" mesajıyla gelmesi, demo açık/kapalı,
+  pasif/askıda/onay bekleyen giriş reddi, Örnek Modül satır düzeyi, mobil
+  API akışı.
+- **CI'da gerçek kurulum:** MySQL 8 ile PHP 8.1 ve 8.4'te depo yerleşik
+  sunucuda açılır, sihirbaz HTTP üzerinden çalıştırılır
+  (`tests/kurulum.php`), duman testi demo modu açık ve kapalı iki kez koşar.
+- **Şema kayması testi** (`tests/sema.php`): v1.2.0'dan bugüne her sürümden
+  yükseltilen veritabanı, yeni kurulumla sütun, indeks, yabancı anahtar ve
+  ayar düzeyinde birebir aynı.
+
+### Güncelleme (1.5.x → 1.6.0)
+
+1. Yedek alın, kodu çekin.
+2. `php cy migrate` (SSH yoksa panelde çıkan **"Şimdi çalıştır"**). Tek
+   migration (`2026_10_07_020000_surum_1_6`): yeni ayarlar, parola
+   sıfırlama tablosu, hesap silme sütunu, API anahtarı kapsam sütunları,
+   KVKK sayfası. Var olan ayarlarınıza dokunmaz.
+3. Ana sayfanız eskisi gibi görünür; yeni bölümleri **Panel → Ayarlar →
+   Ana Sayfa**'dan açın. Örnek vitrini görmek için `php cy db:seed`.
+4. Parola sıfırlama, e-posta ayarları yapılmış sitede kendiliğinden açılır.
 
 ---
 

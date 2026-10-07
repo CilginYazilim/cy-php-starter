@@ -1,36 +1,47 @@
 # Ekran Görüntüleri
 
 Bu klasördeki kareler, **bu depodaki kodun kurulduktan sonraki hâlidir**.
-Hepsi `kurulum/` sihirbazı tamamlandıktan sonra, sihirbazın yüklediği
-örnek veriyle çekilmiştir — gerçek müşteri verisi yoktur. Kareler 1.2.0
-sürümünde çekildi; 1.3.0 ve 1.4.0'ın eklediği bölümler (Hesabım → API
-Anahtarları ve Oturumlar, panel uyarıları, Sistem Bilgisi'ndeki migration
-düğmesi) karelerde yer almaz.
+Hepsi `kurulum/` sihirbazı **"Örnek veriyle kur"** ve **"Demo modu"**
+seçilerek tamamlandıktan sonra çekilmiştir — gerçek müşteri verisi yoktur.
+Son yenileme: **1.6.0** (yeni kurulum sihirbazı, panelden yönetilen ana
+sayfa, mobilde kart tablolar).
 
 Ana [README](https://github.com/CilginYazilim/cy-php-starter#readme) bu
 görselleri `raw.githubusercontent.com` üzerinden mutlak adresle çağırır;
-böylece README'yi içe aktaran siteler de görselleri gösterebilir. Dosya
-adını değiştirirseniz README'deki adresi de güncelleyin.
+böylece README'yi içe aktaran siteler de (cilginyazilim.com kütüphane
+sayfası) görselleri gösterebilir. Dosya adını değiştirirseniz README'deki
+adresi de güncelleyin.
 
-| Dosya | İçerik |
-|---|---|
-| `01-anasayfa.png` | Ön yüz ana sayfa |
-| `02-kurulum-gereksinimler.png` | Kurulum sihirbazı — 1. adım (gereksinim denetimi) |
-| `03-kurulum-veritabani.png` | Kurulum sihirbazı — 2. adım (veritabanı) |
-| `04-giris.png` | Giriş ekranı |
-| `05-panel-ozet.png` | Kontrol paneli |
-| `06-panel-kullanicilar.png` | Kullanıcı yönetimi |
-| `07-panel-mesajlar.png` | Mesaj yönetimi |
-| `08-panel-ayarlar.png` | Site ayarları (otomatik üretilen form) |
-| `09-panel-sistem.png` | Sistem / güvenlik denetim listesi |
-| `10-iletisim.png` | İletişim formu (ön yüz) |
-| `11-koyu-tema.png` | Koyu tema |
-| `12-mobil.png` | Mobil görünüm |
+| Dosya | İçerik | Genişlik |
+|---|---|---|
+| `01-anasayfa.png` | Ön yüz ana sayfa — karşılama, panel görüntüsü (README'nin üst görseli) | 1280 |
+| `02-kurulum-veritabani.png` | Kurulum sihirbazı 1. ekran — sunucu denetimi ve veritabanı | 1280 |
+| `03-kurulum-tamam.png` | Kurulum bitişi — adım adım rapor ve demo hesaplar | 1280 |
+| `04-giris.png` | Giriş ekranı — demo hesaplarla tek tıkla giriş | 1280 |
+| `05-panel-ozet.png` | Kontrol paneli (yönetici) | 1280 |
+| `06-panel-kullanicilar.png` | Kullanıcı yönetimi | 1280 |
+| `07-panel-mesajlar.png` | Mesaj yönetimi | 1280 |
+| `08-panel-ayarlar.png` | Ayarlar → Ana Sayfa grubu (liste düzenleyicisi) | 1280 |
+| `09-panel-sistem.png` | Sistem bilgisi — modüller, güvenlik denetimi | 1280 |
+| `10-iletisim.png` | İletişim sayfası ve KVKK onayı | 1280 |
+| `11-koyu-tema.png` | Panel, koyu tema | 1280 |
+| `12-mobil.png` | Panel, mobil — tablolar karta döner | 390 |
+| `13-roller.png` | Ana sayfa "Rolleri deneyin" bölümü | 1280 |
+| `14-ornek-modul.png` | Örnek Modül — onay akışı ve yetki matrisi | 1280 |
+
+## Yeniden çekmek
+
+1. Boş bir veritabanına sihirbazla kurun: **Örnek veriyle kur** ve
+   **Demo modu** açık, **Geliştirme modu** kapalı.
+2. Panel kareleri için yönetici olarak (`ali.yonetici`) giriş yapın;
+   açılıştaki "hoş geldiniz" bildirimini bekleyip kapatın.
+3. Tarayıcının cihaz araç çubuğuyla genişliği tabloya göre ayarlayın,
+   görünen alanın görüntüsünü alın (tam sayfa değil); 2× ölçekle çekip
+   1× boyuta küçültmek yazıları keskin tutar.
 
 ## Kurallar
 
-- Genişlik 1200–1400 px; mobil için ~390 px.
-- PNG tercih edin, 500 KB altında tutun.
+- PNG ya da WebP; dosya başına 500 KB altında.
 - Kurulum ekranlarında **gerçek şifre veya veritabanı bilgisi
   göstermeyin**.
 - Örnek veriyle çekin (demo kullanıcılar listeyi dolu gösterir),

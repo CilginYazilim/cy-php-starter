@@ -191,8 +191,9 @@ cy-php-starter/
 ├── upload/                 Yüklenen görseller (PHP çalıştırma kapalı)
 └── kurulum/                Kurulum sihirbazı (kurulum sonrası SİLİN)
     ├── index.php           Sihirbaz
-    ├── database.sql        Temel şema — HER kurulumda çalışır
-    └── demo.sql            Örnek veri — YALNIZCA kutu işaretlenirse
+    ├── kurulum.css · .js   Sihirbazın arayüzü
+    └── database.sql        Temel şema — HER kurulumda çalışır
+                            (örnek veri App\Core\DemoData içinde)
 ```
 
 ---
@@ -482,6 +483,48 @@ bağlantı yeniden gönderilir (aynı adrese 10 dakikada bir).
 - E-posta ayarları yapılmamışsa kayıt formu kendiliğinden kapanır
   (`Registration::isOpen`); yönetici panelde uyarı görür.
 
+### Parola sıfırlama
+
+`/parolami-unuttum` → e-postaya tek kullanımlık bağlantı → `/parola-sifirla`.
+Kurallar `App\Core\PasswordReset` içindedir:
+
+| Konu | Davranış |
+|---|---|
+| Jeton | 256 bit rastgele; veritabanında (`parola_sifirlama`) yalnızca SHA-256 özeti |
+| Ömür | 60 dakika (`PasswordReset::DAKIKA`), tek kullanım — "kullanıldı" işareti koşullu `UPDATE` ile konur, aynı anda gelen iki istekten biri kazanır |
+| Yanıt | Adres kayıtlı olsun olmasın **aynı cümle**; hesap tespiti yapılamaz |
+| Hız sınırı | IP başına saatte 10 istek, adres başına saatte 3 bağlantı, aynı adrese 2 dakikada bir mektup |
+| Başarıda | `UserRepository::update(['sifre' => …])`: oturum sürümü artar, "beni hatırla" silinir, **API anahtarları ve mobil oturumlar iptal** edilir; o kullanıcıya giden öteki bağlantılar da geçersizleşir |
+| Bilgilendirme | `PasswordChanged` olayı (`kaynak: sifirlama`) → `ParolaDegistiBildir` → "Parolanız değiştirildi" mektubu |
+| Kapalı olduğu durum | Ayarlar → Sistem → "Parola sıfırlama" kapalıysa ya da site e-posta gönderemiyorsa (`Mailer::canDeliver()`); giriş ekranındaki bağlantı da gizlenir |
+| Demo | Demo modunda örnek hesaplara bağlantı gitmez |
+
+Sıfırlama sayfası `Referrer-Policy: no-referrer` ile gönderilir: adres
+çubuğundaki jeton başka bir siteye "Referer" olarak sızmaz. Mektubun
+gövdesi panelin e-posta geçmişinde gizlidir (`MailLog::GUVENLIK_SABLONLARI`).
+Bir günden eski kayıtları `parola-sifirlama-temizle` görevi siler.
+
+**"Parolanız değiştirildi"** mektubu her parola değişikliğinde gider —
+profilden, sıfırlama bağlantısıyla ya da bir yönetici tarafından. Hesabı
+ele geçirilen kişinin bunu fark etmesinin çoğu zaman tek yolu budur.
+Kapatmak için `routes/events.php` içindeki tek satırı silin.
+
+### KVKK araçları ve hesap silme
+
+| Araç | Nerede | Ayar |
+|---|---|---|
+| Aydınlatma onayı | Kayıt ve iletişim formlarında zorunlu kutu; bağlantı seçilen sayfaya gider | `sistem_kvkk_onay`, `sistem_kvkk_sayfa` (varsayılan `gizlilik-ve-kvkk`; sayfa yayında değilse kutu çıkmaz) |
+| IP/tarayıcı saklama | İletişim mesajlarında bu iki alan süre dolunca boşaltılır (`mesaj-anonimlestir` görevi, her gece) | `sistem_ip_saklama` gün (varsayılan 180; 0 → kapalı) |
+| Hesabımı sil | Hesabım ekranının altında; parola ile onaylanır | `sistem_hesap_silme` |
+
+Hesap silme `App\Core\AccountDeletion` içindedir: `kullanicilar.silinme_at`
+**7 gün** sonrasına yazılır, bütün oturumlar ve API anahtarları kapanır,
+kişi çıkış yapar. Bu sürede **giriş yapmak silmeyi iptal eder** (tarayıcı
+ve mobil giriş). Süre dolunca `hesap-sil` görevi (saatte bir) hesabı ve
+profil görselini siler; mesajlar, sayfalar ve e-posta kayıtları kalır,
+kullanıcıyla bağları kopar (`ON DELETE SET NULL`). Sistemdeki **son
+yönetici** kendini silemez, görev de silmez.
+
 ### Yetkiler
 
 Kodda **rol adı değil yetki adı** kullanılır:
@@ -501,12 +544,21 @@ Roller ve yetkileri `app/Models/Role.php` içindedir.
 > yetkisini editöre ya da üyeye `module.json` → `"yetkiler"` ile verir
 > (bkz. 16. Modül sistemi).
 
+**Rol matrisi testi.** `tests/rol-matrisi.php` her rota için kimin
+erişebildiğini yazar (`M` misafir, `U` üye, `E` editör, `Y` yönetici).
+Birim testi bunu `routes/web.php` ve açık modüllerin rotalarıyla
+karşılaştırır: yeni bir rota eklenip tabloya yazılmazsa ya da bir `can:`
+kuralı yanlışlıkla silinip rota üyeye açılırsa test kırılır. Ayrıca bütün
+`panel/*` rotalarının giriş istediğini ve oturumla çalışan her POST'un
+CSRF korumalı olduğunu denetler. Yeni rota eklediğinizde satırını o
+tabloya siz yazarsınız — bilinçli bir değişiklik olduğunu kanıtlar.
+
 ### Demo modu
 
 Herkese açık bir deneme sitesi kuruyorsanız (ör. canlı demo) `.env`
-içinde `APP_DEMO=true` yapın ya da sihirbazın Yönetici adımında
-**Demo modu** kutusunu işaretleyin. Örnek veri (`kurulum/demo.sql`)
-şart: kutu onu da yükler.
+içinde `APP_DEMO=true` yapın ya da sihirbazın ikinci ekranında
+**Demo modu** kutusunu işaretleyin. Örnek veri şart: kutu onu da yükler
+(bkz. 9. Örnek veri).
 
 | Davranış | Ayrıntı |
 |---|---|
@@ -516,11 +568,21 @@ içinde `APP_DEMO=true` yapın ya da sihirbazın Yönetici adımında
 | Kurulumdaki yönetici | Kilide takılmaz; demoyu o hesapla yönetirsiniz |
 | Panel uyarıları | Demo hesabına "kilitli işlemler" bilgisi; asıl yöneticiye "demo modu açık" uyarısı |
 
-Kilit `auth` ara katmanında durur (`App\Core\Demo::guard`): girişli her
-yazma isteği oradan geçer, rotalara tek tek eklemek unutulmaya açıktı.
-Form isteği bölüm sayfasına mesajla döner, AJAX isteği açıklamalı 403
-alır. Hesap listesi ve kilitli uçlar `app/Core/Demo.php` içindedir;
-hesap adları `demo.sql` ile aynı kalmalıdır (birim testi denetler).
+Kilit, rotanın bütün ara katmanları geçtikten SONRA çalışır
+(`Router` → `Middleware::afterAll` → `App\Core\Demo::guard`): önce
+yetki sorulur, sonra demo kilidi. Böylece editör, zaten yetkisi olmayan
+bir işlemde "yetkiniz yok" görür; "demo modunda kapalı" mesajı yalnızca
+işi gerçekten yapabilecek kişiye çıkar (1.6.0'dan önce sıra tersti ve
+mesaj yanıltıcıydı). Form isteği bölüm sayfasına mesajla döner, AJAX
+isteği açıklamalı 403 alır. Hesap listesi ve kilitli uçlar
+`app/Core/Demo.php` içindedir.
+
+**Kendini sıfırlayan demo.** Demo modunda `demo-sifirla` görevi 3 saatte
+bir (`Demo::SIFIRLAMA_DAKIKA`) ziyaretçilerin değişikliklerini siler ve
+örnek veriyi baştan kurar; kurulumdaki gerçek yönetici hesabına dokunmaz.
+Elle: `php cy demo:reset` (demo kapalıyken `--zorla`). Örnek veriyi
+tamamen kaldırmak: `php cy demo:temizle` ya da Panel → Sistem → "Örnek
+veriyi kaldır".
 
 **Anahtar neden panelde değil?** Demo yöneticisi her yetkiye sahiptir;
 anahtar panelde olsaydı ilk ziyaretçi demo modunu kapatıp kilitleri
@@ -632,11 +694,25 @@ anahtarları hazır gelir.
 
 ### Örnek veri
 
-`kurulum/demo.sql` dört demo kullanıcı ve iki iletişim mesajı ekler.
-Sihirbazın son adımındaki **"Örnek verileri de yükle"** kutusuyla
-seçilir ve **varsayılan olarak kapalıdır**: gerçek bir projeye temiz
-bir veritabanıyla başlarsınız, şablonu denerken de listeleri dolu
-görürsünüz. Demo kullanıcıların parolası `Demo1234!`.
+Örnek verinin **tek kaynağı** `App\Core\DemoData`'dır; `kurulum/database.sql`
+nötrdür ("Yeni Proje"). Aynı veri dört yoldan kurulur ve kaldırılır:
+
+| Yol | Ne yapar |
+|---|---|
+| Sihirbaz → **Örnek veriyle kur** | Kurulumun sonunda `DemoData::seed()` + açık modüllerin tohumlayıcıları |
+| `php cy db:seed` | `database/seeders/DemoSeeder.php` aynı sınıfı çağırır |
+| `php cy demo:reset` | Ziyaretçi değişikliklerini siler, veriyi baştan kurar (demo modunda 3 saatte bir kendiliğinden) |
+| `php cy demo:temizle` · Panel → Sistem → **Örnek veriyi kaldır** | Yalnızca örnek kayıtları siler (`*.demo@ornek.com` hesaplar, örnek sayfalar, mesajlar); gerçek veriye dokunmaz |
+
+İçerik: 6 hesap (yönetici, editör, üye, pasif, askıda, onay bekleyen;
+parola `Demo1234!`), 3 içerik sayfası, 9 mesaj, 7 e-posta kaydı, ÇILGIN
+Yazılım markalı ana sayfa vitrini ve paylaşım görseli, mobil API için
+`storage/files/ornek/` altında 3 örnek dosya; Örnek Modül her rol ve
+durumdan kayıt. Sihirbazda **localhost'ta açık, canlı sunucuda kapalı**
+gelir: gerçek bir projeye temiz veritabanıyla başlarsınız.
+
+`tests/unit.php` demo hesap listesinin (`Demo::HESAPLAR`) ve `DemoData`'nın
+birbiriyle tutarlı kaldığını denetler.
 
 ### Migration yazmak
 
@@ -1104,6 +1180,41 @@ pasife alınınca, sahibinin **parolası değişince** (bütün anahtarları) ve
 işaretliyse. **Bakım modunda** API `503` döner; bakımı aşma yetkisi olan
 kullanıcının anahtarı çalışmaya devam eder.
 
+### Kapsam: yalnız okuma / okuma + yazma
+
+Her anahtarın bir kapsamı vardır (`api_anahtarlari.kapsam`). **Yalnız
+okuma** anahtarı `GET`/`HEAD` dışındaki her istekte
+`403 kapsam_yetersiz` alır (tek istisna kendi oturumunu kapatan
+`DELETE api/v1/oturum`). Kapsam yetkiyi **daraltır**, genişletmez:
+okuma+yazma anahtarı da sahibinin rolünün izin verdiğinden fazlasını
+yapamaz. Panelden üretilen anahtarın varsayılanı yalnız okumadır;
+1.6.0'dan önce üretilmiş anahtarlar okuma+yazma sayılır.
+
+### Mobil oturumlar
+
+Mobil uygulama anahtarı elle almaz; kullanıcı adı ve parolayla giriş yapar:
+
+| Uç | Ne yapar |
+|---|---|
+| `POST api/v1/oturum` | `kullanici`, `parola`, `cihaz` → `token` (tür `oturum`, okuma+yazma, `API_SESSION_DAYS` gün — varsayılan 30) |
+| `DELETE api/v1/oturum` | Bu cihazın token'ını iptal eder |
+| `GET api/v1/oturumlar` | Açık mobil oturumlar; bu cihaz `bu_cihaz: true` |
+| `DELETE api/v1/oturumlar/{id}` | Başka bir cihazı kapatır |
+| `GET api/v1/dosyalar` · `/{ad}` | `storage/files/ornek/` içindeki örnek dosyalar (web'den doğrudan erişilemez) |
+
+Giriş, tarayıcı girişiyle **aynı kapıdan** geçer: `Auth::verifyCredentials()`
+kaba kuvvet sayacını, kilidi, zamanlama eşitlemesini ve hesap durumunu
+denetler; `Auth::attempt()` da önce onu çağırıp sonra oturum açar. Böylece
+"daha gevşek ikinci bir giriş yolu" oluşmaz. Mobil oturumlar aynı
+`api_anahtarlari` tablosundadır (`tur = 'oturum'`, `cihaz` sütunu);
+kullanıcı başına en fazla 20, fazlasında en eskisi kapanır. Kullanıcı
+onları **Hesabım → Bağlı cihazlar**'da görür ve tek tek kapatır.
+
+İstek gövdesi form ya da JSON olabilir: `Request`, `$_POST` boşsa ve
+`Content-Type: application/json` ise gövdeyi JSON olarak okur.
+Ayrıntılı akış, örnek yanıtlar, JavaScript ve Flutter örnekleri:
+[docs/MOBIL-API.md](https://github.com/CilginYazilim/cy-php-starter/blob/main/docs/MOBIL-API.md).
+
 ### Hız sınırı
 
 Anahtar (ya da anonim istekte IP) başına, pencere başına istek sayısı.
@@ -1315,6 +1426,14 @@ php cy yardim migrate       # ayrıntılı yardım
 | schedule | `schedule:run` (`--list`, `--force`) |
 | mail | `mail:work` · `mail:test` |
 | api | `api:token` (`--gun=`, `--suresiz`, `--liste`, `--iptal=`) |
+| demo | `demo:reset` (`--zorla`) · `demo:temizle` |
+| serve | `serve` (`--port=`, `--host=`) — XAMPP'siz geliştirme sunucusu |
+
+**`php cy serve`** PHP'nin yerleşik sunucusunu
+`app/Support/gelistirme-sunucusu.php` yönlendiricisiyle başlatır. Yerleşik
+sunucu `.htaccess` okumadığı için yönlendirici gizli dosyaları, uygulama
+klasörlerini ve `upload/` içindeki betikleri kendisi kapatır; geri kalan
+istekleri `index.php`'ye verir. Yalnızca geliştirme ve CI içindir.
 
 **Çıkış kodları anlamlıdır:** 0 başarı, ≠0 hata. Cron ve CI buna bakar.
 
@@ -1502,6 +1621,35 @@ kaydetmenin tek yolu depodan geçtiği için "bir yerde `sanitize` çağırmayı
 unutmak" yapısal olarak imkânsızdır. İçerik ekrana **kaçışlanmadan**
 basılır — kaçışlansaydı ziyaretçi HTML etiketlerini metin olarak görürdü.
 
+### Önizleme, kapak görseli ve editörden görsel
+
+- **Önizle** (`panel/sayfalar/{id}/onizle`) her tıklamada 30 dakika geçerli,
+  `APP_KEY` ile imzalı bir adres üretir (`onizleme/{id}?son=…&imza=…`).
+  Taslak sayfa da görülür; bağlantıyı bilen giriş yapmadan açabilir, süre
+  dolunca 403. Sayfa `noindex` ve `Referrer-Policy: no-referrer` ile gelir.
+- **Kapak görseli** `upload/img/kapak/` altına yeniden üretilerek yazılır;
+  sayfanın üstünde görünür ve paylaşım görseli (`og:image`) olur.
+- **Görsel yükle** düğmesi editöre `upload/img/sayfa/` altından görsel
+  ekler. Adresle görsel eklemek yalnızca **kendi alan adınızdan**
+  mümkündür: `Html::localImage()` başka sitedeki `<img>`'yi kaydederken
+  siler (CSP onu zaten engelleyip kırık gösterirdi, üstelik her ziyaretçinin
+  IP'sini o siteye sızdırırdı). İzin vermek istediğiniz CDN'i `.env` →
+  `CSP_IMG_SRC` ile ekleyin.
+- İçerik sayfaları **WebPage + BreadcrumbList** yapısal verisi taşır.
+
+### Ana sayfa panelden
+
+Ana sayfanın bütün metinleri **Panel → Ayarlar → Ana Sayfa** grubundadır;
+koda gömülü metin yoktur. `anasayfa_bolumler` hangi bölümlerin görüneceğini
+seçer (karşılama, teknoloji şeridi, 3 adım, özellikler, rolleri deneyin,
+kod örneği, SSS, hakkımızda, iletişim, son bant); içeriği boş bölüm hiç
+basılmaz. Özellikler, adımlar, SSS ve son bant düğmeleri `liste` tipindeki
+ayarlardır: panelde satır ekle/sil/sırala arayüzüyle düzenlenir, JSON
+olarak saklanır. Metinlerde `{surum}` `{php}` `{komut}` `{migration}`
+`{test}` yer tutucuları koddan sayılır. Ayar tanımları
+`App\Support\Surum16`'dadır (1.6 migration'ı ve sihirbaz aynı listeyi
+kullanır).
+
 ### Menü, alt bilgi ve site haritası
 
 Üst menü ve alt bilgi bağlantıları `menude = 1` olan yayındaki
@@ -1540,7 +1688,12 @@ kendiliğinden güncellenir — dosya düzenlemek gerekmez.
 | MIME sniffing | `X-Content-Type-Options: nosniff` |
 | Bilgi sızması | Yayında yığın izi/dosya yolu gösterilmez |
 | Spam | Bal küpü + İMZALI ve zorunlu zaman damgası + kilitli sayaçlı hız sınırı (iletişim ve kayıt formu; hatalı gönderimler de sayılır); kayıtta e-posta doğrulaması; mektuplar formdan gelen metni içermez |
-| API kötüye kullanımı | Bearer + hash'lenmiş anahtar + kilitli sayaçlı hız sınırı; üretmek parola ister; bakımda 503 |
+| API kötüye kullanımı | Bearer + hash'lenmiş anahtar + kilitli sayaçlı hız sınırı; üretmek parola ister; yalnız okuma kapsamı; bakımda 503 |
+| Parola sıfırlama | Tek kullanımlık, 60 dk, yalnızca özet saklanır; aynı yanıt; IP ve adres sınırı; başarıda bütün oturum/anahtarlar iptal |
+| Yönetici hesapları | Yalnızca yönetici değiştirir/siler; yönetici rolünü yalnız yönetici verir; e-posta/parola değişirken işlemi yapanın parolası; son yönetici kuralı `SELECT … FOR UPDATE` |
+| Güvenlik mektupları | Doğrulama ve sıfırlama mektuplarının gövdesi panelde gizli, alıcı maskeli |
+| Dış görsel | İçerikte yalnızca kendi alan adı (`Html::localImage`) |
+| Yetki gerilemesi | Rol matrisi birim testi + CI'da MySQL 8 ile demo açık/kapalı duman testi |
 
 ### İçerik Güvenliği Politikası ve dış servisler
 

@@ -106,6 +106,9 @@ jobs:
       - name: Duman testi (demo modu KAPALI)
         run: |
           sed -i 's/^APP_DEMO=true/APP_DEMO=false/' .env
+          # İlk koşunun bilerek yaptığı hatalı girişler IP sayacında kalır;
+          # temizlenmezse kilit testi önceki koşunun denemelerini de sayar.
+          mysql -h 127.0.0.1 -uroot -proot cy_ci -e "DELETE FROM login_attempts"
           php tests/smoke.php http://127.0.0.1:8000 --kullanici=yonetici --parola=Yonetici1234
 
       - name: Şema kayması (eski sürümden yükseltme = yeni kurulum)

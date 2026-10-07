@@ -1206,7 +1206,7 @@ if ($isPost && !$alreadyInstalled && !in_array($islem, ['temizle', 'dene'], true
                     $yapilan[] = ['Veritabanı hazırlandı', true, $db['db_name']];
 
                     $komut     = import_schema($pdo, SCHEMA_PATH);
-                    $yapilan[] = ['Şema kuruldu', true, $komut . ' komut'];
+                    $yapilan[] = ['Şema kuruldu', true, $komut . ' SQL ifadesi'];
 
                     $pdo->prepare(
                         'INSERT INTO kullanicilar (ad, soyad, kullanici_adi, eposta, sifre, rol, durum)
