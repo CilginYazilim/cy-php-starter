@@ -126,10 +126,16 @@ sistemi artık her itmede gerçek bir MySQL 8 kurulumunda otomatik sınanıyor.
 - Önizleme ve sıfırlama sayfaları `Referrer-Policy: no-referrer` ile
   gönderilir (adres çubuğundaki imza/jeton sızmaz).
 - E-posta gönderilemeyen sitede doğrulamalı kayıt formu kendiliğinden kapanır.
+- **Kaba kuvvet kilidi her 20 denemede bir atlanabiliyordu.** Giriş denemesi
+  yazıldıktan sonra %5 olasılıkla eski kayıtlar budanıyor, deneme numarası
+  budamadan SONRA okunuyordu; MySQL'de araya giren DELETE numarayı 0 yaptığı
+  için o denemede kilit sorgusu hiçbir şey saymıyor ve kilitli hesaba yapılan
+  deneme parola denetimine ulaşıyordu. Numara artık budamadan önce alınır
+  (CI'daki MySQL 8 duman testi yakaladı; gerileme testi eklendi).
 
 ### Testler
 
-- Birim testleri 180 → **267**: rol matrisi (`tests/rol-matrisi.php` —
+- Birim testleri 180 → **268**: rol matrisi (`tests/rol-matrisi.php` —
   96 rotanın her biri için kim erişebilir; yeni ya da yetkisi değişen rota
   testi kırar), 18 XSS vektörü, önizleme imzası, sıfırlama jetonu, kapsam.
 - Duman testi 27 → **50**: demo hesaplarla rol matrisi (GET ve CSRF'li

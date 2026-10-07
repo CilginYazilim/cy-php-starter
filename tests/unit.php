@@ -720,6 +720,19 @@ if (in_array('sqlite', PDO::getAvailableDrivers(), true)) {
 }
 
 /* ---------------------------------------------------------------- */
+echo "\nKaba kuvvet sayacı\n";
+
+/* MySQL'de lastInsertId() SON sorguya bakar: denemeyi yazdıktan sonra
+ * araya giren budama (DELETE) numarayı 0 yapıyordu; kilit sorgusu
+ * "id < 0" hiçbir denemeyi saymıyor, her 20 denemeden biri kilidi
+ * atlıyordu. SQLite bu davranışı taklit etmediği için kaynak denetlenir. */
+$sayacKaynak = (string) file_get_contents(CY_BASE . '/app/Core/RateLimiter.php');
+$beginGovde  = (string) substr($sayacKaynak, (int) strpos($sayacKaynak, 'public function begin('), 1200);
+dogrula('Deneme numarası budamadan ÖNCE okunur (kilit atlanamaz)',
+    strpos($beginGovde, 'lastInsertId()') !== false
+    && strpos($beginGovde, 'lastInsertId()') < (int) strpos($beginGovde, '$this->prune()'));
+
+/* ---------------------------------------------------------------- */
 echo "
 Test sayısı
 ";

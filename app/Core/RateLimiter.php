@@ -62,11 +62,18 @@ final class RateLimiter
         );
         $stmt->execute([':kimlik' => $this->hash($identifier), ':kapsam' => $scope]);
 
+        /* NUMARA BUDAMADAN ÖNCE ALINIR. lastInsertId() bağlantıdaki SON
+         * sorguya bakar; araya giren DELETE (prune) onu 0 yapıyordu. Deneme
+         * numarası 0 olunca kilit sorgusu ("id < 0") hiçbir denemeyi
+         * saymıyor, her 20 denemeden biri kilidi atlayıp parola
+         * denetimine ulaşıyordu (1.6.0'da duman testi yakaladı). */
+        $id = (int) $this->db->lastInsertId();
+
         if (random_int(1, 20) === 1) {
             $this->prune();
         }
 
-        return (int) $this->db->lastInsertId();
+        return $id;
     }
 
     /**
