@@ -1109,6 +1109,11 @@ $logoEtiketi = logo_img(['alt' => 'Site'], buyuk: true);
 dogrula('logo_img(): WebP kaynağı, PNG yedeği, yüksek çözünürlükte 512 px',
     str_contains($logoEtiketi, 'type="image/webp"') && str_contains($logoEtiketi, 'logo-512.webp') && str_contains($logoEtiketi, 'logo-256.png') && str_contains($logoEtiketi, 'alt="Site"'));
 
+dogrula('Giriş ekranı ?demo= kullanıcı adını da rol adını da tanır (README ?demo=editor diyordu)',
+    Demo::highlightFor('elif.editor') === 'elif.editor' && Demo::highlightFor('editor') === 'elif.editor'
+    && Demo::highlightFor('admin') === 'ali.yonetici' && Demo::highlightFor('uye') === 'mehmet.uye'
+    && Demo::highlightFor('<script>') === '' && Demo::highlightFor('') === '');
+
 $paketKurallari = (string) @file_get_contents(CY_BASE . '/.gitattributes');
 dogrula('ZIP paketinde .gitignore var (ZIP\'ten git\'e konan proje .env\'i commit\'lemez)', preg_match('/^\.gitignore\s+export-ignore/m', $paketKurallari) !== 1);
 dogrula('ZIP paketinde docs/MOBIL-API.md var, yalnızca ekran görüntüleri çıkar',

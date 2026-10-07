@@ -12,6 +12,7 @@ sayfasındadır.
 
 | Sürüm | Tarih | Özet |
 |---|---|---|
+| [1.6.2](#162--2026-10-07) | 2026-10-07 | ZIP'ten kurulum testi: paket, örnek veri, duyurudan çıkış, hesap açılışı, bakım girişi, performans |
 | [1.6.1](#161--2026-10-07) | 2026-10-07 | Form yardım metinleri, güvenlik ve bilgilendirme bildirimleri, duyuru tercihi, koyu temada AA kontrast, menüyle hizalı ana sayfa, SQL dosyasıyla kurulum |
 | [1.6.0](#160--2026-10-07) | 2026-10-07 | Parola sıfırlama, mobil oturum API'si, KVKK araçları, hesap silme, 2 ekranlı kurulum, panelden yönetilen ana sayfa, CI'da MySQL 8 ile rol matrisi |
 | [1.5.1](#151--2026-10-07) | 2026-10-07 | Veritabanı: sık çalışan sorgular için eksik indeksler, giriş temizliğinde kilit |
@@ -25,12 +26,43 @@ sayfasındadır.
 
 ---
 
-## [Yayımlanmadı]
+## [1.6.2] — 2026-10-07
 
-Cowork'un 1.6.1 kurulum raporu üzerine (ZIP'ten, README izlenerek kurulum).
+Cowork'un 1.6.1 kurulum raporu üzerine: şablon GitHub ZIP'inden, README
+izlenerek sıfırdan kuruldu ve A–H kontrol listesiyle sınandı. Tek hata
+(örnek veri kaldırılınca Hakkımızda ÇILGIN tanıtımıyla kalıyordu) ve
+raporun öteki bütün bulguları (orta önemli 5, düşük önemli 14, README'de
+6 madde) giderildi. Kararlı sürümdür.
 
 **Güncelleme:** kodu çekin, `php cy migrate` (bir migration:
 `parola_sifirlama.tur` sütunu). Değerlerinize dokunmaz.
+
+### Eklendi
+
+- **Tek tıkla abonelikten çıkma başlıkları.** Kitleye giden duyurularda
+  `List-Unsubscribe` ve `List-Unsubscribe-Post: List-Unsubscribe=One-Click`
+  (RFC 8058; Gmail ve Yahoo toplu gönderenlerden ister). Başlık gönderim
+  anında eklenir; kuyruktan giden mektupta da vardır.
+- **Derin bağlantılar:** "N hesap e-posta doğrulaması bekliyor" bildirimi
+  Kullanıcılar'ı onay bekleyenlere süzülmüş açar; "Yeni üye" mektubundaki
+  "Kullanıcıyı aç" düğmesi o kullanıcının ayrıntı penceresini açar
+  (`?kullanici={id}`).
+- **"İletişim e-postası tanımlı değil" panel bildirimi.** SQL dosyasıyla
+  kurulan sitede adres boştur; iletişim formu ve üye bildirimleri hiçbir
+  yere gitmiyordu (ya da okunmayan gönderen adresine gidiyordu). Bildirim
+  hangisi olduğunu söyler ve Ayarlar → İletişim'e götürür.
+
+### Değişti
+
+- **Giriş ekranı `?demo=` için rol adını da kabul eder** (`?demo=editor`,
+  `admin`, `uye`): o rolün örnek hesabı vurgulanır. README `?demo=editor`
+  diyordu ama yalnızca kullanıcı adı (`?demo=elif.editor`) çalışıyordu.
+- **README:** Kurulum adımları sihirbazın veritabanını kendisi
+  oluşturabildiğini, XAMPP adres örneğini ve kapı (port) kuralını
+  söylüyor. SQL ile kurulum adımlarına görselleri kopyalama, iletişim
+  e-postası ve Windows'ta `php` yolu eklendi. "Canlıya çıkış"ta sıkıştırma
+  ve önbellek modülleri ile "Hata ayıklama açık" uyarısının yalnızca yerel
+  olmayan adreste çıktığı yazıyor.
 
 ### Düzeltildi
 
@@ -121,21 +153,6 @@ Cowork'un 1.6.1 kurulum raporu üzerine (ZIP'ten, README izlenerek kurulum).
   hatası adres alanının altına da yazılır. Ayar kaydı "12 ayar
   kaydedildi" yerine "Sistem ayarları kaydedildi · 1 değişiklik" ya da
   "Değişiklik yok" der.
-
-### Eklendi
-
-- **Tek tıkla abonelikten çıkma başlıkları.** Kitleye giden duyurularda
-  `List-Unsubscribe` ve `List-Unsubscribe-Post: List-Unsubscribe=One-Click`
-  (RFC 8058; Gmail ve Yahoo toplu gönderenlerden ister). Başlık gönderim
-  anında eklenir; kuyruktan giden mektupta da vardır.
-- **Derin bağlantılar:** "N hesap e-posta doğrulaması bekliyor" bildirimi
-  Kullanıcılar'ı onay bekleyenlere süzülmüş açar; "Yeni üye" mektubundaki
-  "Kullanıcıyı aç" düğmesi o kullanıcının ayrıntı penceresini açar
-  (`?kullanici={id}`).
-- **"İletişim e-postası tanımlı değil" panel bildirimi.** SQL dosyasıyla
-  kurulan sitede adres boştur; iletişim formu ve üye bildirimleri hiçbir
-  yere gitmiyordu (ya da okunmayan gönderen adresine gidiyordu). Bildirim
-  hangisi olduğunu söyler ve Ayarlar → İletişim'e götürür.
 
 ---
 

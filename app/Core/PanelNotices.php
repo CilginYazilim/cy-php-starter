@@ -118,8 +118,8 @@ final class PanelNotices
             $gonderen = trim(Setting::get('mail_gonderen'));
             $notices[] = self::notice('iletisim-eposta', 'info', 'İletişim e-postası tanımlı değil',
                 ($gonderen !== ''
-                    ? 'Form mesajlarının ve üye bildirimlerinin bildirimleri şimdilik gönderen adresine (' . $gonderen . ') gidiyor. '
-                    : 'Form mesajlarının ve üye bildirimlerinin bildirimleri hiçbir yere gitmiyor. ')
+                    ? 'İletişim formu ve yeni üye bildirimleri şimdilik gönderen adresine (' . $gonderen . ') gidiyor. '
+                    : 'İletişim formu ve yeni üye bildirimleri hiçbir yere gitmiyor. ')
                 . 'Okuduğunuz bir adresi Ayarlar → İletişim\'den girin.',
                 $demoHesabi ? '' : 'panel/ayarlar/iletisim', $demoHesabi ? '' : 'İletişim ayarları');
         }

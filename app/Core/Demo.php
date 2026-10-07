@@ -210,6 +210,27 @@ final class Demo
     }
 
     /**
+     * Giriş ekranında vurgulanacak örnek hesap: ?demo= kullanıcı adı
+     * (elif.editor) ya da rol adı (admin, editor, uye) alır. Rol adında o
+     * rolün herkese açık örnek hesabı seçilir. Bilinmeyen değer boş döner;
+     * parola adreste asla taşınmaz.
+     */
+    public static function highlightFor(string $deger): string
+    {
+        if (array_key_exists($deger, self::HESAPLAR)) {
+            return $deger;
+        }
+
+        foreach (self::HESAPLAR as $kullaniciAdi => $hesap) {
+            if ($hesap['rol'] === $deger && $hesap['herkese']) {
+                return $kullaniciAdi;
+            }
+        }
+
+        return '';
+    }
+
+    /**
      * Geliştirme ortamında örnek veri yüklü mü? Giriş ekranı parolaları
      * DEĞİL, "demo hesaplar README'de" notunu gösterir.
      */

@@ -6,11 +6,11 @@
 
 **Kurulum sihirbazı · rol tabanlı yönetim paneli · parola sıfırlama · mobil uygulama API'si · konsol · migration · kuyruk · olay · modül sistemi · PWA — hepsi hazır.**
 
-[![Sürüm](https://img.shields.io/badge/Sürüm-1.6.1-0b5cb5?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/releases/latest)
+[![Sürüm](https://img.shields.io/badge/Sürüm-1.6.2-0b5cb5?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/releases/latest)
 [![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?style=flat-square&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 ![Bağımlılık: sıfır](https://img.shields.io/badge/Bağımlılık-Sıfır-16a34a?style=flat-square)
-[![Testler](https://img.shields.io/badge/Birim_testi-338-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/actions)
+[![Testler](https://img.shields.io/badge/Birim_testi-339-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/actions)
 [![CI](https://github.com/CilginYazilim/cy-php-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/CilginYazilim/cy-php-starter/actions/workflows/ci.yml)
 [![Lisans](https://img.shields.io/badge/Lisans-MIT-16a34a?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/blob/main/LICENSE)
 
@@ -195,7 +195,7 @@ seçimdir. Bu şablon, şu durumlar için yazıldı:
 | **Tema** | Tek renk seçin, panelin ve sitenin tamamı yeniden renklensin |
 | **Mobil** | Ön yüz ve panelin tamamı mobil öncelikli · tablolar telefonda karta döner · 44px dokunma hedefleri · yapışkan menü · iOS yakınlaştırma ve çentik payı çözülmüş |
 | **Konsol** | `php cy` — 24 komut, üreteçler ve XAMPP'siz geliştirme sunucusu (`php cy serve`) dahil |
-| **Testler** | 338 birim testi (rol matrisi, XSS, politika — veritabanı gerektirmez) · 54 duman testi · GitHub Actions'ta PHP 8.1–8.4 ve **MySQL 8 ile gerçek kurulum** |
+| **Testler** | 339 birim testi (rol matrisi, XSS, politika — veritabanı gerektirmez) · 54 duman testi · GitHub Actions'ta PHP 8.1–8.4 ve **MySQL 8 ile gerçek kurulum** |
 
 ---
 
@@ -214,8 +214,9 @@ ortamında **giriş ekranında** görünür; satıra tıklamak yeterlidir.
 | Askıdaki üye | `can.askida` | Giriş yapamaz |
 | Onay bekleyen | `zeynep.onay` | E-posta doğrulanmadan giriş yapamaz |
 
-Ana sayfadaki **"Rolleri deneyin"** kartları (`/giris?demo=editor`) giriş
-ekranında o hesabı vurgular; parola adreste asla taşınmaz. Gerçek bir
+Ana sayfadaki **"Rolleri deneyin"** kartları (`/giris?demo=elif.editor`)
+giriş ekranında o hesabı vurgular; rol adı da olur (`/giris?demo=editor`,
+`admin`, `uye`). Parola adreste asla taşınmaz. Gerçek bir
 sitede örnek veriyi **Panel → Sistem → Örnek veriyi kaldır** ile tek
 tıkla silin.
 
@@ -257,13 +258,21 @@ kilidi yetkiden SONRA çalışır: yetkisi olmayan "yetkiniz yok" görür.
 git clone https://github.com/CilginYazilim/cy-php-starter
 ```
 
-Klasörü sunucunuzun web klasörüne koyun (XAMPP'te `htdocs/`) ve boş bir
-MySQL veritabanı açın (karakter seti `utf8mb4`).
+Klasörü sunucunuzun web klasörüne koyun (XAMPP'te `htdocs/`). ZIP'ten
+çıkan `cy-php-starter-main` klasörünün adını istediğiniz gibi değiştirin;
+adres bu ada göre oluşur. İsterseniz boş bir MySQL veritabanı açın
+(karakter seti `utf8mb4`); açmazsanız sihirbaz oluşturur (kullanıcının
+yetkisi varsa).
 
-**2. Sihirbazı açın:** **`http://siteniz/kurulum/`**
+**2. Sihirbazı açın:** **`http://siteniz/kurulum/`** — kök adres de
+kurulum yapılmadıysa sihirbaza yönlenir. XAMPP örneği: klasör
+`htdocs/cy-php-starter` ise `http://localhost/cy-php-starter/`.
 
 - *1. ekran:* sunucu tek satırda denetlenir; veritabanı bilgilerini yazıp
-  **Bağlantıyı dene**'ye basın.
+  **Bağlantıyı dene**'ye basın. Sunucuya kapı (port) yazabilirsiniz:
+  `localhost:3307` gibi 3306 dışındaki bir kapıda bağlantı TCP ile
+  (`127.0.0.1`) kurulur; `localhost` Linux'ta kapıyı yok sayan Unix
+  soketini kullanırdı.
 - *2. ekran:* site adı ve adresi, yönetici hesabı, seçenekler
   (**Örnek veriyle kur** — localhost'ta varsayılan açık; **Demo modu**;
   **Geliştirme modu**; **PWA**; açılacak modüller). **Kur**'a basın.
@@ -338,8 +347,15 @@ aynısıdır: bütün tablolar, ayarlar, sayfalar, 6 örnek hesap, mesajlar ve
    **İçe Aktar**, ya da `mysql -u KULLANICI -p VERITABANI < database/ornek-veritabani.sql`.
 2. `.env.example`'ı `.env` adıyla kopyalayın; `DB_HOST`, `DB_NAME`,
    `DB_USER`, `DB_PASS` ve `APP_URL`'i doldurun. `APP_KEY` için
-   `php -r "echo bin2hex(random_bytes(32));"` çıktısını yazın.
-3. `kurulum/` klasörünü silin ve **ali.yonetici / Demo1234!** ile girin.
+   `php -r "echo bin2hex(random_bytes(32));"` çıktısını yazın (Windows'ta
+   `php` tanınmıyorsa: `C:\xampp\php\php.exe -r "echo bin2hex(random_bytes(32));"`).
+3. Görselleri kopyalayın (SQL'de değildir; kopyalamazsanız paylaşım görseli
+   logoya düşer, mobil API'nin örnek dosya listesi boş görünür):
+   `database/seeders/demo/og-cy-php-starter.png` → `upload/img/`,
+   `database/seeders/demo/dosyalar/*` → `storage/files/ornek/`.
+4. `kurulum/` klasörünü silin ve **ali.yonetici / Demo1234!** ile girin.
+5. **Ayarlar → İletişim**'ten iletişim e-postasını girin. SQL'de boştur;
+   iletişim formu ve üye bildirimleri bu adrese gider (panel de hatırlatır).
 
 > **Örnek hesapların parolası herkesçe bilinir.** Yayına almadan önce
 > kendinize bir yönetici hesabı açın, ardından Panel → Sistem → **Örnek
@@ -378,7 +394,7 @@ aynısıdır: bütün tablolar, ayarlar, sayfalar, 6 örnek hesap, mesajlar ve
 ├── assets/                 css · js · images (CDN yok)
 ├── storage/                logs · cache · files · mail (web'e kapalı)
 ├── upload/                 Yüklenen görseller (PHP çalıştırma kapalı)
-├── docs/                   MOBIL-API.md · ekran görüntüleri
+├── docs/                   MOBIL-API.md · ekran görüntüleri (yalnızca GitHub'da; ZIP'te yok)
 ├── tests/                  unit · smoke · kurulum · sema · rol-matrisi · ornek-sql (web'e kapalı)
 └── kurulum/                Sihirbaz + database.sql (sonra SİLİN)
 ```
@@ -520,7 +536,7 @@ php tests/sema.php --eski=eski-database.sql          # yükseltilen şema = yeni
 php tests/ornek-sql.php --db-adi=ornek_db             # örnek veritabanı SQL dosyasını üretir
 ```
 
-`unit.php` 338 testi veritabanı olmadan çalıştırır; aralarında **rol
+`unit.php` 339 testi veritabanı olmadan çalıştırır; aralarında **rol
 matrisi** (96 rotanın her biri için kimin erişebildiği), 18 XSS vektörü,
 Örnek Modül politikası ve kurulum şeması tutarlılığı vardır. `smoke.php`
 siteyi değiştirmez: kurulum kilidi, gizli dosyalar (`.env`, `.git/`), açık
@@ -797,12 +813,12 @@ metinlerini kendinize göre ayarlayın; arayüz anında yeni renginizi alır.
 
 ## Sürüm
 
-Güncel kararlı sürüm **1.6.1** (7 Ekim 2026). Sürüm numarası **kodda, tek yerde**
+Güncel kararlı sürüm **1.6.2** (7 Ekim 2026). Sürüm numarası **kodda, tek yerde**
 durur:
 
 ```php
 // config/app.php
-'version' => '1.6.1',
+'version' => '1.6.2',
 ```
 
 `Panel → Sistem Bilgisi` sayfası bu değeri okur. Şablonu güncellediğinizde
@@ -812,6 +828,7 @@ numara kendiliğinden gelir; veritabanında ayrıca tutulmaz.
 
 | Sürüm | Tarih | Öne çıkanlar |
 |---|---|---|
+| [1.6.2](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.6.2) | 2026-10-07 | ZIP'ten kurulum testi: pakette `.gitignore`; örnek veri kaldırılınca Hakkımızda nötr; duyurudan tek tıkla çıkış (RFC 8058) ve tarayıcıya dayanıklı onay; hesap açılışında "Hesabınızı etkinleştirin"; bakımda üye girişi kapalı; JS sıkıştırma ve uzun önbellek; 70 KB'tan 6 KB'a logo |
 | [1.6.1](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.6.1) | 2026-10-07 | Form yardım metinleri ve karakter sayacı; e-posta değişikliği, hesap silme, yeni üye ve hesap açılışı bildirimleri; duyuru tercihi; koyu temada WCAG AA kontrast; ana sayfa menüyle aynı hizada; demo parolaları yalnızca demo modunda; SQL dosyasıyla kurulum (`database/ornek-veritabani.sql`) |
 | [1.6.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.6.0) | 2026-10-07 | Parola sıfırlama; mobil uygulama oturum API'si; KVKK araçları ve hesap silme; iki ekranlı kurulum; panelden yönetilen ana sayfa; tablolar mobilde kart; CI'da MySQL 8 ile rol matrisi |
 | [1.5.1](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.5.1) | 2026-10-07 | Veritabanı performansı: sık çalışan sorgular için eksik indeksler; giriş denemeleri temizliğinin kilitlenmesi giderildi |
@@ -825,6 +842,17 @@ numara kendiliğinden gelir; veritabanında ayrıca tutulmaz.
 
 Her sürümün ayrıntısı:
 [CHANGELOG.md](https://github.com/CilginYazilim/cy-php-starter/blob/main/CHANGELOG.md).
+
+### Güncelleme (1.6.1 → 1.6.2)
+
+1. Kodu çekin, `php cy migrate` çalıştırın (SSH yoksa panelde **"Şimdi çalıştır"**).
+   Bir migration: parola bağlantılarının türü (`parola_sifirlama.tur`).
+   Değerlerinize dokunmaz.
+2. `.htaccess` değişti (JS sıkıştırma, sürümlü dosyalara uzun önbellek).
+   Kendi `.htaccess`'inizi düzenlediyseniz "4) İstemci önbelleği" ve
+   "5) Sıkıştırma" bölümlerini aktarın.
+3. Duyurudan çıkma bağlantısı artık önce onay sayfası açar; tercih
+   "Duyuruları kapat" düğmesiyle (POST) değişir.
 
 ### Güncelleme (1.6.0 → 1.6.1)
 

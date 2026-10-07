@@ -1,6 +1,6 @@
 # CY PHP Starter — Sistem Kılavuzu
 
-**PHP Başlangıç Şablonunun mimarisi, tasarım kararları ve genişletme rehberi** · Sürüm 1.6.1
+**PHP Başlangıç Şablonunun mimarisi, tasarım kararları ve genişletme rehberi** · Sürüm 1.6.2
 
 > Bu dosya sistemin **tamamını** anlatır: mimari kararlar, her katmanın
 > ne işe yaradığı, neden öyle yazıldığı ve nasıl genişletileceği.

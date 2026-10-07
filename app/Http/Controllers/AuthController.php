@@ -49,8 +49,9 @@ final class AuthController extends Controller
             'demoAccounts'  => Demo::loginAccounts($this->db),
             'demoMode'      => Demo::enabled(),
             'ornekVeriNotu' => Demo::sampleDataNote($this->db),
-            // Ana sayfadaki "Bu rolle gir": hesap vurgulanır. Parola adreste ASLA taşınmaz.
-            'vurgulanan'   => $request->input('demo'),
+            // Ana sayfadaki "Bu rolle gir": hesap vurgulanır (?demo=elif.editor ya da ?demo=editor).
+            // Parola adreste ASLA taşınmaz.
+            'vurgulanan'   => Demo::highlightFor($request->input('demo')),
         ], 'layouts/site');
     }
 
