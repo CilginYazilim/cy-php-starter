@@ -31,6 +31,8 @@ final class PasswordChanged extends Event
     public const PROFIL    = 'profil';
     public const SIFIRLAMA = 'sifirlama';
     public const YONETICI  = 'yonetici';
+    /** Yöneticinin açtığı hesapta, açılış bağlantısıyla belirlenen ilk parola. */
+    public const ILK       = 'ilk';
 
     public function __construct(
         public readonly int $userId,

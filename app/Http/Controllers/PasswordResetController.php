@@ -73,30 +73,36 @@ final class PasswordResetController extends Controller
 
     public function showReset(Request $request): void
     {
-        self::requireEnabled();
         self::noReferrer();
 
         $jeton = $request->input('jeton');
+        $tur   = PasswordReset::kind($jeton);
 
-        if (PasswordReset::find($jeton) === null) {
+        self::requireEnabled($tur);
+
+        if ($tur === null) {
             Flash::error('Bağlantı geçersiz, kullanılmış ya da süresi dolmuş. Yeni bir bağlantı isteyin.');
             Response::redirect(url('parolami-unuttum'));
         }
 
+        $ilk = $tur === PasswordReset::TUR_ACILIS;
+
         $this->view('auth/reset', [
-            'title'   => 'Yeni Parola',
+            'title'   => $ilk ? 'Hesabınızı Etkinleştirin' : 'Yeni Parola',
             'noindex' => true,
             'jeton'   => $jeton,
+            'ilk'     => $ilk,
             'errors'  => Flash::errors(),
         ], 'layouts/site');
     }
 
     public function reset(Request $request): void
     {
-        self::requireEnabled();
-
         $jeton = $request->string('jeton');
         $geri  = url('parola-sifirla', ['jeton' => $jeton]);
+        $ilk   = PasswordReset::kind($jeton) === PasswordReset::TUR_ACILIS;   // jeton tüketilmeden önce
+
+        self::requireEnabled($ilk ? PasswordReset::TUR_ACILIS : PasswordReset::TUR_SIFIRLAMA);
 
         $validator = (new Validator($_POST))->password('sifre', true, 'sifre_tekrar');
 
@@ -112,14 +118,21 @@ final class PasswordResetController extends Controller
             Response::redirect(url('parolami-unuttum'));
         }
 
-        Flash::success('Parolanız değiştirildi. Yeni parolanızla giriş yapabilirsiniz; diğer cihazlardaki oturumlarınız kapatıldı.');
+        Flash::success($ilk
+            ? 'Hesabınız hazır. Giriş yapabilirsiniz.'
+            : 'Parolanız değiştirildi. Yeni parolanızla giriş yapabilirsiniz; diğer cihazlardaki oturumlarınız kapatıldı.');
         Response::redirect(url('giris'));
     }
 
-    /** Ayar kapalıysa ya da site e-posta gönderemiyorsa akış yoktur. */
-    private static function requireEnabled(): void
+    /**
+     * Ayar kapalıysa ya da site e-posta gönderemiyorsa "Parolamı unuttum"
+     * akışı yoktur. Hesap AÇILIŞ bağlantısı bundan muaftır: mektup zaten
+     * gitti; yönetici sıfırlamayı kapattı diye yeni kullanıcı parolasını
+     * belirleyemez olmamalı.
+     */
+    private static function requireEnabled(?string $tur = null): void
     {
-        if (!PasswordReset::enabled()) {
+        if ($tur !== PasswordReset::TUR_ACILIS && !PasswordReset::enabled()) {
             Flash::warning('Parola sıfırlama şu anda kullanılamıyor. Site yöneticisiyle iletişime geçin.');
             Response::redirect(url('giris'));
         }

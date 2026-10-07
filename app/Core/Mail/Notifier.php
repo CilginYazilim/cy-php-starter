@@ -191,7 +191,7 @@ final class Notifier
                 'kullaniciAdi' => $user->kullaniciAdi,
                 'eposta'       => $user->eposta,
                 'tarih'        => User::formatDate($user->createdAt ?? date('Y-m-d H:i:s')),
-                'panelUrl'     => Mailer::absolute(url('panel/kullanicilar')),
+                'panelUrl'     => Mailer::absolute(url('panel/kullanicilar', ['kullanici' => $user->id])),   // ayrıntı penceresi açılır (users.js)
             ]);
 
         return Mailer::send($mail);

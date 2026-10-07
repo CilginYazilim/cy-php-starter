@@ -40,6 +40,9 @@ use Throwable;
 
 final class Auth
 {
+    /** Bakım modunda bakımı atlayamayan role (üye) giriş ekranında ve girişte gösterilir. */
+    public const BAKIM_MESAJI = 'Site bakımda; şu an yalnızca yöneticiler ve editörler girebilir.';
+
     private const SESSION_KEY     = '_auth_user_id';
     private const SESSION_VERSION = '_auth_ver';
 
@@ -163,6 +166,14 @@ final class Auth
         $user  = $sonuc['user'];
         $ip    = $request->ip();
         $users = new UserRepository(Database::connection());
+
+        /* Bakım modunda yalnızca bakımı atlayabilen roller (yönetici,
+         * editör) girer. Eskiden üye giriş yapıyor, ardından panel 503
+         * dönüyordu. Mesaj yalnızca parolayı bilene görünür (hesap
+         * durumu gibi). */
+        if (Setting::bool('sistem_bakim_modu', false) && !$user->can('maintenance.bypass')) {
+            return ['ok' => false, 'message' => self::BAKIM_MESAJI, 'user' => null];
+        }
 
         self::login($user);
         $users->touchLogin($user->id, $ip);

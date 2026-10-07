@@ -166,6 +166,10 @@ final class UserApiController extends Controller
          * kendi parolasını belirler. Mektup gidemiyorsa seçenek yok sayılır. */
         $hesapBilgisi = !$isEdit && $request->input('hesap_bilgisi') === '1' && PasswordReset::canSendLinks();
 
+        /* Parola boş, kutu işaretsiz ama işaretlenebilir: iki yolu birden
+         * söyle. "Parola alanı boş bırakılamaz" kutunun varlığını unutturuyordu. */
+        $ikiYol = !$isEdit && !$hesapBilgisi && (string) ($_POST['sifre'] ?? '') === '' && PasswordReset::canSendLinks();
+
         $validator = new Validator($_POST);
         $validator->name('ad', 'Ad')
                   ->name('soyad', 'Soyad')
@@ -173,7 +177,11 @@ final class UserApiController extends Controller
                   ->email('eposta')
                   ->phone('telefon')
                   ->text('hakkinda', 'Hakkında', 0, 1000)
-                  ->password('sifre', !$isEdit && !$hesapBilgisi);
+                  ->password('sifre', !$isEdit && !$hesapBilgisi && !$ikiYol);
+
+        if ($ikiYol) {
+            $validator->addError('sifre', 'Parola yazın ya da "Kullanıcıya hesap bilgisi gönder"i işaretleyin.');
+        }
 
         if ($validator->passes() && $this->users()->fieldTaken('eposta', (string) $validator->validated()['eposta'], $target?->id)) {
             $validator->addError('eposta', 'Bu e-posta adresi başka bir hesapta kayıtlı.');

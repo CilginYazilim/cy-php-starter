@@ -228,7 +228,8 @@ $router->group('api/v1', ['installed'], function (Router $r): void {
  *  yanıltırdı.
  * ------------------------------------------------------------------ */
 $router->get('onizleme/{id}', SitePageController::class, 'preview', ['installed']);   // imzalı, 30 dk (bkz. PageController::previewUrl)
-$router->get('duyurular/iptal', NotificationController::class, 'unsubscribe', ['installed']);   // imzalı, giriş gerektirmez (bkz. NotificationPrefs)
+$router->get('duyurular/iptal', NotificationController::class, 'unsubscribe', ['installed']);   // imzalı, giriş gerektirmez; yalnızca onay sayfası
+$router->post('duyurular/iptal', NotificationController::class, 'confirm', ['installed']);    // CSRF'siz: yetki imzadır, posta istemcisi tek tıkla POST atar (RFC 8058)
 $router->get('{slug}', SitePageController::class, 'show', ['installed']);
 
 /* ---------------------------------------------------------------------

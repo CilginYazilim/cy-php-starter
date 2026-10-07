@@ -29,6 +29,15 @@ $demoMode     = $demoMode ?? false;
                             <p class="cy-subtitle mb-0">Devam etmek için hesap bilgilerinizi girin.</p>
                         </div>
 
+                        <?php /* Bakımda ekran açık kalır (yönetici girebilsin); üyeye
+                                 önceden söylenir, girerse Auth::attempt reddeder. */ ?>
+                        <?php if (Setting::bool('sistem_bakim_modu', false)): ?>
+                            <div class="cy-alert cy-alert--info mb-3" role="status">
+                                <span class="cy-alert__icon"><?= icon('info', 'cy-icon cy-icon--sm') ?></span>
+                                <div class="cy-alert__body"><?= e(App\Core\Auth::BAKIM_MESAJI) ?></div>
+                            </div>
+                        <?php endif; ?>
+
                         <form method="post" action="<?= e(url('giris')) ?>" id="cy_login_form" novalidate>
                             <?= csrf_field() ?>
 

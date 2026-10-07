@@ -292,8 +292,8 @@ jQuery(function ($) {
         .always(function () { setLoading(false); });
     });
 
-    $('#user_table').on('click', '.js-view', function () {
-        fetchUser($(this).data('id'), function (data) {
+    function showDetail(id) {
+        fetchUser(id, function (data) {
             currentDetailId = data.id;
 
             $('#detail_id').text('#' + data.id);
@@ -334,6 +334,10 @@ jQuery(function ($) {
             $('#detail_edit_button').toggleClass('d-none', !data.can_edit);
             detailModal.show();
         });
+    }
+
+    $('#user_table').on('click', '.js-view', function () {
+        showDetail($(this).data('id'));
     });
 
     $('#detail_edit_button').on('click', function () {
@@ -380,10 +384,27 @@ jQuery(function ($) {
     $('#userModal').on('hidden.bs.modal', resetForm);
     $('#detailModal').on('hidden.bs.modal', function () { currentDetailId = null; });
 
+    /* Tek seferlik adres parametresini siler; ötekiler ("güzel adres"
+     * kapalıyken ?r=panel/kullanicilar) yerinde kalır, yenileme bozulmaz. */
+    function forgetParam(name) {
+        var params = new URLSearchParams(window.location.search);
+        params.delete(name);
+        var rest = params.toString();
+        window.history.replaceState(null, '', window.location.pathname + (rest ? '?' + rest : ''));
+    }
+
     /* Kontrol panelindeki "Yeni Kullanıcı" kısayolu buraya ?ekle=1 ile
      * yönlendirir; sayfa yüklenir yüklenmez ekleme modalını açarız. */
     if (new URLSearchParams(window.location.search).get('ekle') === '1') {
         $('#add_button').trigger('click');
-        window.history.replaceState(null, '', window.location.pathname);
+        forgetParam('ekle');
+    }
+
+    /* "Yeni üye" mektubundaki "Kullanıcıyı aç" düğmesi ?kullanici={id}
+     * ile gelir: o kullanıcının ayrıntı penceresi açılır. */
+    var ilkKullanici = parseInt(new URLSearchParams(window.location.search).get('kullanici') || '', 10);
+    if (ilkKullanici > 0) {
+        showDetail(ilkKullanici);
+        forgetParam('kullanici');
     }
 });

@@ -26,6 +26,12 @@ final class ParolaDegistiBildir
 {
     public function handle(PasswordChanged $event): void
     {
+        /* Hesap açılış bağlantısıyla belirlenen İLK parola bir değişiklik
+         * değildir; kişi az önce "Hesabınız açıldı" mektubunu aldı. */
+        if ($event->kaynak === PasswordChanged::ILK) {
+            return;
+        }
+
         $user = (new UserRepository(Database::connection()))->find($event->userId);
 
         if ($user !== null) {

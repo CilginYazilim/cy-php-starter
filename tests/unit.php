@@ -765,7 +765,10 @@ if (in_array('sqlite', PDO::getAvailableDrivers(), true)) {
         }
 
         // Oturum çereziyle çalışan her veri değiştiren uç CSRF ister (API anahtarıyla gelenler hariç).
-        if ($rota['verb'] === 'POST' && !str_starts_with($rota['path'], 'api/v1') && !in_array('csrf', $mw, true)) {
+        // İstisna: yetkisi adresteki İMZA olan, oturum kullanmayan uçlar. duyurular/iptal'e
+        // posta istemcisi tek tıkla jetonsuz POST atar (RFC 8058); bkz. NotificationController.
+        if ($rota['verb'] === 'POST' && !str_starts_with($rota['path'], 'api/v1') && !in_array('csrf', $mw, true)
+            && $rota['path'] !== 'duyurular/iptal') {
             $postCsrfsiz[] = $rota['path'];
         }
 
@@ -1038,6 +1041,48 @@ if (in_array('sqlite', PDO::getAvailableDrivers(), true)) {
 
 $panelKaynak = (string) file_get_contents(CY_BASE . '/app/Core/PanelNotices.php');
 dogrula('İletişim e-postası boşsa panel söyler (SQL kurulumunda boş gelir)', str_contains($panelKaynak, "'iletisim-eposta'") && str_contains($panelKaynak, "'panel/ayarlar/iletisim'"));
+
+/* ---------------------------------------------------------------- */
+echo "\nE-posta ve bildirim ayrıntıları (1.6.2)\n";
+
+$tekTik = new ReflectionMethod(App\Core\Mail\Mailer::class, 'applyListUnsubscribe');
+$iptalAdresi = App\Core\NotificationPrefs::unsubscribeUrl(5);
+$duyuru = App\Core\Mail\Mailable::make()->to('uye@ornek.test')->subject('Duyuru')->template('duyuru')->forUser(5)
+    ->html('<p>Merhaba</p>' . App\Core\Mail\MailUi::kucukBaglanti('Üye olduğunuz için.', $iptalAdresi, 'Duyuruları almak istemiyorum'));
+$tekTik->invoke(null, $duyuru);
+$hamDuyuru = App\Core\Mail\Mime::raw($duyuru, ['site@ornek.test', 'Site']);
+dogrula('Duyuruda tek tıkla çıkış başlıkları var (List-Unsubscribe + RFC 8058 POST)',
+    str_contains($hamDuyuru, 'List-Unsubscribe: <' . $iptalAdresi . '>') && str_contains($hamDuyuru, 'List-Unsubscribe-Post: List-Unsubscribe=One-Click'));
+$elleDuyuru = App\Core\Mail\Mailable::make()->to('x@ornek.test')->subject('Duyuru')->template('duyuru')->forUser(5)->html('<p>İptal bağlantısı yok</p>');
+$guvenlik   = App\Core\Mail\Mailable::make()->to('x@ornek.test')->subject('Sıfırlama')->template('parola-sifirlama')->forUser(5)->html('<p>' . e($iptalAdresi) . '</p>');
+$tekTik->invoke(null, $elleDuyuru);
+$tekTik->invoke(null, $guvenlik);
+dogrula('Gövdesinde iptal bağlantısı olmayan ya da duyuru olmayan mektupta başlık yok',
+    !array_key_exists('List-Unsubscribe', $elleDuyuru->extraHeaders()) && !array_key_exists('List-Unsubscribe', $guvenlik->extraHeaders()));
+
+$bildirimKaynak = (string) file_get_contents(CY_BASE . '/app/Http/Controllers/Site/NotificationController.php');
+$getBas         = strpos($bildirimKaynak, 'public function unsubscribe(');
+$getSon         = strpos($bildirimKaynak, 'public function confirm(');
+$bildirimGet    = $getBas !== false && $getSon !== false && $getSon > $getBas ? substr($bildirimKaynak, $getBas, $getSon - $getBas) : '';
+dogrula('Duyuru iptal bağlantısını AÇMAK tercihi değiştirmez (güvenlik tarayıcıları bağlantıyı açar)',
+    $bildirimGet !== '' && !str_contains($bildirimGet, 'saveNotificationPrefs') && str_contains(substr($bildirimKaynak, (int) $getSon), 'saveNotificationPrefs'));
+
+$yeniUyeKaydi = App\Models\MailLog::fromRow(['id' => 1, 'alici_eposta' => 'evren@ornek.test', 'konu' => 'Site – Yeni üye: Ali Yılmaz', 'sablon' => 'yeni-uye', 'tur' => 'sistem', 'durum' => 'gonderildi']);
+dogrula('"Yeni üye" mektubu kişisel veri sayılır (editörden gizlenir), güvenlik mektubu sayılmaz',
+    $yeniUyeKaydi->isPersonal() && !$yeniUyeKaydi->isSensitive() && !in_array('yeni-uye', App\Models\MailLog::GUVENLIK_SABLONLARI, true));
+
+/* Açılış bağlantısıyla belirlenen ilk parola "Parolanız değiştirildi"
+ * mektubu göndermez; dinleyici veritabanına hiç gitmeden döner. */
+$ilkParola = true;
+try {
+    (new App\Listeners\ParolaDegistiBildir())->handle(new App\Events\PasswordChanged(1, true, App\Events\PasswordChanged::ILK));
+} catch (Throwable) {
+    $ilkParola = false;
+}
+dogrula('Hesap açılışındaki ilk parola "Parolanız değiştirildi" mektubu göndermez', $ilkParola);
+dogrula('Bakım modunda giriş, bakımı atlayamayan role kapalı (Auth::attempt)',
+    str_contains((string) file_get_contents(CY_BASE . '/app/Core/Auth.php'), "!\$user->can('maintenance.bypass')")
+    && !Role::can(Role::MEMBER, 'maintenance.bypass') && Role::can(Role::EDITOR, 'maintenance.bypass'));
 
 $paketKurallari = (string) @file_get_contents(CY_BASE . '/.gitattributes');
 dogrula('ZIP paketinde .gitignore var (ZIP\'ten git\'e konan proje .env\'i commit\'lemez)', preg_match('/^\.gitignore\s+export-ignore/m', $paketKurallari) !== 1);

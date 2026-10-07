@@ -289,11 +289,22 @@ final class SettingsController extends Controller
             Response::redirect(url('panel/ayarlar/' . $grup));
         }
 
+        /* Gerçekten DEĞİŞEN alan sayısı. Eskiden "12 ayar kaydedildi"
+         * deniyordu: tek alan değişse de grubun bütün alanları sayılıyordu. */
+        $eski     = array_column($rows, 'deger', 'anahtar');
+        $degisen  = count(array_filter($values, static fn (string $deger, string $anahtar): bool => (string) ($eski[$anahtar] ?? '') !== $deger, ARRAY_FILTER_USE_BOTH));
+        $grupAdi  = Setting::groupLabels()[$grup] ?? 'Site';
+
+        if ($degisen === 0) {
+            Flash::info('Değişiklik yok; ' . mb_strtolower($grupAdi, 'UTF-8') . ' ayarları olduğu gibi kaldı.');
+            Response::redirect(url('panel/ayarlar/' . $grup));
+        }
+
         Setting::saveMany($this->db, $values);
 
-        Logger::info('Ayarlar güncellendi', ['grup' => $grup, 'alan' => count($values)], 'app');
+        Logger::info('Ayarlar güncellendi', ['grup' => $grup, 'degisen' => $degisen], 'app');
 
-        Flash::success(count($values) . ' ayar kaydedildi.');
+        Flash::success($grupAdi . ' ayarları kaydedildi · ' . $degisen . ' değişiklik.');
         Response::redirect(url('panel/ayarlar/' . $grup));
     }
 

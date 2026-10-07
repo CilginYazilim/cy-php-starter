@@ -145,7 +145,7 @@ final class PanelNotices
             if ($bekleyenHesap > 0) {
                 $notices[] = self::notice('onay-bekleyen', 'info', $bekleyenHesap . ' hesap e-posta doğrulaması bekliyor',
                     'Doğrulama bağlantısına tıklamayan hesaplar giriş yapamaz. Gerekirse kullanıcı ekranından durumlarını değiştirebilirsiniz.',
-                    'panel/kullanicilar', 'Kullanıcılar', kapatilabilir: true);
+                    'panel/kullanicilar?durum=onay_bekliyor', 'Onay bekleyenler', kapatilabilir: true);
             }
 
             $basarisiz = (new \App\Repositories\MailRepository($db))->countFailed(ornekHaric: true);

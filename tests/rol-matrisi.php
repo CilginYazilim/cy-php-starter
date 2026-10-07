@@ -88,6 +88,7 @@ return [
     'POST api/tema'                        => 'UEY',
     'POST api/v1/oturum'                   => 'MUEY',
     'POST cikis'                           => 'UEY',
+    'POST duyurular/iptal'                 => 'MUEY',
     'POST giris'                           => 'M',
     'POST kayit'                           => 'M',
     'POST panel/ayarlar/favicon'           => 'Y',

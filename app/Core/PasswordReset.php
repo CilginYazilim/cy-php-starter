@@ -113,6 +113,10 @@ final class PasswordReset
     /** Yöneticinin açtığı hesaptaki "parolanızı belirleyin" bağlantısının ömrü (saat). */
     public const HESAP_ACILIS_SAAT = 48;
 
+    /** Jeton türleri (parola_sifirlama.tur; bkz. App\Support\Surum162). */
+    public const TUR_SIFIRLAMA = 'sifirlama';
+    public const TUR_ACILIS    = 'acilis';
+
     /**
      * Yöneticinin açtığı hesap için "parolanızı belirleyin" bağlantısı
      * üretir (bkz. Notifier::hesapAcildi). Sıfırlamayla AYNI tablo ve
@@ -124,11 +128,12 @@ final class PasswordReset
         $jeton = bin2hex(random_bytes(32));
 
         Database::connection()->prepare(
-            'INSERT INTO parola_sifirlama (kullanici_id, ozet, son_gecerlilik, ip)
-             VALUES (:kullanici, :ozet, NOW() + INTERVAL ' . self::HESAP_ACILIS_SAAT . ' HOUR, :ip)'
+            'INSERT INTO parola_sifirlama (kullanici_id, ozet, tur, son_gecerlilik, ip)
+             VALUES (:kullanici, :ozet, :tur, NOW() + INTERVAL ' . self::HESAP_ACILIS_SAAT . ' HOUR, :ip)'
         )->execute([
             ':kullanici' => $user->id,
             ':ozet'      => hash('sha256', $jeton),
+            ':tur'       => self::TUR_ACILIS,
             ':ip'        => mb_substr($ip, 0, 45),
         ]);
 
@@ -140,27 +145,43 @@ final class PasswordReset
     /** Jeton geçerliyse (kullanılmamış, süresi dolmamış, hesap etkin) sahibini döndürür. */
     public static function find(string $jeton): ?User
     {
+        $satir = self::row($jeton);
+
+        if ($satir === null) {
+            return null;
+        }
+
+        $user = (new UserRepository(Database::connection()))->find((int) $satir['kullanici_id']);
+
+        return $user !== null && $user->isActive() ? $user : null;
+    }
+
+    /**
+     * Geçerli jetonun türü: TUR_ACILIS (yöneticinin açtığı hesabın ilk
+     * parolası) ya da TUR_SIFIRLAMA. Geçersizse null. Sayfa metni ve
+     * gönderilecek mektup buna göre seçilir.
+     */
+    public static function kind(string $jeton): ?string
+    {
+        return self::find($jeton) !== null ? (string) (self::row($jeton)['tur'] ?? self::TUR_SIFIRLAMA) : null;
+    }
+
+    /** @return array{kullanici_id:int|string,tur:string}|null kullanılmamış ve süresi dolmamış jetonun satırı */
+    private static function row(string $jeton): ?array
+    {
         if (preg_match('/^[a-f0-9]{64}\z/', $jeton) !== 1) {
             return null;
         }
 
-        $db   = Database::connection();
-        $stmt = $db->prepare(
-            'SELECT kullanici_id FROM parola_sifirlama
+        $stmt = Database::connection()->prepare(
+            'SELECT kullanici_id, tur FROM parola_sifirlama
               WHERE ozet = :ozet AND kullanildi_at IS NULL AND son_gecerlilik > NOW()
               LIMIT 1'
         );
         $stmt->execute([':ozet' => hash('sha256', $jeton)]);
+        $satir = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        $id = $stmt->fetchColumn();
-
-        if ($id === false) {
-            return null;
-        }
-
-        $user = (new UserRepository($db))->find((int) $id);
-
-        return $user !== null && $user->isActive() ? $user : null;
+        return $satir === false ? null : $satir;
     }
 
     /**
@@ -176,6 +197,8 @@ final class PasswordReset
         if ($user === null) {
             return null;
         }
+
+        $ilk = self::kind($jeton) === self::TUR_ACILIS;
 
         $db   = Database::connection();
         $stmt = $db->prepare(
@@ -195,9 +218,13 @@ final class PasswordReset
         // Oturum sürümü artar, "beni hatırla" ve API anahtarları silinir.
         (new UserRepository($db))->update($user->id, ['sifre' => $parola]);
 
-        Logger::info('Parola sıfırlandı (e-posta bağlantısıyla)', ['kullanici' => $user->id], 'auth');
+        Logger::info($ilk ? 'İlk parola belirlendi (hesap açılış bağlantısıyla)' : 'Parola sıfırlandı (e-posta bağlantısıyla)',
+            ['kullanici' => $user->id], 'auth');
 
-        Events::dispatch(new PasswordChanged($user->id, kendisi: true, kaynak: PasswordChanged::SIFIRLAMA));
+        /* İlk parolada "Parolanız değiştirildi" mektubu gitmez (bkz.
+         * ParolaDegistiBildir): hesabı yeni açılan kişi için anlamsızdı. */
+        Events::dispatch(new PasswordChanged($user->id, kendisi: true,
+            kaynak: $ilk ? PasswordChanged::ILK : PasswordChanged::SIFIRLAMA));
 
         return $user;
     }

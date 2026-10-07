@@ -29,6 +29,9 @@ sayfasındadır.
 
 Cowork'un 1.6.1 kurulum raporu üzerine (ZIP'ten, README izlenerek kurulum).
 
+**Güncelleme:** kodu çekin, `php cy migrate` (bir migration:
+`parola_sifirlama.tur` sütunu). Değerlerinize dokunmaz.
+
 ### Düzeltildi
 
 - **ZIP paketinde `.gitignore` yoktu.** `.gitattributes` her düzeydeki
@@ -65,8 +68,41 @@ Cowork'un 1.6.1 kurulum raporu üzerine (ZIP'ten, README izlenerek kurulum).
   örnek veride kuyrukta mektup yok. "Kuyruğu işle" düğmesi bütün kuyruğu
   işlemeye devam eder.
 
+- **Duyurudan çıkma bağlantısı açılır açılmaz işlem yapıyordu.** Kurumsal
+  e-posta güvenlik tarayıcıları (Outlook Safe Links vb.) bağlantıları
+  otomatik açar; üye hiçbir şeye tıklamadan duyurulardan çıkıyordu. Artık
+  GET yalnızca "Duyuruları kapat" düğmeli onay sayfasını gösterir; tercih
+  POST ile değişir (imza yetkidir, CSRF jetonu gerekmez).
+- **Editör "Yeni üye" mektubunu açık görüyordu** (yeni üyenin adı,
+  kullanıcı adı, e-postası). `MailLog::KISISEL_SABLONLAR`: kullanıcıları
+  göremeyen rollere gövde gizlenir, alıcı maskelenir, konu "Yeni üye
+  bildirimi" olur; not "kişisel veri içerir" der.
+- **Hesap açılış bağlantısı "Yeni parola belirleyin · diğer cihazlardaki
+  oturumlar kapatılır" diye açılıyor**, ardından "Parolanız değiştirildi"
+  mektubu gidiyordu. Bağlantının türü artık kayıtlı
+  (`parola_sifirlama.tur`): sayfa "Hesabınızı etkinleştirin", başarıda
+  "Hesabınız hazır" der; ilk parola için değişiklik mektubu gitmez. Ayrıca
+  Ayarlar'da "Parola Sıfırlama" kapatılınca açılış bağlantısı da
+  reddediliyordu; yeni kullanıcı parolasını belirleyemiyordu.
+- **Bakım modunda üye giriş yapabiliyor, ardından panel 503 dönüyordu.**
+  Artık bakımı atlayamayan role oturum açılmaz; giriş ekranı açık kalır ve
+  "Site bakımda; şu an yalnızca yöneticiler ve editörler girebilir." der.
+- **Küçük mesajlar:** Kullanıcı eklerken parola boş ve "hesap bilgisi
+  gönder" işaretsizse iki yol birden söylenir. Toplu e-postada alıcı
+  hatası adres alanının altına da yazılır. Ayar kaydı "12 ayar
+  kaydedildi" yerine "Sistem ayarları kaydedildi · 1 değişiklik" ya da
+  "Değişiklik yok" der.
+
 ### Eklendi
 
+- **Tek tıkla abonelikten çıkma başlıkları.** Kitleye giden duyurularda
+  `List-Unsubscribe` ve `List-Unsubscribe-Post: List-Unsubscribe=One-Click`
+  (RFC 8058; Gmail ve Yahoo toplu gönderenlerden ister). Başlık gönderim
+  anında eklenir; kuyruktan giden mektupta da vardır.
+- **Derin bağlantılar:** "N hesap e-posta doğrulaması bekliyor" bildirimi
+  Kullanıcılar'ı onay bekleyenlere süzülmüş açar; "Yeni üye" mektubundaki
+  "Kullanıcıyı aç" düğmesi o kullanıcının ayrıntı penceresini açar
+  (`?kullanici={id}`).
 - **"İletişim e-postası tanımlı değil" panel bildirimi.** SQL dosyasıyla
   kurulan sitede adres boştur; iletişim formu ve üye bildirimleri hiçbir
   yere gitmiyordu (ya da okunmayan gönderen adresine gidiyordu). Bildirim

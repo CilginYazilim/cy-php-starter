@@ -438,6 +438,39 @@ final class Mailer
         if (!array_key_exists('Auto-Submitted', $mail->extraHeaders())) {
             $mail->header('Auto-Submitted', 'auto-generated');
         }
+
+        self::applyListUnsubscribe($mail);
+    }
+
+    /**
+     * Duyuruya tek tıkla abonelikten çıkma başlıkları (RFC 2369 + 8058).
+     *
+     * Gmail ve Yahoo toplu gönderenlerden bunları ister; posta istemcisi
+     * "Abonelikten çık" düğmesini gösterir ve tıklanınca adrese
+     * "List-Unsubscribe=One-Click" gövdesiyle POST atar (bkz.
+     * Site\NotificationController::confirm).
+     *
+     * Başlık GÖNDERİM ANINDA eklenir: kuyruğa yazılan mektup veritabanı
+     * satırından yeniden kurulur ve özel başlıklar orada saklanmaz. Yalnızca
+     * gövdesinde imzalı iptal bağlantısı olan duyurulara eklenir (kitleye
+     * gidenler); elle adres yazılarak gönderilenlerde bağlantı yoktur.
+     */
+    private static function applyListUnsubscribe(Mailable $mail): void
+    {
+        $userId = $mail->getUserId();
+
+        if ($mail->getTemplate() !== 'duyuru' || $userId === null || array_key_exists('List-Unsubscribe', $mail->extraHeaders())) {
+            return;
+        }
+
+        $url = \App\Core\NotificationPrefs::unsubscribeUrl($userId);
+
+        if (!str_contains($mail->getHtml(), e($url))) {
+            return;
+        }
+
+        $mail->header('List-Unsubscribe', '<' . $url . '>');
+        $mail->header('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
     }
 
     private static function log(): ?MailRepository

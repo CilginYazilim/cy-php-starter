@@ -71,6 +71,7 @@ final class MailApiController extends Controller
     private function toTableRow(MailLog $log): array
     {
         $eposta = $this->hidden($log) ? MailLog::maskEmail($log->aliciEposta) : $log->aliciEposta;
+        $konu   = $this->subject($log);
         $alici  = $log->aliciAd !== ''
             ? '<span class="cy-user-cell__name">' . e($log->aliciAd) . '</span><span class="cy-user-cell__meta">' . e($eposta) . '</span>'
             : '<span class="cy-user-cell__name">' . e($eposta) . '</span>';
@@ -93,14 +94,14 @@ final class MailApiController extends Controller
 
         if (Auth::can('mail.send')) {
             $actions .= '<button type="button" class="cy-btn-icon cy-btn-icon--delete js-delete" data-id="' . $log->id . '"'
-                      . ' data-label="' . e($log->konu) . '" title="Sil">' . icon('trash', 'cy-icon cy-icon--sm') . '</button>';
+                      . ' data-label="' . e($konu) . '" title="Sil">' . icon('trash', 'cy-icon cy-icon--sm') . '</button>';
         }
 
         $actions .= '</div>';
 
         return [
             $alici,
-            '<span>' . e($log->konu) . '</span>',
+            '<span>' . e($konu) . '</span>',
             '<span class="cy-cell-muted">' . e($log->typeLabel()) . '</span>',
             $durum,
             '<span class="cy-nowrap cy-cell-muted" title="' . e(MailLog::formatDate($log->gonderildiAt ?? $log->createdAt)) . '">'
@@ -120,29 +121,44 @@ final class MailApiController extends Controller
             'success' => true,
             'id'      => $log->id,
             'alici'   => $log->aliciAd !== '' ? $log->aliciAd . ' <' . $eposta . '>' : $eposta,
-            'konu'    => $log->konu,
+            'konu'    => $this->subject($log),
             'durum'   => $log->statusLabel(),
             'tur'     => $log->typeLabel(),
             'hata'    => $log->hata,
             'deneme'  => $log->deneme,
             'tarih'   => MailLog::formatDate($log->gonderildiAt ?? $log->createdAt),
-            'govde'   => $gizli ? self::HIDDEN_BODY : $this->mails()->body($log->id),
+            'govde'   => $gizli ? self::hiddenBody($log) : $this->mails()->body($log->id),
 
             // Yalnızca geliştirme modunda ve yöneticiye: doğrulama bağlantısı.
             'gelistirme_baglanti' => $gizli ? '' : $this->developmentLink($log),
         ]);
     }
 
-    /** Güvenlik bağlantılı mektubun gövdesi yerine gösterilen metin. */
-    private const HIDDEN_BODY = '<div style="font-family:system-ui,sans-serif;padding:2rem;color:#475569;line-height:1.6">'
-        . '<strong style="color:#0f172a">Bu mektup bir güvenlik bağlantısı içerir.</strong><br>'
-        . 'E-posta doğrulama, parola sıfırlama ve hesap açılış mektuplarının içeriğini yalnızca kullanıcıları yönetebilen roller görebilir.'
-        . '</div>';
+    /** Gizlenen mektubun gövdesi yerine gösterilen metin (önizleme çerçevesinde). */
+    private static function hiddenBody(MailLog $log): string
+    {
+        [$baslik, $metin] = $log->isPersonal()
+            ? ['Bu mektup kişisel veri içerir.', 'Yeni üye bildirimleri üyenin adını, kullanıcı adını ve e-postasını taşır; içeriğini yalnızca kullanıcıları görebilen roller açabilir.']
+            : ['Bu mektup bir güvenlik bağlantısı içerir.', 'E-posta doğrulama, parola sıfırlama ve hesap açılış mektuplarının içeriğini yalnızca kullanıcıları yönetebilen roller görebilir.'];
 
-    /** Bu kullanıcıya mektubun içeriği gizlenmeli mi? */
+        return '<div style="font-family:system-ui,sans-serif;padding:2rem;color:#475569;line-height:1.6">'
+            . '<strong style="color:#0f172a">' . $baslik . '</strong><br>' . $metin . '</div>';
+    }
+
+    /**
+     * Bu kullanıcıya mektubun içeriği gizlenmeli mi? Güvenlik bağlantısı
+     * (doğrulama, sıfırlama, hesap açılışı) ya da kişisel veri (yeni üye)
+     * taşıyan mektuplar, kullanıcıları göremeyen rollere (editör) kapalı.
+     */
     private function hidden(MailLog $log): bool
     {
-        return $log->isSensitive() && !Auth::can('users.view');
+        return ($log->isSensitive() || $log->isPersonal()) && !Auth::can('users.view');
+    }
+
+    /** Listede ve önizlemede görünen konu: kişisel veri gizliyse genel başlık. */
+    private function subject(MailLog $log): string
+    {
+        return $log->isPersonal() && $this->hidden($log) ? MailLog::KISISEL_SABLONLAR[$log->sablon] : $log->konu;
     }
 
     /**
@@ -263,16 +279,17 @@ final class MailApiController extends Controller
         try {
             $recipients = $this->resolveRecipients($request);
         } catch (MailException $e) {
-            Response::error($e->getMessage(), 422);
+            Response::error($e->getMessage(), 422, $this->recipientError($request, $e->getMessage()));
         }
 
         [$recipients, $atlanan] = $this->withoutOptOuts($recipients, $request);
         $kitle = $this->isAudience($request);
 
         if ($recipients === []) {
-            Response::error($atlanan > 0
+            $mesaj = $atlanan > 0
                 ? 'Seçtiğiniz kitlede duyuru almak isteyen kimse yok (' . $atlanan . ' kişi duyuruları kapattı).'
-                : 'Seçtiğiniz hedef kitlede hiç alıcı yok.', 422);
+                : 'Seçtiğiniz hedef kitlede hiç alıcı yok.';
+            Response::error($mesaj, 422, $this->recipientError($request, $mesaj));
         }
 
         if (count($recipients) > self::MAX_RECIPIENTS) {
@@ -482,6 +499,17 @@ final class MailApiController extends Controller
         ));
 
         return [$kalan, count($recipients) - count($kalan)];
+    }
+
+    /**
+     * Alıcı hatası, elle yazılan adreslerdeyse adres alanının altına da
+     * yazılır ve alan kırmızı olur (eskiden yalnızca bildirim çıkıyordu).
+     *
+     * @return array{errors?:array<string,string>}
+     */
+    private function recipientError(Request $request, string $mesaj): array
+    {
+        return $request->input('hedef', 'elle') === 'elle' ? ['errors' => ['adresler' => $mesaj]] : [];
     }
 
     /**

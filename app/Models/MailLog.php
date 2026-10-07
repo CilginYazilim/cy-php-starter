@@ -30,9 +30,22 @@ final class MailLog
      */
     public const GUVENLIK_SABLONLARI = ['dogrulama', 'parola-sifirlama', 'hesap-acildi'];
 
+    /**
+     * KİŞİSEL VERİ taşıyan şablonlar => editöre gösterilen konu. "Yeni
+     * üye" mektubu yeni üyenin adını, kullanıcı adını ve e-postasını
+     * taşır (konuda da adı geçer); kullanıcı verisini göremeyen roller
+     * (editör) gövdeyi ve konuyu görmez, alıcı maskelenir.
+     */
+    public const KISISEL_SABLONLAR = ['yeni-uye' => 'Yeni üye bildirimi'];
+
     public function isSensitive(): bool
     {
         return in_array($this->sablon, self::GUVENLIK_SABLONLARI, true);
+    }
+
+    public function isPersonal(): bool
+    {
+        return array_key_exists($this->sablon, self::KISISEL_SABLONLAR);
     }
 
     /** "elif.demir@ornek.com" → "e***@ornek.com" */
