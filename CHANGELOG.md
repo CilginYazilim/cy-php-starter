@@ -87,6 +87,20 @@ Cowork'un 1.6.1 kurulum raporu üzerine (ZIP'ten, README izlenerek kurulum).
 - **Bakım modunda üye giriş yapabiliyor, ardından panel 503 dönüyordu.**
   Artık bakımı atlayamayan role oturum açılmaz; giriş ekranı açık kalır ve
   "Site bakımda; şu an yalnızca yöneticiler ve editörler girebilir." der.
+- **"Yayında" rozeti kontrastı** (axe'nin bulduğu tek ihlal): açık temada
+  3.32:1, koyu temada 3.24:1'di. Panel rozetleri (başarılı, uyarı,
+  tehlike) yazı token'larına bağlandı; en düşük oran 4.59:1.
+- **Panelde telefonda bildirim üst çubuğun üstüne biniyor**, menü
+  düğmesini kapatıyordu. Ön yüzdeki gibi altta durur; masaüstünde üst
+  çubuğun altında kalır.
+- **Örnek Modül yetki tablosu 375px'de taşıyordu** ("Üye" sütunu
+  kesiliyordu). Telefonda rol başlıkları kısalır (Yön. / Edit. / Üye;
+  ekran okuyucu tam adı okur), hücreler daralır.
+- **İletişim sayfası:** başlık görünür (bant olmadan, öteki iç sayfalar
+  gibi) ve sayfanın özeti tek cümle olarak altında durur. Telefonda formun
+  üstünde e-posta · telefon · WhatsApp çipleri var (yalnızca dolu olanlar);
+  eskiden ilk ekranda hiçbir iletişim yolu görünmüyordu. Öteki iç
+  sayfalardaki WebPage + BreadcrumbList yapısal verisi burada da var.
 - **Küçük mesajlar:** Kullanıcı eklerken parola boş ve "hesap bilgisi
   gönder" işaretsizse iki yol birden söylenir. Toplu e-postada alıcı
   hatası adres alanının altına da yazılır. Ayar kaydı "12 ayar

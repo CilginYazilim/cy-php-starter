@@ -23,12 +23,37 @@ $harita   = Setting::get('iletisim_harita');
 $baslik   = $sayfa?->baslik ?? 'İletişim';
 ?>
 
-<?php /* Ayrı başlık bandı yok; form kartının kendi başlığı var. Sayfanın
-         tek <h1>'i ekran okuyucular ve arama motorları için durur. */ ?>
-<h1 class="visually-hidden"><?= e($baslik) ?></h1>
+<?php
+/* Telefonda formun ÜSTÜNDE tek satır: e-posta · telefon · WhatsApp
+ * (yalnızca dolu olanlar). Kartlar formun altında kaldığı için telefonda
+ * ilk ekranda hiçbir iletişim yolu görünmüyordu. */
+$cipler = array_values(array_filter($iletisim, static fn (array $k): bool => in_array($k['ikon'], ['mail', 'phone', 'whatsapp'], true) && $k['link'] !== ''));
+$ozet   = trim((string) ($sayfa?->ozet ?? ''));
+?>
 
 <section class="cy-section cy-section--ilk">
     <div class="container">
+        <?php /* Bant yok (öteki iç sayfalardaki gibi): kısa, görünür başlık ve
+                 panelden düzenlenen sayfa özeti tek cümle olarak durur. */ ?>
+        <header class="cy-contact-head">
+            <h1 class="cy-page-title mb-1"><?= e($baslik) ?></h1>
+            <?php if ($ozet !== ''): ?>
+                <p class="cy-contact-head__lead"><?= e($ozet) ?></p>
+            <?php endif; ?>
+            <?php if ($cipler !== []): ?>
+                <ul class="cy-contact-chips d-lg-none" aria-label="Hızlı iletişim">
+                    <?php foreach ($cipler as $cip): ?>
+                        <li>
+                            <a class="cy-contact-chip" href="<?= e($cip['link']) ?>" title="<?= e($cip['deger']) ?>"
+                               <?= str_starts_with($cip['link'], 'http') ? 'target="_blank" rel="noopener"' : '' ?>>
+                                <?= icon($cip['ikon'], 'cy-icon cy-icon--sm') ?> <?= e($cip['etiket']) ?>
+                            </a>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+        </header>
+
         <div class="row g-4">
             <!-- ============ SOL: BİLGİLER ============ -->
             <?php /* MOBİLDE FORM ÖNCE GELİR. Bu sayfaya gelen kişinin

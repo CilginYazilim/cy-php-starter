@@ -289,8 +289,13 @@ $secenekAdi = ['yayinda' => 'Yayında', 'taslak' => 'Taslak', 'onay' => 'Onaya g
                     <thead>
                         <tr>
                             <th scope="col">Yetki</th>
+                            <?php /* Telefonda üç rol sütunu sığsın diye kısa başlık görünür;
+                                     ekran okuyucu her zaman tam adı okur. */ ?>
+                            <?php $kisaRol = ['admin' => 'Yön.', 'editor' => 'Edit.', 'uye' => 'Üye']; ?>
                             <?php foreach (Role::options() as $rolAdi => $rolEtiketi): ?>
-                                <th scope="col" class="text-center<?= $rolAdi === $rol ? ' is-current' : '' ?>"><?= e($rolEtiketi) ?></th>
+                                <th scope="col" class="text-center<?= $rolAdi === $rol ? ' is-current' : '' ?>">
+                                    <span class="cy-matrix__rol"><?= e($rolEtiketi) ?></span><span class="cy-matrix__kisa" aria-hidden="true"><?= e($kisaRol[$rolAdi] ?? $rolEtiketi) ?></span>
+                                </th>
                             <?php endforeach; ?>
                         </tr>
                     </thead>

@@ -305,6 +305,39 @@ a.cy-contact-card:hover { border-color: var(--cy-brand); color: inherit; }
     color: var(--cy-text-muted);
 }
 
+/* İletişim sayfasının başı: görünür başlık + bir cümle; telefonda
+   formun üstünde e-posta · telefon · WhatsApp çipleri. */
+.cy-contact-head { margin-bottom: 1.25rem; }
+.cy-contact-head__lead { margin: 0; color: var(--cy-text-soft); font-size: 1rem; line-height: 1.6; max-width: 46rem; }
+
+.cy-contact-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin: .85rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cy-contact-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    min-height: 2.5rem;
+    padding: .4rem .85rem;
+    border: 1px solid var(--cy-border);
+    border-radius: 999px;
+    background: var(--cy-surface);
+    color: var(--cy-text);
+    font-size: .88rem;
+    font-weight: 550;
+    text-decoration: none;
+}
+
+.cy-contact-chip .cy-icon { color: var(--cy-brand-text); }
+.cy-contact-chip:hover,
+.cy-contact-chip:focus-visible { border-color: var(--cy-brand); color: var(--cy-text); }
+
 /* ------------------------ İÇ SAYFA BAŞLIĞI ------------------------
    Ayrı bir başlık bandı yok: sayfa adı içerik kartının ilk satırıdır.
    "Ana Sayfa › …" izi ve özet ekranda değil; arama motorları için

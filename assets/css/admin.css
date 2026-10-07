@@ -993,8 +993,10 @@ body.is-sidebar-open .cy-backdrop { opacity: 1; visibility: visible; }
     .cy-detail { grid-template-columns: 1fr; gap: .15rem; }
     .cy-detail dd { margin-bottom: .65rem; }
 
-    /* Bildirimler üstte, tam genişlikte */
-    .cy-toast-container { left: .5rem; right: .5rem; top: .5rem !important; }
+    /* Bildirimler ALTTA, tam genişlikte (ön yüzdeki gibi). Üstte
+       sabit üst çubuğa biniyor, menü düğmesini kapatıyordu. Çentikli
+       telefonlarda ev çubuğunun üstünde durur. */
+    .cy-toast-container { left: .5rem; right: .5rem; top: auto !important; bottom: calc(.25rem + env(safe-area-inset-bottom)); }
     .cy-toast { max-width: none; width: 100%; }
 
     /* iOS ZOOM SORUNU: Yazı tipi 16px'ten küçük bir alana dokunulunca
@@ -1454,9 +1456,9 @@ html, body { overflow-x: hidden; overflow-x: clip; }
 .cy-row-actions form { display: inline-flex; margin: 0; }
 
 .cy-badge--soft    { background: var(--cy-surface-soft); color: var(--cy-text-muted); border-color: transparent; }
-.cy-badge--success { background: var(--cy-success-soft); color: var(--cy-success); border-color: transparent; }
-.cy-badge--warning { background: var(--cy-warning-soft); color: var(--cy-warning); border-color: transparent; }
-.cy-badge--danger  { background: var(--cy-danger-soft);  color: var(--cy-danger);  border-color: transparent; }
+.cy-badge--success { background: var(--cy-success-soft); color: var(--cy-success-text); border-color: transparent; }
+.cy-badge--warning { background: var(--cy-warning-soft); color: var(--cy-warning-text); border-color: transparent; }
+.cy-badge--danger  { background: var(--cy-danger-soft);  color: var(--cy-danger-text);  border-color: transparent; }
 
 .cy-btn-icon--danger:hover { background: var(--cy-danger-soft); color: var(--cy-danger); }
 
@@ -1881,6 +1883,23 @@ html, body { overflow-x: hidden; overflow-x: clip; }
 .cy-matrix th.is-current { color: var(--cy-brand-text-strong); }
 .cy-matrix__mark.is-yes { color: var(--cy-success); }
 .cy-matrix__mark.is-no  { color: var(--cy-border-strong); }
+.cy-matrix__kisa { display: none; }
+
+/* Telefonda üç rol sütunu sığar: 375px'de "Üye" sütunu kesiliyordu.
+   Rol başlığı kısalır (tam ad ekran okuyucuda kalır), hücreler daralır,
+   yetki açıklaması alt satıra kaydırılabilir. */
+@media (max-width: 575.98px) {
+    .cy-matrix__rol {
+        position: absolute; width: 1px; height: 1px; overflow: hidden;
+        clip: rect(0 0 0 0); white-space: nowrap;
+    }
+    .cy-matrix__kisa { display: inline; }
+    .cy-matrix > :not(caption) > * > * { padding-inline: .35rem; }
+    .cy-matrix > tbody > tr > td:first-child { white-space: normal; font-size: .8rem; }
+    .cy-matrix > tbody > tr > td:first-child small { font-size: .68rem; overflow-wrap: anywhere; }
+    .cy-matrix > tbody > tr > td:not(:first-child),
+    .cy-matrix > thead > tr > th:not(:first-child) { width: 3.1rem; }
+}
 
 .cy-ornek__rules { margin: .75rem 0 0; padding-left: 1.1rem; font-size: .78rem; line-height: 1.6; color: var(--cy-text-soft); }
 .cy-ornek__rules li + li { margin-top: .25rem; }

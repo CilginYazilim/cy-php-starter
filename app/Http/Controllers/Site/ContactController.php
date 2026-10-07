@@ -48,6 +48,8 @@ final class ContactController extends Controller
             'ogAciklama' => $sayfa?->aciklamaSeo() ?? Setting::get('site_aciklama'),
             'sayfa'      => $sayfa,
             'iletisim'   => HomeController::contactCards(),
+            // Öteki iç sayfalarla aynı yapısal veri (WebPage + BreadcrumbList).
+            'jsonLd'     => $sayfa !== null ? [PageController::structuredData($sayfa)] : [],
             'errors'     => \App\Core\Flash::errors(),
             'old'        => \App\Core\Flash::old(),
             'scripts'    => ['contact.js'],
