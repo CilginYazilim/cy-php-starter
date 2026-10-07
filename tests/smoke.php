@@ -752,7 +752,7 @@ test('Örnek Modül: üye başkasının kaydını düzenleyemez ve silemez', fun
     return in_array($duz, [403, 404], true) && in_array($sil, [403, 404], true) ? true : "düzenle $duz, sil $sil";
 });
 
-test('Kayıt formu e-posta gönderilemiyorsa kapalı (girişe yönlendirir)', function () use ($base): bool|string|null {
+test('Kayıt formu e-posta gönderilemiyorsa kapalı (geliştirme önizlemesinde açık)', function () use ($base): bool|string|null {
     $roller = rol_istemcileri($base);
 
     if ($roller === null) {
@@ -760,14 +760,20 @@ test('Kayıt formu e-posta gönderilemiyorsa kapalı (girişe yönlendirir)', fu
     }
 
     $panel = $roller['yonetici']->istek('panel')['govde'];
+    $r     = (new Istemci($base))->istek('kayit');
 
-    if (!str_contains($panel, 'Üye kaydı kapalı') && !str_contains($panel, 'Doğrulama mektupları gönderilmiyor')) {
-        return null;   // site e-posta gönderebiliyor: form açık olabilir
+    // Yayın ortamı, e-posta yok → form kapalı, girişe yönlenir.
+    if (str_contains($panel, 'Üye kaydı kapalı')) {
+        return $r['kod'] === 302 && str_contains($r['konum'], 'giris') ? true : 'Form açık kaldı: HTTP ' . $r['kod'];
     }
 
-    $r = (new Istemci($base))->istek('kayit');
+    // Geliştirme modu, e-posta yok → form bilerek açık; doğrulama bağlantısı
+    // Panel → E-posta'da gösterilir (Registration::developmentPreview).
+    if (str_contains($panel, 'Doğrulama mektupları gönderilmiyor')) {
+        return $r['kod'] === 200 ? true : 'Geliştirme önizlemesinde form açılmadı: HTTP ' . $r['kod'];
+    }
 
-    return $r['kod'] === 302 && str_contains($r['konum'], 'giris') ? true : 'HTTP ' . $r['kod'];
+    return null;   // site e-posta gönderebiliyor: form ayarına göre açık
 });
 
 /* =====================================================================
