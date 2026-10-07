@@ -2460,4 +2460,4 @@ a.cy-stat--link:focus-visible { outline: 2px solid var(--cy-brand); outline-offs
 
 /* Geri dönüşü zor işlemler (Hesabımı sil): kırmızı ince çerçeve */
 .cy-card--danger { border-color: color-mix(in srgb, var(--cy-danger) 35%, var(--cy-border)); }
-.cy-card--danger .cy-section-title { color: var(--cy-danger); }
+.cy-card--danger .cy-section-title { color: var(--cy-danger-text); }

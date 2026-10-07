@@ -35,7 +35,7 @@ return [
      *  (github.com/CilginYazilim/cy-php-starter/releases) ve anlamsal
      *  sürümleme kullanır: BÜYÜK.KÜÇÜK.YAMA
      * -------------------------------------------------------------- */
-    'version' => '1.6.0',
+    'version' => '1.6.1',
 
     /* Birim testi sayısı — ana sayfadaki {test} yer tutucusu. tests/unit.php
      * gerçek sayıyla karşılaştırır; test eklenip burası güncellenmezse kırılır. */

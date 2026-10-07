@@ -107,6 +107,10 @@
 
 .cy-section--alt { background: var(--cy-brand-soft); }
 
+/* İç sayfanın ilk bölümü: başlık bandı olmadığı için içerik menünün hemen
+   altından başlar (eskiden 64px boşluk kalıyordu). */
+.cy-section--ilk { padding-top: clamp(1rem, 2.5vw, 1.5rem); }
+
 .cy-section__head {
     max-width: 46rem;
     margin: 0 auto clamp(1.5rem, 4vw, 2.5rem);
@@ -302,34 +306,17 @@ a.cy-contact-card:hover { border-color: var(--cy-brand); color: inherit; }
 }
 
 /* ------------------------ İÇ SAYFA BAŞLIĞI ------------------------
-   Yalnızca başlık ve tek cümle özet; görünür "Ana Sayfa › …" izi yok
-   (arama motorları için BreadcrumbList JSON-LD olarak durur). Bant ince
-   bir çizgiyle biter, içerik hemen altından başlar. */
-.cy-pagehero {
-    padding: clamp(1.75rem, 5vw, 2.75rem) 0 clamp(1.5rem, 4vw, 2.25rem);
-    background: var(--cy-brand-soft);
-    border-bottom: 1px solid var(--cy-border);
-}
-
-.cy-pagehero__title {
-    font-size: clamp(1.6rem, 5vw, 2.4rem);
+   Ayrı bir başlık bandı yok: sayfa adı içerik kartının ilk satırıdır.
+   "Ana Sayfa › …" izi ve özet ekranda değil; arama motorları için
+   JSON-LD ve meta açıklamada durur. */
+.cy-page-title {
+    margin: 0 0 1.1rem;
+    font-size: clamp(1.6rem, 4.5vw, 2.2rem);
     font-weight: 730;
     letter-spacing: -.015em;
     line-height: 1.15;
     color: var(--cy-text);
-    margin: 0;
 }
-
-.cy-pagehero__lead {
-    font-size: clamp(.95rem, 2.2vw, 1.08rem);
-    line-height: 1.6;
-    color: var(--cy-text-soft);
-    max-width: 60ch;
-    margin: .6rem 0 0;
-}
-
-/* Başlık bandının hemen altındaki bölüm daha az boşlukla başlar. */
-.cy-pagehero + .cy-section { padding-top: clamp(1.5rem, 4vw, 2.5rem); }
 
 /* ------------------------------ METİN ----------------------------- */
 .cy-prose {

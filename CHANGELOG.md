@@ -12,6 +12,7 @@ sayfasındadır.
 
 | Sürüm | Tarih | Özet |
 |---|---|---|
+| [1.6.1](#161--2026-10-07) | 2026-10-07 | Form yardım metinleri, güvenlik ve bilgilendirme bildirimleri, duyuru tercihi, koyu temada AA kontrast, menüyle hizalı ana sayfa |
 | [1.6.0](#160--2026-10-07) | 2026-10-07 | Parola sıfırlama, mobil oturum API'si, KVKK araçları, hesap silme, 2 ekranlı kurulum, panelden yönetilen ana sayfa, CI'da MySQL 8 ile rol matrisi |
 | [1.5.1](#151--2026-10-07) | 2026-10-07 | Veritabanı: sık çalışan sorgular için eksik indeksler, giriş temizliğinde kilit |
 | [1.5.0](#150--2026-10-07) | 2026-10-07 | Demo modu (tek tıkla giriş), panelden modül aç/kapa, onay akışlı RBAC örnek modülü, sade panel tasarımı |
@@ -24,7 +25,14 @@ sayfasındadır.
 
 ---
 
-## [Yayımlanmadı]
+## [1.6.1] — 2026-10-07
+
+Cowork'un 1.6.0 kontrol raporu ve önerileri üzerine: formlar ne yazılacağını
+anlatıyor, güvenlik ve bilgilendirme mektupları tamamlandı, koyu tema her
+yerde WCAG AA kontrastında, ana sayfa menüyle aynı çizgide.
+
+**Güncelleme:** kodu çekin, `php cy migrate` (iki migration: ayar
+açıklamaları, bildirimler). Değerlerinize dokunmaz.
 
 ### Eklendi
 
@@ -90,10 +98,11 @@ sayfasındadır.
 - **Bildirimler (toast) ön yüzde menünün altından başlar**, telefonda
   altta durur (`safe-area-inset-bottom`). Giriş/çıkış bildirimi menü
   bağlantılarını kapatıyordu.
-- **İç sayfa başlığı sadeleşti:** Hakkımızda, İletişim, KVKK gibi sayfaların
-  üstündeki "Ana Sayfa › …" izi kaldırıldı; bantta yalnızca başlık ve
-  özet var, içerik hemen altından başlar. Arama motorları için
-  BreadcrumbList yapısal verisi (JSON-LD) aynen duruyor.
+- **İç sayfalarda başlık bandı kaldırıldı:** Hakkımızda, İletişim, KVKK gibi
+  sayfaların üstündeki renkli bant ("Ana Sayfa › …" izi, başlık, özet)
+  yok; sayfa adı içerik kartının ilk satırıdır, İletişim doğrudan bilgiler
+  ve formla açılır. Özet meta açıklamada, "Ana Sayfa › …" izi arama
+  motorları için BreadcrumbList yapısal verisinde (JSON-LD) duruyor.
 - **Telefonda özellik ızgarası** 480px altında tek sütun, ikon solda.
 - **Kullanıcılar özet kartı** onay bekleyen hesap sayısını da gösterir.
 - `giris?demo=…` ile gelinince vurgulanan hesap ekranın ortasına kaydırılır.

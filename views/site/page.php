@@ -35,21 +35,7 @@ $onizlemeBitis = $onizlemeBitis ?? null;
     </div>
 <?php endif; ?>
 
-<section class="cy-pagehero">
-    <div class="container">
-        <?php /* Görünür "Ana Sayfa › …" izi yok: tek seviyeli sitede bilgi
-                 taşımıyor, başlığın üstünde kalabalık yapıyordu. Arama
-                 motorları için BreadcrumbList JSON-LD olarak durur
-                 (bkz. Site\PageController::structuredData). */ ?>
-        <h1 class="cy-pagehero__title"><?= e($sayfa->baslik) ?></h1>
-
-        <?php if ($sayfa->ozet !== ''): ?>
-            <p class="cy-pagehero__lead"><?= e($sayfa->ozet) ?></p>
-        <?php endif; ?>
-    </div>
-</section>
-
-<section class="cy-section">
+<section class="cy-section cy-section--ilk">
     <div class="container">
         <div class="row g-4">
             <div class="col-12 col-lg-8">
@@ -58,6 +44,11 @@ $onizlemeBitis = $onizlemeBitis ?? null;
                         <img src="<?= e($kapak) ?>" class="cy-page-cover" alt="" fetchpriority="high">
                     <?php endif; ?>
                     <div class="cy-card__body cy-card__body--roomy">
+                        <?php /* Ayrı bir başlık bandı YOK: başlık içeriğin parçası. Özet
+                                 ekranda değil, meta açıklamada ve paylaşım kartında durur;
+                                 "Ana Sayfa › …" izi arama motorları için JSON-LD'de
+                                 (bkz. Site\PageController::structuredData). */ ?>
+                        <h1 class="cy-page-title"><?= e($sayfa->baslik) ?></h1>
                         <div class="cy-prose"><?= $sayfa->icerik ?></div>
                     </div>
                 </article>

@@ -23,17 +23,11 @@ $harita   = Setting::get('iletisim_harita');
 $baslik   = $sayfa?->baslik ?? 'İletişim';
 ?>
 
-<section class="cy-pagehero">
-    <div class="container">
-        <h1 class="cy-pagehero__title"><?= e($baslik) ?></h1>
+<?php /* Ayrı başlık bandı yok; form kartının kendi başlığı var. Sayfanın
+         tek <h1>'i ekran okuyucular ve arama motorları için durur. */ ?>
+<h1 class="visually-hidden"><?= e($baslik) ?></h1>
 
-        <p class="cy-pagehero__lead">
-            <?= e($sayfa?->ozet !== '' && $sayfa !== null ? $sayfa->ozet : 'Sorularınız için bize ulaşabilirsiniz.') ?>
-        </p>
-    </div>
-</section>
-
-<section class="cy-section">
+<section class="cy-section cy-section--ilk">
     <div class="container">
         <div class="row g-4">
             <!-- ============ SOL: BİLGİLER ============ -->

@@ -6,7 +6,7 @@
 
 **Kurulum sihirbazı · rol tabanlı yönetim paneli · parola sıfırlama · mobil uygulama API'si · konsol · migration · kuyruk · olay · modül sistemi · PWA — hepsi hazır.**
 
-[![Sürüm](https://img.shields.io/badge/Sürüm-1.6.0-0b5cb5?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/releases/latest)
+[![Sürüm](https://img.shields.io/badge/Sürüm-1.6.1-0b5cb5?style=flat-square)](https://github.com/CilginYazilim/cy-php-starter/releases/latest)
 [![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5-7952B3?style=flat-square&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 ![Bağımlılık: sıfır](https://img.shields.io/badge/Bağımlılık-Sıfır-16a34a?style=flat-square)
@@ -169,7 +169,7 @@ seçimdir. Bu şablon, şu durumlar için yazıldı:
 | Katman | İçerik |
 |---|---|
 | **Kurulum** | **İki ekranlı sihirbaz** · "Bağlantıyı dene" · anlaşılır veritabanı hataları · `.env` üretimi · tabloları **ve migration'ları** kurar · yönetici hesabı · tek tıkla örnek veri · adım adım rapor · canlı sunucuda kurulum anahtarı |
-| **Kimlik** | Giriş/kayıt/çıkış · **kayıtta e-posta doğrulaması** · **parolamı unuttum** (tek kullanımlık bağlantı) · "parolanız değişti" e-postası · **beni hatırla** · güvenilen cihaz · rol-yetki · kaba kuvvet koruması · sertleştirilmiş oturum |
+| **Kimlik** | Giriş/kayıt/çıkış · **kayıtta e-posta doğrulaması** · **parolamı unuttum** (tek kullanımlık bağlantı) · "parolanız değişti" ve **eski adrese "e-posta adresiniz değişti"** e-postaları · **beni hatırla** · güvenilen cihaz · rol-yetki · kaba kuvvet koruması · sertleştirilmiş oturum |
 | **KVKK** | Kayıt ve iletişim formunda aydınlatma onayı · IP/tarayıcı saklama süresi ve otomatik silme · **hesabımı sil** (7 gün bekleme, girişle iptal) · hazır "Gizlilik ve KVKK" sayfası |
 | **Yönlendirme** | Temiz SEO adresleri · `{parametre}` · GET/POST/PUT/PATCH/DELETE · gruplar |
 | **Hata yönetimi** | Merkezi işleyici · ölümcül hata yakalama · geliştirici ekranı · güvenli 404/403/419/500 |
@@ -180,7 +180,7 @@ seçimdir. Bu şablon, şu durumlar için yazıldı:
 | **Olaylar** | Yayıncı-dinleyici · hata yalıtımı · test için `fake()` |
 | **Kuyruk** | Veritabanı kuyruğu · atomik ayırma · katlanan yeniden deneme · kilitlenmeye dayanıklı |
 | **Zamanlayıcı** | Tek cron satırı · üst üste binme koruması |
-| **E-posta** | SMTP / mail() / diske yazma · toplu gönderim · kuyruk · panel arayüzü |
+| **E-posta** | SMTP / mail() / diske yazma · toplu gönderim · kuyruk · panel arayüzü · yeni üye bildirimi · yöneticinin açtığı hesaba **"parolanızı belirleyin"** bağlantısı (parola mektuba yazılmaz) · üye duyuruları Hesabım'dan ya da **imzalı tek tıkla** kapatır |
 | **REST API** | Standart yanıt zarfı · süreli Bearer anahtarı (yalnızca SHA-256 özeti saklanır) · **yalnız okuma / okuma+yazma kapsamı** · hız sınırı · sayfalama · JSON gövde |
 | **Mobil uygulama** | **Kullanıcı adı/parolayla giriş → token** · çıkış · açık cihazlar ve tek tek kapatma · örnek dosya listesi/indirme · [rehber](https://github.com/CilginYazilim/cy-php-starter/blob/main/docs/MOBIL-API.md) |
 | **Modüller** | **Panelden tek tıkla aç/kapa** · kendi rotaları, tabloları, görünümleri, menüsü, **rollere dağıttığı yetkileri** ve örnek verisi · CRUD, onay akışı ve RBAC'ı gösteren **Örnek Modül** kurulumda açık gelir |
@@ -195,7 +195,7 @@ seçimdir. Bu şablon, şu durumlar için yazıldı:
 | **Tema** | Tek renk seçin, panelin ve sitenin tamamı yeniden renklensin |
 | **Mobil** | Ön yüz ve panelin tamamı mobil öncelikli · tablolar telefonda karta döner · 44px dokunma hedefleri · yapışkan menü · iOS yakınlaştırma ve çentik payı çözülmüş |
 | **Konsol** | `php cy` — 24 komut, üreteçler ve XAMPP'siz geliştirme sunucusu (`php cy serve`) dahil |
-| **Testler** | 306 birim testi (rol matrisi, XSS, politika — veritabanı gerektirmez) · 50 duman testi · GitHub Actions'ta PHP 8.1–8.4 ve **MySQL 8 ile gerçek kurulum** |
+| **Testler** | 306 birim testi (rol matrisi, XSS, politika — veritabanı gerektirmez) · 54 duman testi · GitHub Actions'ta PHP 8.1–8.4 ve **MySQL 8 ile gerçek kurulum** |
 
 ---
 
@@ -759,12 +759,12 @@ metinlerini kendinize göre ayarlayın; arayüz anında yeni renginizi alır.
 
 ## Sürüm
 
-Güncel sürüm **1.6.0** (7 Ekim 2026). Sürüm numarası **kodda, tek yerde**
+Güncel sürüm **1.6.1** (7 Ekim 2026). Sürüm numarası **kodda, tek yerde**
 durur:
 
 ```php
 // config/app.php
-'version' => '1.6.0',
+'version' => '1.6.1',
 ```
 
 `Panel → Sistem Bilgisi` sayfası bu değeri okur. Şablonu güncellediğinizde
@@ -774,6 +774,7 @@ numara kendiliğinden gelir; veritabanında ayrıca tutulmaz.
 
 | Sürüm | Tarih | Öne çıkanlar |
 |---|---|---|
+| [1.6.1](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.6.1) | 2026-10-07 | Form yardım metinleri ve karakter sayacı; e-posta değişikliği, hesap silme, yeni üye ve hesap açılışı bildirimleri; duyuru tercihi; koyu temada WCAG AA kontrast; ana sayfa menüyle aynı hizada; demo parolaları yalnızca demo modunda |
 | [1.6.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.6.0) | 2026-10-07 | Parola sıfırlama; mobil uygulama oturum API'si; KVKK araçları ve hesap silme; iki ekranlı kurulum; panelden yönetilen ana sayfa; tablolar mobilde kart; CI'da MySQL 8 ile rol matrisi |
 | [1.5.1](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.5.1) | 2026-10-07 | Veritabanı performansı: sık çalışan sorgular için eksik indeksler; giriş denemeleri temizliğinin kilitlenmesi giderildi |
 | [1.5.0](https://github.com/CilginYazilim/cy-php-starter/releases/tag/v1.5.0) | 2026-10-07 | Demo modu (tek tıkla giriş, örnek hesaplara kilit); panelden modül aç/kapa; modüllerin rollere yetki dağıtması ve onay akışlı RBAC örnek modülü; sade panel tasarımı |
@@ -786,6 +787,16 @@ numara kendiliğinden gelir; veritabanında ayrıca tutulmaz.
 
 Her sürümün ayrıntısı:
 [CHANGELOG.md](https://github.com/CilginYazilim/cy-php-starter/blob/main/CHANGELOG.md).
+
+### Güncelleme (1.6.0 → 1.6.1)
+
+1. Kodu çekin, `php cy migrate` çalıştırın (SSH yoksa panelde **"Şimdi çalıştır"**).
+   İki migration: ayar açıklamaları ve bildirimler ("Yeni Üye Bildirimi"
+   ayarı, `kullanicilar.bildirim_tercihleri` sütunu). Değerlerinize dokunmaz.
+2. Geliştirme modunda (`APP_DEBUG=true`) giriş ekranı artık demo parolalarını
+   listelemez; hızlı giriş yalnızca `APP_DEMO=true` iken görünür.
+3. "Örnek veriyi kaldır" artık örnek marka ayarlarını da (slogan, sosyal
+   hesaplar…) nötre döndürür; sizin değiştirdiklerinize dokunmaz.
 
 ### Güncelleme (1.5.x → 1.6.0)
 
