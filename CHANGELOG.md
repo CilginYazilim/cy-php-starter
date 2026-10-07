@@ -25,6 +25,32 @@ sayfasındadır.
 
 ---
 
+## [Yayımlanmadı]
+
+Cowork'un 1.6.1 kurulum raporu üzerine (ZIP'ten, README izlenerek kurulum).
+
+### Düzeltildi
+
+- **ZIP paketinde `.gitignore` yoktu.** `.gitattributes` her düzeydeki
+  `.gitignore`'u paketten çıkarıyordu; ZIP'ten kurup projesini git'e koyan
+  kişi `.env`'i (veritabanı parolası, APP_KEY), günlükleri, oturumları ve
+  yüklemeleri commit'liyordu. Artık `.gitignore` ve `.gitattributes`
+  pakette; `docs/MOBIL-API.md` de (README ona yönlendiriyor). Yalnızca
+  README ekran görüntüleri (`docs/screenshots/`) paket dışında.
+- **Sihirbaz yanlış kapıya "Bağlantı başarılı" diyordu.** `localhost`
+  yazılınca PDO (Linux, macOS, paylaşımlı hosting) Unix soketine bağlanıp
+  kapıyı yok sayıyordu; `localhost:3307` ikinci MySQL yerine varsayılan
+  sunucuya kurardı. Kapı 3306 değilse `127.0.0.1` (TCP) kullanılır;
+  sihirbaz ve uygulama (`Database::host`) aynı kuralı izler. 3306'da
+  `localhost` soketle kalır (paylaşımlı hostingde kullanıcı çoğu zaman
+  yalnızca `@localhost` tanımlıdır).
+- **MySQL 1698 (auth_socket) hatası** "bağlanılamadı (hata 1698)" diyordu;
+  artık ayrı bir veritabanı kullanıcısı açmayı ya da root parolası
+  tanımlamayı söyler. "Bağlantıyı dene"nin teknik ayrıntısı, sayfa
+  gönderimindeki gibi ayrı ve "Teknik ayrıntı" etiketiyle görünür.
+
+---
+
 ## [1.6.1] — 2026-10-07
 
 Cowork'un 1.6.0 kontrol raporu ve önerileri üzerine: formlar ne yazılacağını

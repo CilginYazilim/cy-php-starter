@@ -228,11 +228,19 @@ function is_installed(): bool
  */
 function split_host(string $host): array
 {
-    if (preg_match('/^(.+):(\d{1,5})\z/', $host, $m) === 1 && !str_contains($m[1], ':')) {
-        return [$m[1], (int) $m[2]];
+    [$sunucu, $kapi] = preg_match('/^(.+):(\d{1,5})\z/', $host, $m) === 1 && !str_contains($m[1], ':')
+        ? [$m[1], (int) $m[2]]
+        : [$host, 3306];
+
+    /* "localhost" ile PDO Unix soketine bağlanır ve kapıyı yok sayar:
+     * "localhost:3399" yanlış kapıya rağmen "Bağlantı başarılı" derdi.
+     * Kapı varsayılan değilse TCP (127.0.0.1); .env'e de böyle yazılır.
+     * App\Core\Database::host() ile aynı kural. */
+    if (strtolower($sunucu) === 'localhost' && $kapi !== 3306) {
+        $sunucu = '127.0.0.1';
     }
 
-    return [$host, 3306];
+    return [$sunucu, $kapi];
 }
 
 /** Veritabanı seçmeden sadece sunucuya bağlanır (henüz veritabanı yok). */
@@ -847,6 +855,8 @@ function db_error_message(PDOException $e): string
 
     return match (true) {
         $kod === 1045                         => 'Erişim reddedildi: veritabanı kullanıcı adı ya da parolası hatalı.',
+        /* Ubuntu/Debian'da root parolayla değil auth_socket ile girer. */
+        $kod === 1698                         => 'Bu kullanıcı parolayla bağlanamıyor (sunucu auth_socket kullanıyor). Hosting panelinizden ayrı bir veritabanı kullanıcısı açın ya da MySQL root parolası tanımlayın.',
         $kod === 1044                         => 'Bu kullanıcının bu veritabanına erişim yetkisi yok.',
         in_array($kod, [2002, 2003, 2005, 2006], true) => 'Veritabanı sunucusuna ulaşılamadı. Sunucu adresini ve kapıyı (port) kontrol edin; MySQL/MariaDB çalışıyor mu?',
         $kod === 1049                         => 'Veritabanı bulunamadı.',

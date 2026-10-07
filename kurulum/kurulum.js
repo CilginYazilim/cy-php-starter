@@ -32,10 +32,19 @@
                     sonuc.className = 'kur-test ' + (j.ok ? 'is-ok' : 'is-error');
                     sonuc.textContent = (j.ok ? '✓ ' : '✕ ') + j.mesaj;
 
+                    /* Ham hata, sayfa gönderimindeki gibi ayrı ve etiketli
+                     * durur (eskiden mesajın sonuna yapışıyordu). */
                     if (j.ayrinti) {
-                        var kucuk = document.createElement('small');
-                        kucuk.textContent = j.ayrinti;
-                        sonuc.appendChild(kucuk);
+                        var detay = document.createElement('details');
+                        var ozet  = document.createElement('summary');
+                        var kod   = document.createElement('code');
+
+                        detay.className = 'kur-detail';
+                        ozet.textContent = 'Teknik ayrıntı (yalnızca bu bilgisayarda görünür)';
+                        kod.textContent = j.ayrinti;
+                        detay.appendChild(ozet);
+                        detay.appendChild(kod);
+                        sonuc.appendChild(detay);
                     }
                 })
                 .catch(function () {

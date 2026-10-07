@@ -15,10 +15,34 @@ use RuntimeException;
 
 final class Database
 {
+    /** MySQL/MariaDB'nin varsayılan kapısı. */
+    public const VARSAYILAN_KAPI = 3306;
+
     private static ?PDO $connection = null;
 
     private function __construct()
     {
+    }
+
+    /**
+     * PDO'ya verilecek sunucu adı.
+     *
+     * "localhost" yazılınca PDO (Linux, macOS, paylaşımlı hosting) TCP
+     * yerine Unix soketine bağlanır ve KAPIYI YOK SAYAR: ikinci bir MySQL
+     * örneği için yazılan "localhost:3307" fark ettirmeden varsayılan
+     * sunucuya bağlanırdı. Varsayılandan farklı bir kapıda 127.0.0.1
+     * kullanılır; kapı yalnızca TCP'de anlam taşır.
+     *
+     * 3306'da "localhost" olduğu gibi kalır: paylaşımlı hostinglerde
+     * veritabanı kullanıcısı çoğu zaman yalnızca 'kullanici'@'localhost'
+     * olarak tanımlıdır ve TCP ile (127.0.0.1) giremez.
+     *
+     * kurulum/index.php → split_host() aynı kuralı uygular; tests/unit.php
+     * ikisinin aynı sonucu verdiğini denetler.
+     */
+    public static function host(string $host, int $port): string
+    {
+        return strtolower($host) === 'localhost' && $port !== self::VARSAYILAN_KAPI ? '127.0.0.1' : $host;
     }
 
     public static function connection(): PDO
@@ -27,10 +51,11 @@ final class Database
             return self::$connection;
         }
 
-        $dsn = sprintf(
+        $kapi = (int) Config::get('db.port', self::VARSAYILAN_KAPI);
+        $dsn  = sprintf(
             'mysql:host=%s;port=%d;dbname=%s;charset=%s',
-            (string) Config::get('db.host'),
-            (int) Config::get('db.port', 3306),
+            self::host((string) Config::get('db.host'), $kapi),
+            $kapi,
             (string) Config::get('db.name'),
             (string) Config::get('db.charset', 'utf8mb4')
         );

@@ -945,6 +945,59 @@ dogrula('Deneme numarası budamadan ÖNCE okunur (kilit atlanamaz)',
     && strpos($beginGovde, 'lastInsertId()') < (int) strpos($beginGovde, '$this->prune()'));
 
 /* ---------------------------------------------------------------- */
+echo "\nKurulum: sunucu, kapı ve bağlantı hataları (1.6.2)\n";
+
+/* kurulum/index.php app/'e dayanmadan çalışır; içindeki küçük işlevler
+ * kaynaktan çıkarılıp "kurulum_" önekiyle ayrıca tanımlanır. */
+$kurulumIslevi = static function (string $ad): ?string {
+    $yeni = 'kurulum_' . $ad;
+    if (function_exists($yeni)) {
+        return $yeni;
+    }
+    $kaynak = (string) @file_get_contents(CY_BASE . '/kurulum/index.php');
+    if (preg_match('/^function ' . $ad . '\(.*?^\}\n/ms', $kaynak, $m) !== 1) {
+        return null;
+    }
+    eval((string) preg_replace('/^function ' . $ad . '\(/', 'function ' . $yeni . '(', $m[0]));
+
+    return $yeni;
+};
+
+$splitHost = $kurulumIslevi('split_host');
+$dbHata    = $kurulumIslevi('db_error_message');
+if ($splitHost !== null && $dbHata !== null) {
+    $kapiOrnekleri = [
+        'localhost:3399'   => ['127.0.0.1', 3399],
+        'LOCALHOST:3307'   => ['127.0.0.1', 3307],
+        'localhost'        => ['localhost', 3306],
+        'localhost:3306'   => ['localhost', 3306],
+        '127.0.0.1:3306'   => ['127.0.0.1', 3306],
+        'db.ornek.com:3307' => ['db.ornek.com', 3307],
+    ];
+    $kapiFarki = array_filter($kapiOrnekleri, static fn (array $beklenen, string $girdi): bool => $splitHost($girdi) !== $beklenen, ARRAY_FILTER_USE_BOTH);
+    dogrula('Sihirbaz: localhost + başka kapı → 127.0.0.1 (soket kapıyı yok sayardı)', $kapiFarki === [], implode(', ', array_keys($kapiFarki)));
+    $uyumsuz = array_filter($kapiOrnekleri, static function (array $beklenen, string $girdi): bool {
+        [$sunucu, $kapi] = array_pad(explode(':', $girdi), 2, '3306');
+
+        return App\Core\Database::host($sunucu, (int) $kapi) !== $beklenen[0];
+    }, ARRAY_FILTER_USE_BOTH);
+    dogrula('Uygulama (.env) aynı kuralı uygular (Database::host)', $uyumsuz === [], implode(', ', array_keys($uyumsuz)));
+
+    $soket = new PDOException('SQLSTATE[HY000] [1698] Access denied for user root@localhost');
+    $soket->errorInfo = ['HY000', 1698, 'Access denied'];
+    dogrula('MySQL 1698 (auth_socket) anlaşılır mesaj verir', str_contains($dbHata($soket), 'auth_socket'));
+    $kurulumJs = (string) @file_get_contents(CY_BASE . '/kurulum/kurulum.js');
+    dogrula('"Bağlantıyı dene" teknik ayrıntıyı sayfadaki gibi ayrı ve etiketli gösterir', str_contains($kurulumJs, "'kur-detail'") && str_contains($kurulumJs, 'Teknik ayrıntı'));
+} else {
+    echo "  (kurulum/ klasörü yok; atlandı)\n";
+}
+
+$paketKurallari = (string) @file_get_contents(CY_BASE . '/.gitattributes');
+dogrula('ZIP paketinde .gitignore var (ZIP\'ten git\'e konan proje .env\'i commit\'lemez)', preg_match('/^\.gitignore\s+export-ignore/m', $paketKurallari) !== 1);
+dogrula('ZIP paketinde docs/MOBIL-API.md var, yalnızca ekran görüntüleri çıkar',
+    preg_match('/^docs\/\s+export-ignore/m', $paketKurallari) !== 1 && preg_match('/^docs\/screenshots\/\s+export-ignore/m', $paketKurallari) === 1);
+
+/* ---------------------------------------------------------------- */
 echo "
 Test sayısı
 ";

@@ -45,6 +45,10 @@ assets/css/dataTables.*.css      linguist-vendored
 
 # --- Depo arşivine (zip/tar) girmeyecekler ---------------------------
 #  "Download ZIP" ile indiren kişinin işine yaramayan dosyalar.
-.gitattributes  export-ignore
-.gitignore      export-ignore
-docs/           export-ignore
+#
+#  .gitignore ve .gitattributes BİLEREK pakettedir: ZIP'ten kurup kendi
+#  projesini git'e koyan kişi aksi hâlde .env'i (veritabanı parolası,
+#  APP_KEY), günlükleri, oturumları ve yüklemeleri commit'lerdi
+#  (1.6.1'e kadar böyleydi). docs/MOBIL-API.md de pakettedir; README ve
+#  MobileController ona yönlendirir. Yalnızca README görselleri çıkar.
+docs/screenshots/  export-ignore
