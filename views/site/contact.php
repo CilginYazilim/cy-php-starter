@@ -167,16 +167,18 @@ $baslik   = $sayfa?->baslik ?? 'İletişim';
                                 <div class="row g-3">
                                     <div class="col-12 col-md-6">
                                         <label class="form-label" for="ad">Ad Soyad <span class="text-danger">*</span></label>
-                                        <input type="text" name="ad" id="ad" class="form-control" maxlength="150" autocomplete="name">
+                                        <input type="text" name="ad" id="ad" class="form-control" maxlength="150" autocomplete="name" required>
                                         <div class="invalid-feedback" data-error-for="ad"></div>
                                     </div>
                                     <div class="col-12 col-md-6">
                                         <label class="form-label" for="eposta">E-posta <span class="text-danger">*</span></label>
-                                        <input type="email" name="eposta" id="eposta" class="form-control" maxlength="190" autocomplete="email">
+                                        <input type="email" name="eposta" id="eposta" class="form-control" maxlength="190" autocomplete="email"
+                                               inputmode="email" aria-describedby="eposta_ipucu" required>
+                                        <div class="form-text" id="eposta_ipucu">Yanıtımızı bu adrese göndereceğiz.</div>
                                         <div class="invalid-feedback" data-error-for="eposta"></div>
                                     </div>
                                     <div class="col-12">
-                                        <label class="form-label" for="konu">Konu</label>
+                                        <label class="form-label" for="konu">Konu <span class="cy-muted small">(isteğe bağlı)</span></label>
                                         <input type="text" name="konu" id="konu" class="form-control" maxlength="190"
                                                placeholder="Örn: Teklif talebi">
                                         <div class="invalid-feedback" data-error-for="konu"></div>
@@ -184,7 +186,12 @@ $baslik   = $sayfa?->baslik ?? 'İletişim';
                                     <div class="col-12">
                                         <label class="form-label" for="mesaj">Mesajınız <span class="text-danger">*</span></label>
                                         <textarea name="mesaj" id="mesaj" class="form-control" rows="7" maxlength="4000"
-                                                  placeholder="Size nasıl yardımcı olabiliriz?"></textarea>
+                                                  placeholder="Size nasıl yardımcı olabiliriz?" aria-describedby="mesaj_ipucu"
+                                                  data-sayac="#mesaj_sayac" required></textarea>
+                                        <div class="cy-field-meta">
+                                            <div class="form-text" id="mesaj_ipucu">En az 10 karakter.</div>
+                                            <span class="cy-sayac" id="mesaj_sayac"></span>
+                                        </div>
                                         <div class="invalid-feedback" data-error-for="mesaj"></div>
                                     </div>
 

@@ -720,6 +720,59 @@ if (in_array('sqlite', PDO::getAvailableDrivers(), true)) {
 }
 
 /* ---------------------------------------------------------------- */
+echo "\nForm yardım metinleri ve ayar açıklamaları (1.6.1)\n";
+
+/* Formlar kuralı elle yazınca bayatlıyordu: en kısa parola 10 yapılsa
+ * ekran hâlâ "en az 8" derdi. Metin config'ten üretilmeli. */
+$parolaMin = (int) Config::get('security.password_min', 8);
+dogrula('password_hint() config\'teki en kısa uzunluğu söylüyor', str_contains(password_hint(), 'En az ' . $parolaMin . ' karakter'));
+Config::set('security.password_min', 12);
+dogrula('password_hint() config değişince değişiyor', str_contains(password_hint(), 'En az 12 karakter'));
+Config::set('security.password_min', $parolaMin);
+dogrula('upload_max_mb() en az 1', upload_max_mb() >= 1);
+
+$bosRol = array_filter([Role::ADMIN, Role::EDITOR, Role::MEMBER], static fn (string $r): bool => trim(Role::description($r)) === '');
+dogrula('Her çekirdek rolün açıklaması dolu', $bosRol === [], implode(', ', $bosRol));
+
+$aciklamaMigration = require CY_BASE . '/database/migrations/2026_10_08_010000_ayar_aciklamalari.php';
+$migrationMetinleri = $aciklamaMigration->aciklamalar();
+
+$surum16Farki = [];
+$surum16Bos   = [];
+foreach (App\Support\Surum16::AYARLAR as [$anahtar, , $grup, , , $aciklama]) {
+    if ($grup === 'dahili') {
+        continue;
+    }
+    if (trim((string) $aciklama) === '') {
+        $surum16Bos[] = $anahtar;
+    }
+    if (($migrationMetinleri[$anahtar] ?? null) !== $aciklama) {
+        $surum16Farki[] = $anahtar;
+    }
+}
+dogrula('Surum16\'da ("dahili" dışında) her ayarın açıklaması dolu', $surum16Bos === [], implode(', ', $surum16Bos));
+dogrula('Migration açıklamaları Surum16 ile birebir aynı', $surum16Farki === [], implode(', ', $surum16Farki));
+
+if ($sema !== '') {
+    /* database.sql'deki satırın 6. değeri açıklamadır:
+     * ('anahtar', 'deger', 'grup', 'tip', 'Etiket', 'Açıklama', … */
+    $sqlFarki = [];
+    foreach ($aciklamaMigration::ACIKLAMALAR as $anahtar => $metin) {
+        $sqlMetni = null;
+        if (preg_match('/^\(\'' . preg_quote($anahtar, '/') . '\',.*$/mu', $sema, $satir)
+            && preg_match_all("/'((?:[^']|'')*)'|NULL|-?\\d+/u", $satir[0], $degerler)
+            && isset($degerler[0][5])) {
+            $sqlMetni = str_replace("''", "'", $degerler[1][5]);
+        }
+        if ($sqlMetni !== $metin) {
+            $sqlFarki[] = $anahtar;
+        }
+    }
+    dogrula('Migration açıklamaları kurulum/database.sql ile birebir aynı', $sqlFarki === [], implode(', ', $sqlFarki));
+    dogrula('database.sql açıklama migration\'ını kurulmuş sayar', str_contains($sema, "'2026_10_08_010000_ayar_aciklamalari'"));
+}
+
+/* ---------------------------------------------------------------- */
 echo "\nKaba kuvvet sayacı\n";
 
 /* MySQL'de lastInsertId() SON sorguya bakar: denemeyi yazdıktan sonra

@@ -17,7 +17,9 @@ jQuery(function ($) {
         status: CY.url('api/kullanicilar/status')
     };
 
-    var MAX_BYTES = 2 * 1024 * 1024;
+    // Sınır sunucudan gelir (config/upload.php → max_bytes; bkz. modals.php).
+    var MAX_MB    = parseInt($('#avatar').attr('data-max-mb'), 10) || 2;
+    var MAX_BYTES = MAX_MB * 1024 * 1024;
 
     var userModal   = new bootstrap.Modal(document.getElementById('userModal'));
     var detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
@@ -97,7 +99,7 @@ jQuery(function ($) {
         $('#kullanici_adi').val(data.kullanici_adi);
         $('#eposta').val(data.eposta);
         $('#telefon').val(data.telefon);
-        $('#hakkinda').val(data.hakkinda);
+        $('#hakkinda').val(data.hakkinda).trigger('input');   // karakter sayacı
         $('#rol_' + data.rol).prop('checked', true);
         $('#durum_' + data.durum).prop('checked', true);
 
@@ -200,8 +202,8 @@ jQuery(function ($) {
         $('#userModalLabel').text('Yeni Kullanıcı');
         $('#userModalSubtitle').text('Formu doldurup hesabı oluşturun.');
         $('#password_required').removeClass('d-none');
-        $('#password_hint').text('En az 8 karakter; harf ve rakam içermelidir.');
-        $('#sifre').attr('placeholder', 'En az 8 karakter, harf ve rakam');
+        $('#password_hint').text($('#password_hint').attr('data-varsayilan'));
+        $('#sifre').removeAttr('placeholder');
         userModal.show();
     });
 
@@ -223,7 +225,7 @@ jQuery(function ($) {
         }
         if (file.size > MAX_BYTES) {
             $(this).val('').addClass('is-invalid');
-            $('[data-error-for="avatar"]').text('Görsel boyutu en fazla 2 MB olabilir.');
+            $('[data-error-for="avatar"]').text('Görsel boyutu en fazla ' + MAX_MB + ' MB olabilir.');
             return;
         }
 

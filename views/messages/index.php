@@ -99,7 +99,8 @@ $smtpEksik = Setting::get('mail_surucu', 'kayit') === 'kayit';
         <div class="cy-toolbar__search">
             <div class="cy-input-icon">
                 <?= icon('search', 'cy-icon cy-icon--sm') ?>
-                <input type="search" class="form-control" id="table_search" placeholder="Ad, e-posta, konu veya mesaj ara…" autocomplete="off">
+                <input type="search" class="form-control" id="table_search" placeholder="Ad, e-posta, konu veya mesaj ara…" autocomplete="off"
+                       aria-label="Mesajlarda ara">
             </div>
         </div>
         <div class="cy-toolbar__filters ms-auto">

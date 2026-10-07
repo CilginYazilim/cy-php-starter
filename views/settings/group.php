@@ -243,8 +243,13 @@ $listeSatiri = static function (string $key, array $alanlar, int|string $i, arra
 
                     <form method="post" action="<?= e(url('panel/ayarlar/logo')) ?>" enctype="multipart/form-data">
                         <?= csrf_field() ?>
-                        <input type="file" name="logo" class="form-control form-control-sm mb-2"
-                               accept="image/jpeg,image/png,image/gif,image/webp">
+                        <label class="form-label small mb-1" for="ayar_logo">Logo dosyası</label>
+                        <input type="file" name="logo" id="ayar_logo" class="form-control form-control-sm"
+                               accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="ayar_logo_ipucu">
+                        <div class="form-text mb-2" id="ayar_logo_ipucu">
+                            Üst menüde, panelde ve e-postalarda görünür. Saydam zeminli PNG ya da WEBP önerilir
+                            · en fazla <?= upload_max_mb() ?> MB · büyük görseller <?= (int) config('upload.max_dimension', 1200) ?> piksele küçültülür.
+                        </div>
                         <button type="submit" class="btn cy-btn cy-btn--primary cy-btn--block cy-btn--sm">
                             <?= icon('upload', 'cy-icon cy-icon--sm') ?> Logoyu Güncelle
                         </button>
@@ -262,7 +267,6 @@ $listeSatiri = static function (string $key, array $alanlar, int|string $i, arra
 
                     <p class="cy-muted small mt-3 mb-0">
                         Görsel sunucuda yeniden üretilir: EXIF verisi ve gömülü içerik temizlenir.
-                        En fazla <?= e(App\Core\Storage\Storage::humanSize((int) config('upload.max_bytes'))) ?>.
                     </p>
                 </div>
             </div>
@@ -282,8 +286,13 @@ $listeSatiri = static function (string $key, array $alanlar, int|string $i, arra
 
                     <form method="post" action="<?= e(url('panel/ayarlar/favicon')) ?>" enctype="multipart/form-data">
                         <?= csrf_field() ?>
-                        <input type="file" name="favicon" class="form-control form-control-sm mb-2"
-                               accept="image/jpeg,image/png,image/gif,image/webp">
+                        <label class="form-label small mb-1" for="ayar_favicon">Favicon dosyası</label>
+                        <input type="file" name="favicon" id="ayar_favicon" class="form-control form-control-sm"
+                               accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="ayar_favicon_ipucu">
+                        <div class="form-text mb-2" id="ayar_favicon_ipucu">
+                            Tarayıcı sekmesindeki küçük simge. Kare bir görsel yükleyin (en az 64×64); ortadan kare
+                            kırpılıp 256 piksele getirilir. Yatay logo burada okunmaz.
+                        </div>
                         <button type="submit" class="btn cy-btn cy-btn--primary cy-btn--block cy-btn--sm">
                             <?= icon('upload', 'cy-icon cy-icon--sm') ?> Faviconu Güncelle
                         </button>
@@ -300,7 +309,6 @@ $listeSatiri = static function (string $key, array $alanlar, int|string $i, arra
                     <?php endif; ?>
 
                     <p class="cy-muted small mt-3 mb-0">
-                        Kare bir görsel yükleyin; merkezden kırpılır ve 256 piksele indirilir.
                         Kurulumla birlikte varsayılan bir favicon zaten tanımlıdır.
                         Değişiklikten sonra tarayıcı eski simgeyi bir süre önbellekte tutabilir.
                     </p>
@@ -438,8 +446,13 @@ $listeSatiri = static function (string $key, array $alanlar, int|string $i, arra
 
                     <form method="post" action="<?= e(url('panel/ayarlar/pwa-simge')) ?>" enctype="multipart/form-data">
                         <?= csrf_field() ?>
-                        <input type="file" name="pwa_simge" class="form-control form-control-sm mb-2"
-                               accept="image/jpeg,image/png,image/gif,image/webp">
+                        <label class="form-label small mb-1" for="ayar_pwa_simge">Simge dosyası</label>
+                        <input type="file" name="pwa_simge" id="ayar_pwa_simge" class="form-control form-control-sm"
+                               accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="ayar_pwa_simge_ipucu">
+                        <div class="form-text mb-2" id="ayar_pwa_simge_ipucu">
+                            Telefonun ana ekranında görünür. Kare, en az 512×512 piksel PNG önerilir; kenarlardan ~%10
+                            boşluk bırakın (bazı telefonlar simgeyi daireye kırpar).
+                        </div>
                         <button type="submit" class="btn cy-btn cy-btn--primary cy-btn--block cy-btn--sm">
                             <?= icon('upload', 'cy-icon cy-icon--sm') ?> Simgeyi Güncelle
                         </button>
@@ -456,9 +469,7 @@ $listeSatiri = static function (string $key, array $alanlar, int|string $i, arra
                     <?php endif; ?>
 
                     <p class="cy-muted small mt-3 mb-0">
-                        <strong>Kare</strong> bir görsel yükleyin; merkezden kırpılır ve 512 piksele indirilir.
-                        Telefon bu simgeyi daire ya da kare kalıba göre kenarlarından kırpabilir —
-                        önemli ayrıntıları ortada tutun. Yüklemezseniz site logosu kullanılır.
+                        Ortadan kare kırpılır ve 512 piksele getirilir. Yüklemezseniz site logosu kullanılır.
                     </p>
                 </div>
             </div>

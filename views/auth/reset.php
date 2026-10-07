@@ -39,12 +39,12 @@ $errors = $errors ?? [];
                                 <div class="cy-password">
                                     <input type="password" class="form-control<?= isset($errors['sifre']) ? ' is-invalid' : '' ?>"
                                            id="sifre" name="sifre" autocomplete="new-password" autofocus required
-                                           aria-describedby="sifre_hint">
+                                           aria-describedby="sifre_ipucu">
                                     <button type="button" class="cy-password__toggle js-toggle-password" aria-label="Parolayı göster">
                                         <?= icon('eye', 'cy-icon cy-icon--sm') ?>
                                     </button>
                                 </div>
-                                <div class="form-text" id="sifre_hint">En az 8 karakter; harf ve rakam içermelidir.</div>
+                                <div class="form-text" id="sifre_ipucu"><?= e(password_hint()) ?></div>
                                 <?php if (isset($errors['sifre'])): ?>
                                     <div class="invalid-feedback d-block" data-error-for="sifre"><?= e($errors['sifre']) ?></div>
                                 <?php endif; ?>

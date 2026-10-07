@@ -201,6 +201,25 @@ final class MailApiController extends Controller
     /** Seçilen hedef kitledeki kişi sayısını canlı gösterir. */
     public function audience(Request $request): void
     {
+        /* HENÜZ SEÇİLMEDİ ≠ HATA. Sayfa açılınca bu uç boş formla çağrılır;
+         * eskiden 422 dönüyor, ekran ilk açılışta kırmızı "En az bir
+         * e-posta adresi girin" gösteriyordu. Boş seçimde ipucu dönülür;
+         * HATALI adres yine 422'dir. Gönderim ucu (send) değişmedi: boş
+         * listeyle gönderim reddedilir. */
+        $hedef = (string) $request->input('hedef', 'elle');
+
+        $ipucu = match (true) {
+            $hedef === 'elle' && trim((string) $request->input('adresler', '')) === ''
+                => 'Adresleri yazdıkça kaç kişiye gideceği burada görünür.',
+            $hedef === 'kullanici' && (int) $request->input('kullanici_id', '0') <= 0
+                => 'Listeden bir kullanıcı seçin.',
+            default => '',
+        };
+
+        if ($ipucu !== '') {
+            Response::json(['success' => true, 'sayi' => 0, 'ornek' => [], 'ipucu' => $ipucu]);
+        }
+
         try {
             $recipients = $this->resolveRecipients($request);
         } catch (MailException $e) {

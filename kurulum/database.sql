@@ -89,9 +89,9 @@ INSERT INTO `ayarlar`
 
 -- ---- GENEL ----
 ('site_adi',        'Yeni Proje', 'genel', 'metin',      'Site Adı',        'Tarayıcı sekmesinde ve başlıkta görünür.', NULL, 10),
-('site_aciklama',   '', 'genel', 'uzun_metin', 'Site Açıklaması', 'Arama motorları için kısa tanıtım.', NULL, 20),
-('site_slogan',     '',           'genel', 'metin',      'Slogan',          'Başlığın altında görünecek kısa cümle.', NULL, 30),
-('site_dil',        'tr',         'genel', 'secim',      'Dil',             'HTML lang özniteliği.', '["tr","en"]', 50),
+('site_aciklama',   '', 'genel', 'uzun_metin', 'Site Açıklaması', 'Arama sonuçlarında ve sosyal medya paylaşımlarında görünen tanıtım. 120–160 karakter idealdir.', NULL, 20),
+('site_slogan',     '',           'genel', 'metin',      'Slogan',          'Ana sayfada başlığın altında ve alt bilgide görünen kısa cümle.', NULL, 30),
+('site_dil',        'tr',         'genel', 'secim',      'Dil',             'Sayfanın dil etiketi (lang). Arayüz metinlerini çevirmez; arama motorları ve ekran okuyucular için.', '["tr","en"]', 50),
 
 -- "site_logo" ve "site_favicon" GÖRÜNMEZ ("dahili" grubu) çünkü ikisi
 -- de dosya adı tutar ve elle yazılacak değerler değildir: Genel
@@ -121,7 +121,7 @@ INSERT INTO `ayarlar`
 --             test maili gitmesini imkânsız kılar)
 --    smtp  → gerçek bir posta sunucusuna bağlanır (ÖNERİLEN)
 --    php   → PHP'nin mail() fonksiyonu (ayar istemez, spam'e düşer)
-('mail_surucu',        'kayit', 'eposta', 'secim',  'Gönderim Yöntemi',   'Yayına alırken "smtp" seçin.', '["kayit","smtp","php"]', 10),
+('mail_surucu',        'kayit', 'eposta', 'secim',  'Gönderim Yöntemi',   'kayit: mektuplar gönderilmez, storage/mail/ klasörüne yazılır (geliştirme). smtp: gerçek gönderim (yayında bunu seçin). php: sunucunun mail() işlevi.', '["kayit","smtp","php"]', 10),
 ('mail_host',          '',      'eposta', 'metin',  'SMTP Sunucusu',      'Örn: smtp.gmail.com veya mail.siteniz.com', NULL, 20),
 ('mail_port',          '587',   'eposta', 'sayi',   'Kapı (Port)',        'TLS için 587, SSL için 465.', NULL, 30),
 ('mail_guvenlik',      'tls',   'eposta', 'secim',  'Şifreleme',          '587 → tls, 465 → ssl. "yok" yalnızca yerel test içindir.', '["tls","ssl","yok"]', 40),
@@ -148,7 +148,7 @@ INSERT INTO `ayarlar`
 
 -- ---- SEO ----
 ('seo_baslik_sablonu',    '%sayfa% · %site%', 'seo', 'metin', 'Başlık Şablonu', 'Sekmede görünecek biçim. %sayfa% ve %site% yer tutucularını kullanın.', NULL, 5),
-('seo_anahtar_kelimeler', '',     'seo', 'uzun_metin', 'Anahtar Kelimeler', 'Virgülle ayırın.', NULL, 10),
+('seo_anahtar_kelimeler', '',     'seo', 'uzun_metin', 'Anahtar Kelimeler', 'Virgülle ayırın. Google bu alanı sıralamada kullanmaz; yalnızca bazı arama motorları ve site içi araçlar okur.', NULL, 10),
 ('seo_analytics',         '',     'seo', 'uzun_metin', 'Analytics Kodu',    'Google Analytics vb. izleme kodu. Olduğu gibi <head> içine basılır.', NULL, 20),
 ('seo_indeksleme',        '1',    'seo', 'onay',       'Arama Motoru İndekslemesi', 'Kapatırsanız hem sayfalara "noindex" eklenir hem de robots.txt tüm siteyi kapatır.', NULL, 30),
 ('seo_google_dogrulama',  '',     'seo', 'metin',      'Google Site Doğrulama', 'Search Console''un verdiği "content" değeri. Yalnızca kod, etiketin tamamı değil.', NULL, 40),
@@ -157,7 +157,7 @@ INSERT INTO `ayarlar`
 ('seo_robots_ek',         '',     'seo', 'uzun_metin', 'robots.txt Ek Kuralları', 'Otomatik üretilen robots.txt dosyasının SONUNA eklenir. Her satır bir kural.', NULL, 70),
 
 -- ---- SİSTEM ----
-('sistem_bakim_modu',     '0',    'sistem', 'onay',  'Bakım Modu',           'Açıkken siteyi sadece yöneticiler görebilir.', NULL, 10),
+('sistem_bakim_modu',     '0',    'sistem', 'onay',  'Bakım Modu',           'Açıkken ziyaretçiler bakım sayfasını görür; yalnızca yöneticiler ve editörler siteyi gezebilir. Panelde uyarı şeridi çıkar.', NULL, 10),
 -- Kurulum sonrası AÇIK gelir: yeni bir siteyi ilk kez gezen kişinin
 -- "Kayıt Ol" düğmesini görebilmesi beklenen davranıştır. Kapalı bir
 -- sistem isteyen yönetici bunu tek tıkla kapatır; tersi durumda
@@ -169,8 +169,8 @@ INSERT INTO `ayarlar`
 -- olmasın. E-posta ayarları yapılmadıysa kayıt formu kendiliğinden kapanır.
 ('sistem_kayit_dogrulama', '1',   'sistem', 'onay',  'Kayıtta E-posta Doğrulaması', 'Yeni hesap, e-postadaki bağlantıya tıklanana kadar giriş yapamaz. E-posta ayarları eksikse kayıt formu kapanır.', NULL, 21),
 ('sistem_iletisim_formu', '1',    'sistem', 'onay',  'İletişim Formu Açık',  'Kapatırsanız iletişim sayfasında sadece bilgiler görünür.', NULL, 25),
-('sistem_sayfa_basina',   '10',   'sistem', 'sayi',  'Sayfa Başına Kayıt',   'Listelerde varsayılan sayfa boyutu.', NULL, 30),
-('sistem_zaman_dilimi',   'Europe/Istanbul', 'sistem', 'metin', 'Zaman Dilimi', 'Örn: Europe/Istanbul', NULL, 40),
+('sistem_sayfa_basina',   '10',   'sistem', 'sayi',  'Sayfa Başına Kayıt',   'Paneldeki listelerin (kullanıcılar, mesajlar…) ilk açılıştaki satır sayısı. 5–500 arası.', NULL, 30),
+('sistem_zaman_dilimi',   'Europe/Istanbul', 'sistem', 'metin', 'Zaman Dilimi', 'Tarih ve saatler bu bölgeye göre gösterilir. IANA biçiminde yazın, örn. Europe/Istanbul, Europe/Berlin.', NULL, 40),
 ('sistem_tema_rengi',     '#0b5cb5', 'sistem', 'renk', 'Tema Rengi',          'Panelin ve sitenin ana rengi. Butonlar, bağlantılar, aktif menü ve gradyanlar bu renkten türetilir; kaydettiğiniz anda her yerde geçerli olur.', NULL, 50),
 
 -- ---- UYGULAMA (PWA) ----
@@ -490,4 +490,5 @@ INSERT INTO `migrasyonlar` (`dosya`, `parti`) VALUES
 ('2026_10_06_020000_mail_kuyrugu_kilidi',   0),
 ('2026_10_06_030000_giris_denemeleri_ip_indeksi', 0),
 ('2026_10_06_040000_eposta_dogrulama',      0),
-('2026_10_07_010000_sorgu_indeksleri',      0);
+('2026_10_07_010000_sorgu_indeksleri',      0),
+('2026_10_08_010000_ayar_aciklamalari',     0);

@@ -137,14 +137,21 @@ $secenekAdi = ['yayinda' => 'Yayında', 'taslak' => 'Taslak', 'onay' => 'Onaya g
                         <label class="form-label" for="baslik">Başlık <span class="text-danger">*</span></label>
                         <input type="text" name="baslik" id="baslik" maxlength="150" autocomplete="off"
                                class="form-control<?= isset($errors['baslik']) ? ' is-invalid' : '' ?>"
+                               aria-describedby="baslik_ipucu"
                                value="<?= e($formDeger('baslik')) ?>">
+                        <div class="form-text" id="baslik_ipucu">Listede görünen ad · en fazla 150 karakter.</div>
                         <?php if (isset($errors['baslik'])): ?>
                             <div class="invalid-feedback d-block"><?= e($errors['baslik']) ?></div>
                         <?php endif; ?>
 
                         <label class="form-label mt-2" for="aciklama">Açıklama</label>
                         <textarea name="aciklama" id="aciklama" maxlength="255" rows="2"
+                                  aria-describedby="aciklama_ipucu" data-sayac="#aciklama_sayac"
                                   class="form-control<?= isset($errors['aciklama']) ? ' is-invalid' : '' ?>"><?= e($formDeger('aciklama')) ?></textarea>
+                        <div class="cy-field-meta">
+                            <div class="form-text" id="aciklama_ipucu">İsteğe bağlı · başlığın altında tek satır özet.</div>
+                            <span class="cy-sayac" id="aciklama_sayac"></span>
+                        </div>
                         <?php if (isset($errors['aciklama'])): ?>
                             <div class="invalid-feedback d-block"><?= e($errors['aciklama']) ?></div>
                         <?php endif; ?>

@@ -8,7 +8,8 @@
  *    2. Sol menü           (mobil çekmece + masaüstü daraltma)
  *    3. Tema               (açık / koyu, çerezde saklanır)
  *    4. Bildirimler        (sunucudan gelen flash mesajları)
- *    5. Ortak form davranışları (parola göster, görsel önizleme)
+ *    5. Ortak form davranışları (parola göster, görsel önizleme,
+ *       karakter sayacı)
  *
  *  Sayfaya özel kod ayrı dosyalardadır (users.js, login.js).
  *
@@ -500,6 +501,44 @@ window.CY = (function ($) {
 
             if (hataGozcusu) { hataGozcusu.observe($alan[0], { attributes: true, attributeFilter: ['class'] }); }
         });
+
+        /* --- Karakter sayacı ---
+         * [data-sayac="#hedef"] taşıyan alan yazıldıkça hedefe "120 / 1000"
+         * (maxlength'e göre) yazılır; sınırın %90'ında hedef .is-near alır.
+         * data-sayac-oneri="60" varsa "42 / 60 önerilen" yazılır ve öneri
+         * aşılınca .is-near alır (SEO alanları: sınır değil, tavsiye).
+         * Olay document'a bağlıdır; sonradan açılan modallarda da çalışır.
+         * Alanı JS ile dolduran kod 'input' olayını tetiklemelidir. */
+        function sayacYaz(alan) {
+            var $hedef = $($(alan).attr('data-sayac'));
+
+            if (!$hedef.length) { return; }
+
+            var uzunluk = (alan.value || '').length;
+            var oneri   = parseInt($(alan).attr('data-sayac-oneri'), 10) || 0;
+            var sinir   = parseInt($(alan).attr('maxlength'), 10) || 0;
+
+            if (oneri > 0) {
+                $hedef.text(uzunluk + ' / ' + oneri + ' önerilen').toggleClass('is-near', uzunluk > oneri);
+            } else if (sinir > 0) {
+                $hedef.text(uzunluk + ' / ' + sinir).toggleClass('is-near', uzunluk >= Math.ceil(sinir * 0.9));
+            } else {
+                $hedef.text(String(uzunluk));
+            }
+        }
+
+        $(document).on('input', '[data-sayac]', function () { sayacYaz(this); });
+
+        // "reset" olayı alanlar boşaltılmadan ÖNCE gelir; bir sonraki turda say.
+        $(document).on('reset', 'form', function () {
+            var form = this;
+
+            window.setTimeout(function () {
+                $(form).find('[data-sayac]').each(function () { sayacYaz(this); });
+            }, 0);
+        });
+
+        $('[data-sayac]').each(function () { sayacYaz(this); });
 
         /* --- Tablolar mobilde kart (cy-table--cards) ---
          * Her hücreye başlığının metnini (data-label) ve rolünü (data-kart:

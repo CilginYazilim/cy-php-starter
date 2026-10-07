@@ -139,17 +139,18 @@ $ilkSekme  = $canSend ? 'gonder' : 'gecmis';
 
                             <div class="col-12 col-lg-7 d-none" id="alan_kullanici">
                                 <label class="form-label" for="kullanici_id">Kullanıcı</label>
-                                <select class="form-select" name="kullanici_id" id="kullanici_id">
+                                <select class="form-select" name="kullanici_id" id="kullanici_id" aria-describedby="kullanici_id_ipucu">
                                     <option value="">— seçin —</option>
                                     <?php foreach (($users ?? []) as $user): ?>
                                         <option value="<?= (int) $user['id'] ?>"><?= e($user['etiket']) ?></option>
                                     <?php endforeach; ?>
                                 </select>
+                                <div class="form-text" id="kullanici_id_ipucu">Mektup bu kişinin hesabındaki e-posta adresine gider.</div>
                             </div>
 
                             <div class="col-12">
-                                <div class="cy-alert cy-alert--info mb-0 py-2 small" id="alici_ozet">
-                                    Alıcı sayısı hesaplanıyor…
+                                <div class="cy-alert cy-alert--info mb-0 py-2 small" id="alici_ozet" aria-live="polite">
+                                    Alıcıları seçin; kaç kişiye gideceği burada görünür.
                                 </div>
                             </div>
 
@@ -160,14 +161,17 @@ $ilkSekme  = $canSend ? 'gonder' : 'gecmis';
                             <div class="col-12 col-lg-8">
                                 <label class="form-label" for="konu">Konu <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" name="konu" id="konu" maxlength="200"
-                                       value="<?= e($prefill['konu']) ?>" placeholder="Örn: Şubat ayı duyurusu">
+                                       value="<?= e($prefill['konu']) ?>" placeholder="Örn: Şubat ayı duyurusu"
+                                       aria-describedby="konu_ipucu">
+                                <div class="form-text" id="konu_ipucu">Gelen kutusunda görünen satır. Kısa ve açık tutun.</div>
                                 <div class="invalid-feedback" data-error-for="konu"></div>
                             </div>
 
                             <div class="col-12 col-lg-4">
                                 <label class="form-label" for="baslik">Mektup başlığı</label>
                                 <input type="text" class="form-control" name="baslik" id="baslik" maxlength="200"
-                                       placeholder="Boşsa konu kullanılır">
+                                       placeholder="Boşsa konu kullanılır" aria-describedby="baslik_ipucu">
+                                <div class="form-text" id="baslik_ipucu">Mektubun içindeki büyük başlık.</div>
                             </div>
 
                             <div class="col-12">
@@ -184,15 +188,19 @@ $ilkSekme  = $canSend ? 'gonder' : 'gecmis';
                             <div class="col-12 col-md-4">
                                 <label class="form-label" for="dugme_metni">Düğme metni</label>
                                 <input type="text" class="form-control" name="dugme_metni" id="dugme_metni" maxlength="60"
-                                       placeholder="Örn: Siteye Git">
+                                       placeholder="Örn: Siteye Git" aria-describedby="dugme_ipucu">
                                 <div class="invalid-feedback" data-error-for="dugme_metni"></div>
                             </div>
 
                             <div class="col-12 col-md-8">
                                 <label class="form-label" for="dugme_url">Düğme adresi</label>
                                 <input type="url" class="form-control" name="dugme_url" id="dugme_url" maxlength="255"
-                                       placeholder="https://...">
+                                       placeholder="https://..." aria-describedby="dugme_ipucu">
                                 <div class="invalid-feedback" data-error-for="dugme_url"></div>
+                            </div>
+
+                            <div class="col-12 mt-1">
+                                <div class="form-text mt-0" id="dugme_ipucu">İsteğe bağlı. Metin ve adres birlikte doldurulursa mektubun sonunda bir düğme görünür; adres https:// ile başlamalı.</div>
                             </div>
                         </div>
 
@@ -229,7 +237,8 @@ $ilkSekme  = $canSend ? 'gonder' : 'gecmis';
                     <div class="cy-toolbar__search">
                         <div class="cy-input-icon">
                             <?= icon('search', 'cy-icon cy-icon--sm') ?>
-                            <input type="search" class="form-control" id="mail_search" placeholder="Alıcı veya konu ara…" autocomplete="off">
+                            <input type="search" class="form-control" id="mail_search" placeholder="Alıcı veya konu ara…" autocomplete="off"
+                                   aria-label="E-posta geçmişinde ara">
                         </div>
                     </div>
                     <div class="cy-toolbar__filters">

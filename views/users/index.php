@@ -62,7 +62,8 @@ $ist   = $istatistik ?? ['toplam' => 0, 'aktif' => 0, 'pasif' => 0, 'yonetici' =
             <div class="cy-input-icon">
                 <?= icon('search', 'cy-icon cy-icon--sm') ?>
                 <input type="search" class="form-control" id="table_search"
-                       placeholder="Ad, soyad, e-posta veya kullanıcı adı ara…" autocomplete="off">
+                       placeholder="Ad, soyad, e-posta veya kullanıcı adı ara…" autocomplete="off"
+                       aria-label="Kullanıcılarda ara">
             </div>
         </div>
 

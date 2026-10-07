@@ -343,6 +343,12 @@ jQuery(function ($) {
             url: API.audience, method: 'POST', dataType: 'json', data: formData()
         })
         .done(function (res) {
+            // Henüz alıcı seçilmedi: hata değil, yönlendirme.
+            if (res.ipucu) {
+                $summary.text(res.ipucu);
+                return;
+            }
+
             var text = res.sayi + ' alıcıya gönderilecek.';
 
             if (res.ornek && res.ornek.length) {

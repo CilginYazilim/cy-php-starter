@@ -24,6 +24,39 @@ sayfasındadır.
 
 ---
 
+## [Yayımlanmadı]
+
+### Eklendi
+
+- **Form yardım metinleri.** Kayıt, giriş, iletişim, Hesabım, kullanıcı
+  modalı, sayfa düzenleyici, toplu e-posta, logo/favicon/PWA simgesi,
+  Örnek Modül ve kurulum sihirbazındaki alanların altında ne yazılacağını
+  anlatan satırlar; hepsi `aria-describedby` ile alana bağlı.
+- **Tek kaynaktan kural metinleri:** `password_hint()`, `username_hint()`
+  ve `upload_max_mb()` yardımcıları. Parola kuralı ya da yükleme sınırı
+  config'te değişince formlar da değişir (eskiden "en az 8 karakter" ve
+  "2 MB" dört dosyada elle yazılıydı).
+- **Rol ve durum açıklamaları** kullanıcı modalında (`Role::description()`):
+  her rolün neye erişebildiği, Pasif ile Askıda arasındaki fark.
+- **Karakter sayacı:** `data-sayac="#hedef"` taşıyan her alan "120 / 1000"
+  gösterir, sınırın %90'ında uyarı rengine döner; `data-sayac-oneri="60"`
+  ile SEO alanlarında "42 / 60 önerilen".
+
+### Değişti
+
+- **Ayar açıklamaları** yeniden yazıldı; boş olanlar dolduruldu (ana sayfa
+  düğmeleri, SSS, son bant). Bakım modu açıklaması artık editörlerin de
+  siteyi gezebildiğini söylüyor. Var olan kurulumlar
+  `2026_10_08_010000_ayar_aciklamalari` migration'ıyla güncellenir.
+
+### Düzeltildi
+
+- **Toplu e-posta ekranı açılır açılmaz kırmızı hata gösteriyordu**
+  ("En az bir e-posta adresi girin"). Alıcı henüz seçilmemişse alıcı
+  ucu artık ipucu döner; hatalı adres yine reddedilir.
+
+---
+
 ## [1.6.0] — 2026-10-07
 
 Bağımsız bir test raporunun (Cowork) bütün bulguları üzerine hazırlanan

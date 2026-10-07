@@ -79,6 +79,13 @@ final class Role
     ];
 
     /** @var array<string,string> */
+    private const DESCRIPTIONS = [
+        self::ADMIN  => 'Her şeye erişir: kullanıcılar, site ayarları, sistem ve toplu e-posta.',
+        self::EDITOR => 'Sayfa yazar ve yayınlar, iletişim mesajlarını yönetir, e-posta geçmişini görür; kullanıcılara ve ayarlara erişemez.',
+        self::MEMBER => 'Yalnızca kendi profilini ve açık modüllerde kendisine verilen alanları kullanır.',
+    ];
+
+    /** @var array<string,string> */
     private const VARIANTS = [
         self::ADMIN  => 'admin',
         self::EDITOR => 'editor',
@@ -100,6 +107,16 @@ final class Role
     public static function label(string $role): string
     {
         return self::LABELS[$role] ?? 'Bilinmiyor';
+    }
+
+    /**
+     * Rolün tek cümlelik açıklaması: kullanıcı formunda rol seçilirken
+     * neyi verdiğinizi görmek için. Yetki listesi (ABILITIES) değişirse
+     * bu metni de güncelleyin.
+     */
+    public static function description(string $role): string
+    {
+        return self::DESCRIPTIONS[$role] ?? '';
     }
 
     public static function variant(string $role): string

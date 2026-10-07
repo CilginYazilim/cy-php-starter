@@ -62,7 +62,8 @@ $enBuyukMb = max(1, (int) round(((int) App\Core\Config::get('upload.max_bytes',2
                         <input type="text" class="form-control form-control-lg<?= isset($errors['baslik']) ? ' is-invalid' : '' ?>"
                                id="baslik" name="baslik" maxlength="190" autocomplete="off"
                                value="<?= e($deger('baslik', $sayfa?->baslik ?? '')) ?>"
-                               placeholder="Örn: Hakkımızda">
+                               placeholder="Örn: Hakkımızda" aria-describedby="baslik_ipucu">
+                        <div class="form-text" id="baslik_ipucu">Sayfanın en üstünde, menüde ve tarayıcı sekmesinde görünür. Adres boşsa bundan üretilir.</div>
                         <?php if (isset($errors['baslik'])): ?>
                             <div class="invalid-feedback d-block"><?= e($errors['baslik']) ?></div>
                         <?php endif; ?>
@@ -117,7 +118,7 @@ $enBuyukMb = max(1, (int) round(((int) App\Core\Config::get('upload.max_bytes',2
                     <div class="cy-editor" data-cy-editor data-target="icerik"
                          data-upload-url="<?= e(url('panel/sayfalar/gorsel')) ?>">
                         <div class="cy-editor__toolbar" role="toolbar" aria-label="Biçimlendirme"></div>
-                        <div class="cy-editor__area" contenteditable="true" role="textbox" aria-multiline="true"
+                        <div class="cy-editor__area" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Sayfa içeriği"
                              data-placeholder="Sayfanın içeriğini buraya yazın…"><?= $icerik ?></div>
                         <div class="cy-editor__foot">
                             <span data-cy-editor-count>0 kelime</span>
@@ -149,9 +150,10 @@ $enBuyukMb = max(1, (int) round(((int) App\Core\Config::get('upload.max_bytes',2
                     </select>
 
                     <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" role="switch"
+                        <input class="form-check-input" type="checkbox" role="switch" aria-describedby="menude_ipucu"
                                id="menude" name="menude" value="1" <?= $menude ? 'checked' : '' ?>>
                         <label class="form-check-label" for="menude">Üst menüde göster</label>
+                        <div class="form-text mt-0" id="menude_ipucu">Yalnızca yayındaki sayfalar menüde görünür.</div>
                     </div>
 
                     <label class="form-label" for="sira">Sıra</label>
@@ -230,13 +232,21 @@ $enBuyukMb = max(1, (int) round(((int) App\Core\Config::get('upload.max_bytes',2
                     <label class="form-label" for="seo_baslik">SEO Başlığı</label>
                     <input type="text" class="form-control mb-1" id="seo_baslik" name="seo_baslik" maxlength="190"
                            value="<?= e($deger('seo_baslik', $sayfa?->seoBaslik ?? '')) ?>"
-                           placeholder="Boşsa sayfa başlığı kullanılır">
-                    <div class="form-text mb-3">60 karakteri geçmemesi önerilir.</div>
+                           placeholder="Boşsa sayfa başlığı kullanılır"
+                           aria-describedby="seo_baslik_ipucu" data-sayac="#seo_baslik_sayac" data-sayac-oneri="60">
+                    <div class="cy-field-meta mb-3">
+                        <div class="form-text" id="seo_baslik_ipucu">Arama sonucundaki mavi başlık. 60 karakteri geçerse kesilir.</div>
+                        <span class="cy-sayac" id="seo_baslik_sayac"></span>
+                    </div>
 
                     <label class="form-label" for="seo_aciklama">SEO Açıklaması</label>
                     <textarea class="form-control mb-1" id="seo_aciklama" name="seo_aciklama" rows="3"
-                              maxlength="255" placeholder="Boşsa özet ya da içeriğin başı kullanılır"><?= e($deger('seo_aciklama', $sayfa?->seoAciklama ?? '')) ?></textarea>
-                    <div class="form-text">150–160 karakter arası ideal uzunluktur.</div>
+                              maxlength="255" placeholder="Boşsa özet ya da içeriğin başı kullanılır"
+                              aria-describedby="seo_aciklama_ipucu" data-sayac="#seo_aciklama_sayac" data-sayac-oneri="160"><?= e($deger('seo_aciklama', $sayfa?->seoAciklama ?? '')) ?></textarea>
+                    <div class="cy-field-meta">
+                        <div class="form-text" id="seo_aciklama_ipucu">Arama sonucunda başlığın altındaki metin. 150–160 karakter idealdir.</div>
+                        <span class="cy-sayac" id="seo_aciklama_sayac"></span>
+                    </div>
                 </div>
             </div>
           </div>

@@ -579,6 +579,38 @@ button.cy-status:hover { border-color: var(--cy-border-strong); background: var(
 .cy-app .form-control.is-invalid:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, .2); }
 .cy-app .invalid-feedback { font-size: .75rem; color: var(--cy-danger); }
 
+/* Yardım satırı + karakter sayacı aynı satırda: yardım solda, sayaç
+   sağda (bkz. app.js → [data-sayac]). Yardım uzunsa sayaç alta inmez. */
+.cy-field-meta {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+}
+.cy-field-meta > .form-text { flex: 1 1 auto; min-width: 0; }
+.cy-sayac {
+    flex: 0 0 auto;
+    margin-top: .25rem;
+    color: var(--cy-text-muted);
+    font-size: .75rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.cy-sayac:empty { display: none; }
+.cy-sayac.is-near { color: var(--cy-warning); font-weight: 600; }
+
+/* Seçeneklerin anlamı (rol ve durum seçicilerinin altında). */
+.cy-choice-help {
+    margin: .5rem 0 0;
+    padding: 0;
+    list-style: none;
+    color: var(--cy-text-muted);
+    font-size: .75rem;
+    line-height: 1.45;
+}
+.cy-choice-help li + li { margin-top: .2rem; }
+.cy-choice-help strong { color: var(--cy-text); font-weight: 600; }
+
 /* Seçim grubu: tek seçimlik radyo gruplarını, tablodaki rol/durum
    rozetleriyle aynı görsel dilde tıklanabilir "hap" (pill) düğmeler
    olarak gösterir — açılır menüden daha hızlı ve daha okunaklıdır. */
@@ -650,6 +682,7 @@ button.cy-status:hover { border-color: var(--cy-border-strong); background: var(
 }
 .cy-upload:hover { border-color: var(--cy-brand-400); background: var(--cy-brand-50); }
 .cy-upload__preview { flex-shrink: 0; }
+.min-w-0 { min-width: 0; }  /* esnek kutuda uzun dosya adı taşmasın */
 
 /* Girdi başında ikon taşıyan alan (arama kutusu, e-posta) */
 .cy-input-icon { position: relative; }

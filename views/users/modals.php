@@ -37,10 +37,11 @@ $roles = $roles ?? [];
                                         <?= icon('user', 'cy-icon cy-icon--sm') ?>
                                     </span>
                                 </span>
-                                <div class="flex-grow-1" style="min-width:0">
+                                <div class="flex-grow-1 min-w-0">
                                     <input type="file" name="avatar" id="avatar" class="form-control form-control-sm"
-                                           accept="image/jpeg,image/png,image/gif,image/webp">
-                                    <div class="form-text">JPG, PNG, GIF, WEBP · en fazla 2 MB · isteğe bağlı</div>
+                                           accept="image/jpeg,image/png,image/gif,image/webp"
+                                           data-max-mb="<?= upload_max_mb() ?>" aria-describedby="avatar_ipucu">
+                                    <div class="form-text" id="avatar_ipucu">JPG, PNG, GIF, WEBP · en fazla <?= upload_max_mb() ?> MB · kare kırpılır · isteğe bağlı</div>
                                     <div class="invalid-feedback d-block" data-error-for="avatar"></div>
                                 </div>
                             </div>
@@ -63,19 +64,25 @@ $roles = $roles ?? [];
 
                         <div class="col-12 col-md-6">
                             <label class="form-label" for="kullanici_adi">Kullanıcı Adı <span class="text-danger">*</span></label>
-                            <input type="text" name="kullanici_adi" id="kullanici_adi" class="form-control" maxlength="50" autocomplete="username">
+                            <input type="text" name="kullanici_adi" id="kullanici_adi" class="form-control" maxlength="50" autocomplete="username"
+                                   autocapitalize="none" spellcheck="false" aria-describedby="kullanici_adi_ipucu">
+                            <div class="form-text" id="kullanici_adi_ipucu"><?= e(username_hint()) ?></div>
                             <div class="invalid-feedback" data-error-for="kullanici_adi"></div>
                         </div>
 
                         <div class="col-12 col-md-6">
                             <label class="form-label" for="eposta">E-posta <span class="text-danger">*</span></label>
-                            <input type="email" name="eposta" id="eposta" class="form-control" maxlength="190" autocomplete="email" inputmode="email">
+                            <input type="email" name="eposta" id="eposta" class="form-control" maxlength="190" autocomplete="email" inputmode="email"
+                                   aria-describedby="eposta_ipucu">
+                            <div class="form-text" id="eposta_ipucu">Girişte ve bildirimlerde kullanılır; başka hesapta kayıtlı olamaz.</div>
                             <div class="invalid-feedback" data-error-for="eposta"></div>
                         </div>
 
                         <div class="col-12 col-md-6">
                             <label class="form-label" for="telefon">Telefon</label>
-                            <input type="tel" name="telefon" id="telefon" class="form-control" maxlength="30" autocomplete="tel" inputmode="tel">
+                            <input type="tel" name="telefon" id="telefon" class="form-control" maxlength="30" autocomplete="tel" inputmode="tel"
+                                   aria-describedby="telefon_ipucu">
+                            <div class="form-text" id="telefon_ipucu">İsteğe bağlı · örn. +90 5XX XXX XX XX</div>
                             <div class="invalid-feedback" data-error-for="telefon"></div>
                         </div>
 
@@ -84,12 +91,15 @@ $roles = $roles ?? [];
                                 Parola <span class="text-danger" id="password_required">*</span>
                             </label>
                             <div class="cy-password">
-                                <input type="password" name="sifre" id="sifre" class="form-control" autocomplete="new-password">
+                                <input type="password" name="sifre" id="sifre" class="form-control" autocomplete="new-password"
+                                       aria-describedby="password_hint">
                                 <button type="button" class="cy-password__toggle js-toggle-password" aria-label="Parolayı göster">
                                     <?= icon('eye', 'cy-icon cy-icon--sm') ?>
                                 </button>
                             </div>
-                            <div class="form-text" id="password_hint">En az 8 karakter; harf ve rakam içermelidir.</div>
+                            <?php /* users.js yeni kayıtta bu metni, düzenlemede "boş bırakın" uyarısını
+                                     yazar; kural metni sunucudan gelir (password_hint). */ ?>
+                            <div class="form-text" id="password_hint" data-varsayilan="<?= e(password_hint()) ?>"><?= e(password_hint()) ?></div>
                             <div class="invalid-feedback" data-error-for="sifre"></div>
                         </div>
 
@@ -114,7 +124,7 @@ $roles = $roles ?? [];
                         <p class="cy-form-section">Yetkilendirme</p>
                         <div class="row g-3">
                             <?php if (can('users.role')): ?>
-                                <fieldset class="col-12 col-md-6 cy-fieldset" aria-describedby="hata-rol">
+                                <fieldset class="col-12 col-md-6 cy-fieldset" aria-describedby="rol_aciklama hata-rol">
                                     <legend class="form-label">Rol</legend>
                                     <div class="cy-choice-group" id="rol_group">
                                         <?php foreach ($roles as $value => $label): ?>
@@ -125,12 +135,19 @@ $roles = $roles ?? [];
                                                    for="rol_<?= e($value) ?>"><?= e($label) ?></label>
                                         <?php endforeach; ?>
                                     </div>
+                                    <ul class="cy-choice-help" id="rol_aciklama">
+                                        <?php foreach ($roles as $value => $label): ?>
+                                            <?php if (App\Models\Role::description($value) !== ''): ?>
+                                                <li><strong><?= e($label) ?>:</strong> <?= e(App\Models\Role::description($value)) ?></li>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
+                                    </ul>
                                     <div class="invalid-feedback d-block" id="hata-rol" data-error-for="rol"></div>
                                 </fieldset>
                             <?php endif; ?>
 
                             <?php if (can('users.status')): ?>
-                                <fieldset class="col-12 col-md-6 cy-fieldset" aria-describedby="hata-durum">
+                                <fieldset class="col-12 col-md-6 cy-fieldset" aria-describedby="durum_aciklama hata-durum">
                                     <legend class="form-label">Durum</legend>
                                     <div class="cy-choice-group" id="durum_group">
                                         <input type="radio" class="cy-choice-group__input" name="durum" id="durum_aktif" value="aktif" checked>
@@ -153,6 +170,12 @@ $roles = $roles ?? [];
                                             <span class="cy-status__dot"></span>Onay bekliyor
                                         </label>
                                     </div>
+                                    <ul class="cy-choice-help" id="durum_aciklama">
+                                        <li><strong>Aktif:</strong> giriş yapabilir.</li>
+                                        <li><strong>Pasif:</strong> giriş yapamaz; kalıcı olarak kullanım dışı (ör. ayrılan çalışan). Veriler silinmez.</li>
+                                        <li><strong>Askıda:</strong> giriş yapamaz; geçici durdurma (ör. inceleme süresince).</li>
+                                        <li><strong>Onay bekliyor:</strong> e-posta doğrulaması tamamlanmamış.</li>
+                                    </ul>
                                     <div class="invalid-feedback d-block" id="hata-durum" data-error-for="durum"></div>
                                 </fieldset>
                             <?php endif; ?>
@@ -163,7 +186,12 @@ $roles = $roles ?? [];
                     <div class="row g-3">
                         <div class="col-12">
                             <label class="form-label" for="hakkinda">Hakkında</label>
-                            <textarea name="hakkinda" id="hakkinda" class="form-control" rows="2" maxlength="1000"></textarea>
+                            <textarea name="hakkinda" id="hakkinda" class="form-control" rows="2" maxlength="1000"
+                                      aria-describedby="hakkinda_ipucu" data-sayac="#hakkinda_sayac"></textarea>
+                            <div class="cy-field-meta">
+                                <div class="form-text" id="hakkinda_ipucu">İsteğe bağlı · yalnızca panelde, kullanıcı ayrıntısında görünür.</div>
+                                <span class="cy-sayac" id="hakkinda_sayac"></span>
+                            </div>
                             <div class="invalid-feedback" data-error-for="hakkinda"></div>
                         </div>
                     </div>

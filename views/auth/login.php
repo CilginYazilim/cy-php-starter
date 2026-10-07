@@ -36,7 +36,7 @@ $demoMode     = $demoMode ?? false;
                                 <label class="form-label" for="identifier">E-posta veya Kullanıcı Adı</label>
                                 <input type="text" class="form-control<?= isset($errors['identifier']) ? ' is-invalid' : '' ?>"
                                        id="identifier" name="identifier" value="<?= old($old, 'identifier') ?>"
-                                       autocomplete="username" autofocus required>
+                                       autocomplete="username" autocapitalize="none" spellcheck="false" autofocus required>
                                 <?php if (isset($errors['identifier'])): ?>
                                     <div class="invalid-feedback d-block"><?= e($errors['identifier']) ?></div>
                                 <?php endif; ?>
@@ -53,11 +53,15 @@ $demoMode     = $demoMode ?? false;
                                 </div>
                                 <div class="cy-password">
                                     <input type="password" class="form-control<?= isset($errors['password']) ? ' is-invalid' : '' ?>"
-                                           id="password" name="password" autocomplete="current-password" required>
+                                           id="password" name="password" autocomplete="current-password"
+                                           <?= PasswordReset::enabled() ? '' : 'aria-describedby="password_ipucu"' ?> required>
                                     <button type="button" class="cy-password__toggle js-toggle-password" aria-label="Parolayı göster">
                                         <?= icon('eye', 'cy-icon cy-icon--sm') ?>
                                     </button>
                                 </div>
+                                <?php if (!PasswordReset::enabled()): ?>
+                                    <div class="form-text" id="password_ipucu">Parolanızı unuttuysanız site yöneticisinden yeni parola isteyin.</div>
+                                <?php endif; ?>
                                 <?php if (isset($errors['password'])): ?>
                                     <div class="invalid-feedback d-block"><?= e($errors['password']) ?></div>
                                 <?php endif; ?>

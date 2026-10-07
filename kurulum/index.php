@@ -1586,14 +1586,20 @@ $hataAria = static fn (string $alan): string => isset($fieldErrors[$alan])
                     <div class="kur-field">
                         <label class="form-label" for="admin_kadi">Kullanıcı adı</label>
                         <input type="text" class="form-control" id="admin_kadi" name="admin_kadi" required autocomplete="username"
-                               value="<?= e($deger('admin_kadi', 'admin')) ?>"<?= $hataAria('admin_kadi') ?>>
+                               autocapitalize="none" spellcheck="false" maxlength="50"
+                               value="<?= e($deger('admin_kadi', 'admin')) ?>"
+                               aria-describedby="admin_kadi_ipucu<?= isset($fieldErrors['admin_kadi']) ? ' hata_admin_kadi' : '' ?>"<?= isset($fieldErrors['admin_kadi']) ? ' aria-invalid="true"' : '' ?>>
                         <?= $hataMetni('admin_kadi') ?>
+                        <p class="kur-help" id="admin_kadi_ipucu">Harf, rakam, nokta ve alt çizgi. Tahmin edilmesi zor bir ad seçin ("admin" yerine).</p>
                     </div>
                     <div class="kur-field">
                         <label class="form-label" for="admin_eposta">E-posta</label>
                         <input type="email" class="form-control" id="admin_eposta" name="admin_eposta" required autocomplete="email"
-                               value="<?= e($deger('admin_eposta')) ?>"<?= $hataAria('admin_eposta') ?>>
+                               inputmode="email" maxlength="190"
+                               value="<?= e($deger('admin_eposta')) ?>"
+                               aria-describedby="admin_eposta_ipucu<?= isset($fieldErrors['admin_eposta']) ? ' hata_admin_eposta' : '' ?>"<?= isset($fieldErrors['admin_eposta']) ? ' aria-invalid="true"' : '' ?>>
                         <?= $hataMetni('admin_eposta') ?>
+                        <p class="kur-help" id="admin_eposta_ipucu">İletişim formu bildirimleri de bu adrese gelir.</p>
                     </div>
                 </div>
                 <div class="kur-grid">

@@ -18,9 +18,11 @@ $old    = $old ?? [];
             <div class="cy-card">
                 <div class="cy-card__body p-4">
                     <div class="text-center mb-4">
-                        <img src="<?= e(Setting::logoUrl()) ?>" alt="" style="width:56px;height:56px;object-fit:contain">
+                        <span class="cy-auth-card__logo">
+                            <img src="<?= e(Setting::logoUrl()) ?>" alt="">
+                        </span>
                         <h1 class="cy-title mt-3 mb-1">Hesap oluşturun</h1>
-                        <p class="cy-subtitle mb-0">Birkaç bilgiyle üye olun.</p>
+                        <p class="cy-subtitle mb-0">Birkaç bilgiyle üye olun. <span class="text-danger">*</span> işaretli alanlar zorunludur.</p>
                     </div>
 
                     <form method="post" action="<?= e(url('kayit')) ?>" novalidate>
@@ -56,14 +58,22 @@ $old    = $old ?? [];
                             <div class="col-12 col-md-6">
                                 <label class="form-label" for="kullanici_adi">Kullanıcı Adı <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control<?= isset($errors['kullanici_adi']) ? ' is-invalid' : '' ?>"
-                                       id="kullanici_adi" name="kullanici_adi" value="<?= old($old, 'kullanici_adi') ?>" maxlength="50" autocomplete="username" required>
+                                       id="kullanici_adi" name="kullanici_adi" value="<?= old($old, 'kullanici_adi') ?>" maxlength="50" autocomplete="username"
+                                       autocapitalize="none" spellcheck="false" aria-describedby="kullanici_adi_ipucu" required>
+                                <div class="form-text" id="kullanici_adi_ipucu"><?= e(username_hint()) ?></div>
                                 <?php if (isset($errors['kullanici_adi'])): ?><div class="invalid-feedback"><?= e($errors['kullanici_adi']) ?></div><?php endif; ?>
                             </div>
 
                             <div class="col-12 col-md-6">
                                 <label class="form-label" for="eposta">E-posta <span class="text-danger">*</span></label>
                                 <input type="email" class="form-control<?= isset($errors['eposta']) ? ' is-invalid' : '' ?>"
-                                       id="eposta" name="eposta" value="<?= old($old, 'eposta') ?>" maxlength="190" autocomplete="email" required>
+                                       id="eposta" name="eposta" value="<?= old($old, 'eposta') ?>" maxlength="190" autocomplete="email"
+                                       inputmode="email" aria-describedby="eposta_ipucu" required>
+                                <div class="form-text" id="eposta_ipucu">
+                                    <?= App\Core\Registration::requiresVerification()
+                                        ? 'Hesabınızı etkinleştirme bağlantısı bu adrese gönderilir.'
+                                        : 'Bildirimler ve parola sıfırlama bağlantısı bu adrese gelir.' ?>
+                                </div>
                                 <?php if (isset($errors['eposta'])): ?><div class="invalid-feedback"><?= e($errors['eposta']) ?></div><?php endif; ?>
                             </div>
 
@@ -71,10 +81,10 @@ $old    = $old ?? [];
                                 <label class="form-label" for="sifre">Parola <span class="text-danger">*</span></label>
                                 <div class="cy-password">
                                     <input type="password" class="form-control<?= isset($errors['sifre']) ? ' is-invalid' : '' ?>"
-                                           id="sifre" name="sifre" autocomplete="new-password" required>
+                                           id="sifre" name="sifre" autocomplete="new-password" aria-describedby="sifre_ipucu" required>
                                     <button type="button" class="cy-password__toggle js-toggle-password" aria-label="Parolayı göster"><?= icon('eye', 'cy-icon cy-icon--sm') ?></button>
                                 </div>
-                                <div class="form-text">En az 8 karakter; harf ve rakam içermelidir.</div>
+                                <div class="form-text" id="sifre_ipucu"><?= e(password_hint()) ?></div>
                                 <?php if (isset($errors['sifre'])): ?><div class="invalid-feedback d-block"><?= e($errors['sifre']) ?></div><?php endif; ?>
                             </div>
 

@@ -158,6 +158,36 @@ if (!function_exists('old')) {
     }
 }
 
+if (!function_exists('password_hint')) {
+    /**
+     * Parola kuralının okunur hâli. Validator::password() ile AYNI kuralı
+     * anlatır; en kısa uzunluk config/security.php'den gelir. Formlarda
+     * elle yazılmış metin bayatlıyordu (kural 10 olunca form hâlâ 8 diyordu).
+     */
+    function password_hint(): string
+    {
+        $min = (int) Config::get('security.password_min', 8);
+
+        return 'En az ' . $min . ' karakter; en az bir harf ve bir rakam içermeli (en fazla 72 karakter).';
+    }
+}
+
+if (!function_exists('username_hint')) {
+    /** Kullanıcı adı kuralının okunur hâli (Validator::username ile aynı). */
+    function username_hint(): string
+    {
+        return '3–50 karakter; yalnızca İngilizce harf, rakam, nokta (.) ve alt çizgi (_). Giriş yaparken kullanılır.';
+    }
+}
+
+if (!function_exists('upload_max_mb')) {
+    /** Yükleme sınırı MB olarak (config/upload.php → max_bytes; en az 1). */
+    function upload_max_mb(): int
+    {
+        return max(1, (int) floor((int) Config::get('upload.max_bytes', 2 * 1024 * 1024) / (1024 * 1024)));
+    }
+}
+
 if (!function_exists('human_date')) {
     /** Tarihi "3 dakika önce" gibi okunur biçime çevirir. */
     function human_date(?string $value): string

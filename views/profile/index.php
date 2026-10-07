@@ -54,9 +54,11 @@ $epostaDegisti = isset($errors['eposta_sifre'])
 
         <form method="post" action="<?= e(url('panel/hesabim/avatar')) ?>" enctype="multipart/form-data" class="mt-3">
             <?= csrf_field() ?>
-            <input type="file" name="avatar" class="form-control form-control-sm mb-2 js-image-input"
-                   accept="image/jpeg,image/png,image/gif,image/webp"
+            <label class="form-label small mb-1" for="profil_avatar">Profil fotoğrafı</label>
+            <input type="file" name="avatar" id="profil_avatar" class="form-control form-control-sm js-image-input"
+                   accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="profil_avatar_ipucu"
                    data-preview="#profile_preview" data-placeholder="#profile_preview_initial">
+            <div class="form-text mb-2" id="profil_avatar_ipucu">JPG, PNG, GIF veya WEBP · en fazla <?= upload_max_mb() ?> MB · ortadan kare kırpılır</div>
             <button type="submit" class="btn cy-btn cy-btn--ghost cy-btn--sm cy-btn--block">
                 <?= icon('upload', 'cy-icon cy-icon--sm') ?> Fotoğrafı Değiştir
             </button>
@@ -100,25 +102,33 @@ $epostaDegisti = isset($errors['eposta_sifre'])
 
                         <div class="col-12 col-md-6">
                             <label class="form-label" for="eposta">E-posta <span class="text-danger">*</span></label>
-                            <input type="email" name="eposta" id="eposta" maxlength="190" autocomplete="email"
+                            <input type="email" name="eposta" id="eposta" maxlength="190" autocomplete="email" inputmode="email"
                                    class="form-control<?= isset($errors['eposta']) ? ' is-invalid' : '' ?>"
-                                   data-original="<?= e($profile->eposta) ?>"
+                                   data-original="<?= e($profile->eposta) ?>" aria-describedby="eposta_ipucu"
                                    value="<?= $value('eposta', $profile->eposta) ?>">
+                            <div class="form-text" id="eposta_ipucu">Bildirimler ve parola sıfırlama bağlantısı bu adrese gelir. Değiştirirseniz eski adrese bilgi verilir.</div>
                             <?php if (isset($errors['eposta'])): ?><div class="invalid-feedback"><?= e($errors['eposta']) ?></div><?php endif; ?>
                         </div>
 
                         <div class="col-12 col-md-6">
                             <label class="form-label" for="telefon">Telefon</label>
-                            <input type="tel" name="telefon" id="telefon" maxlength="30" autocomplete="tel"
+                            <input type="tel" name="telefon" id="telefon" maxlength="30" autocomplete="tel" inputmode="tel"
                                    class="form-control<?= isset($errors['telefon']) ? ' is-invalid' : '' ?>"
+                                   aria-describedby="telefon_ipucu"
                                    value="<?= $value('telefon', $profile->telefon) ?>">
+                            <div class="form-text" id="telefon_ipucu">İsteğe bağlı · örn. +90 5XX XXX XX XX · yalnızca site yöneticileri görür</div>
                             <?php if (isset($errors['telefon'])): ?><div class="invalid-feedback"><?= e($errors['telefon']) ?></div><?php endif; ?>
                         </div>
 
                         <div class="col-12">
                             <label class="form-label" for="hakkinda">Hakkımda</label>
                             <textarea name="hakkinda" id="hakkinda" rows="3" maxlength="1000"
+                                      aria-describedby="hakkinda_ipucu" data-sayac="#hakkinda_sayac"
                                       class="form-control<?= isset($errors['hakkinda']) ? ' is-invalid' : '' ?>"><?= $value('hakkinda', $profile->hakkinda) ?></textarea>
+                            <div class="cy-field-meta">
+                                <div class="form-text" id="hakkinda_ipucu">İsteğe bağlı · kendinizi bir iki cümleyle tanıtın; yalnızca panelde görünür.</div>
+                                <span class="cy-sayac" id="hakkinda_sayac"></span>
+                            </div>
                             <?php if (isset($errors['hakkinda'])): ?><div class="invalid-feedback"><?= e($errors['hakkinda']) ?></div><?php endif; ?>
                         </div>
 
@@ -163,9 +173,11 @@ $epostaDegisti = isset($errors['eposta_sifre'])
                             <label class="form-label" for="yeni_sifre">Yeni Parola</label>
                             <div class="cy-password">
                                 <input type="password" name="yeni_sifre" id="yeni_sifre" autocomplete="new-password"
+                                       aria-describedby="yeni_sifre_ipucu"
                                        class="form-control<?= isset($errors['yeni_sifre']) ? ' is-invalid' : '' ?>">
                                 <button type="button" class="cy-password__toggle js-toggle-password" aria-label="Parolayı göster"><?= icon('eye', 'cy-icon cy-icon--sm') ?></button>
                             </div>
+                            <div class="form-text" id="yeni_sifre_ipucu"><?= e(password_hint()) ?></div>
                             <?php if (isset($errors['yeni_sifre'])): ?><div class="invalid-feedback d-block"><?= e($errors['yeni_sifre']) ?></div><?php endif; ?>
                         </div>
 
@@ -361,7 +373,8 @@ $epostaDegisti = isset($errors['eposta_sifre'])
                             <button type="submit" class="btn cy-btn cy-btn--primary cy-btn--block"><?= icon('plus', 'cy-icon cy-icon--sm') ?> Üret</button>
                         </div>
                     </form>
-                    <p class="cy-muted small mt-2 mb-0">Anahtar sizin yetkilerinizle çalışır; sizden fazlasına asla erişemez.
+                    <p class="cy-muted small mt-2 mb-0">Anahtar adı yalnızca sizin içindir: hangi uygulamanın kullandığını hatırlatır.
+                        Anahtar sizin yetkilerinizle çalışır; sizden fazlasına asla erişemez.
                         "Yalnız okuma" anahtarı veri değiştiremez (GET dışındaki istekler 403 alır).
                         Parolanızı değiştirdiğinizde bütün anahtarlarınız iptal edilir.</p>
                 </div>
